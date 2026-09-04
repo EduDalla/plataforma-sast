@@ -1,0 +1,8 @@
+.env
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+.idea/
+.vscode/
+TestResults/
