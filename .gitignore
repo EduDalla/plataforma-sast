@@ -3,6 +3,7 @@
 **/obj/
 **/node_modules/
 **/dist/
+**/*.tsbuildinfo
 .idea/
 .vscode/
 TestResults/
