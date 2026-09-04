@@ -1143,13 +1143,13 @@ O repositório contém JavaScript perigoso de propósito, porém seus arquivos n
 
 ### Arquitetura e repositório
 
-- [ ] Existe apenas um repositório Git.
-- [ ] Frontend, API, engine, testes, amostra, Docker e documentação estão separados por diretório.
-- [ ] `README.md` explica o projeto, a inicialização e aponta para a documentação da CP1.
-- [ ] `AGENTS.md` define as regras que o Codex deve ler antes de alterar o monorepo.
+- [x] Existe apenas um repositório Git.
+- [x] Frontend, API, engine, testes, amostra, Docker e documentação estão separados por diretório.
+- [x] `README.md` explica o projeto, a inicialização e aponta para a documentação da CP1.
+- [x] `AGENTS.md` define as regras que o Codex deve ler antes de alterar o monorepo.
 - [ ] Os diagramas C4 de contexto e contêineres renderizam corretamente.
-- [ ] `dotnet build Sast.sln` conclui sem erros.
-- [ ] `npm --prefix src/frontend run build` conclui sem erros.
+- [x] `dotnet build Sast.sln` conclui sem erros.
+- [x] `npm --prefix src/frontend run build` conclui sem erros.
 
 ### Docker
 
