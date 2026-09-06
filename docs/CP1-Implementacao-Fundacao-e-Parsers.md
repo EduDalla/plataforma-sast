@@ -52,40 +52,38 @@ JavaParser é uma biblioteca Java que lê código-fonte e produz uma AST Java co
 
 ## 3. Arquitetura C4
 
+C4 significa *Context, Containers, Components e Code*: níveis progressivos de visão da arquitetura. A CP1 documenta os níveis de contexto e contêineres. Embora o Mermaid ofereça a sintaxe C4 nativa, o GitHub não a renderiza; por isso, os diagramas a seguir usam `flowchart`, preservando a semântica C4 e a compatibilidade com o Markdown do GitHub.
+
 ### 3.1 Nível 1 — Contexto
 
 ```mermaid
-C4Context
-    title Plataforma SAST — Diagrama de Contexto
+flowchart LR
+    developer["Pessoa desenvolvedora<br/>Informa um repositório GitHub autorizado e consulta os achados"]
+    sast["Plataforma SAST<br/>Obtém código do GitHub, realiza análise estática e informa vulnerabilidades"]
+    github["GitHub<br/>Hospeda o repositório público e fornece seu snapshot"]
 
-    Person(developer, "Pessoa desenvolvedora", "Informa um repositório GitHub autorizado e consulta os achados")
-    System(sast, "Plataforma SAST", "Obtém código do GitHub, realiza análise estática e informa vulnerabilidades")
-    System_Ext(github, "GitHub", "Hospeda o repositório público e fornece seu snapshot")
-
-    Rel(developer, sast, "Envia URL/referência e consulta resultados", "HTTPS")
-    Rel(sast, github, "Baixa snapshot do repositório", "GitHub REST API/HTTPS")
+    developer -->|"Envia URL/referência e consulta resultados — HTTPS"| sast
+    sast -->|"Baixa snapshot do repositório — GitHub REST API/HTTPS"| github
 ```
 
 ### 3.2 Nível 2 — Contêineres
 
 ```mermaid
-C4Container
-    title Plataforma SAST — Diagrama de Contêineres
+flowchart LR
+    developer["Pessoa desenvolvedora<br/>Usuária da plataforma"]
+    github["GitHub<br/>Hospeda repositórios públicos"]
 
-    Person(developer, "Pessoa desenvolvedora", "Usuária da plataforma")
+    subgraph sast["Plataforma SAST"]
+        direction LR
+        web["Frontend<br/>React 19, TypeScript, Nginx<br/>Recebe URL/referência e apresenta os achados"]
+        api["API e SAST Engine<br/>Java 21, Spring Boot e JavaParser<br/>Obtém o snapshot, cria a AST, aplica regras e persiste o resultado"]
+        db[("Banco de dados<br/>PostgreSQL<br/>Armazena análises e achados")]
+    end
 
-    System_Boundary(sast, "Plataforma SAST") {
-        Container(web, "Frontend", "React 19, TypeScript, Nginx", "Recebe URL/referência e apresenta os achados")
-        Container(api, "API e SAST Engine", "Java 21, Spring Boot e JavaParser", "Obtém o snapshot, cria a AST, aplica regras e persiste o resultado")
-        ContainerDb(db, "Banco de dados", "PostgreSQL", "Armazena análises e achados")
-    }
-
-    System_Ext(github, "GitHub", "Hospeda repositórios públicos")
-
-    Rel(developer, web, "Utiliza", "HTTPS")
-    Rel(web, api, "Envia URL/referência e recebe findings", "HTTP/JSON")
-    Rel(api, github, "Baixa ZIP do snapshot", "GitHub REST API/HTTPS")
-    Rel(api, db, "Salva e consulta análises", "Spring Data JPA/Hibernate")
+    developer -->|"Utiliza — HTTPS"| web
+    web -->|"Envia URL/referência e recebe findings — HTTP/JSON"| api
+    api -->|"Baixa ZIP do snapshot — GitHub REST API/HTTPS"| github
+    api -->|"Salva e consulta análises — Spring Data JPA/Hibernate"| db
 ```
 
 ### 3.3 Fluxo interno
@@ -939,7 +937,7 @@ O repositório contém código Java perigoso de propósito, porém seus arquivos
 - [x] Frontend, API, engine, testes, amostra, Docker e documentação estão separados por diretório.
 - [x] `README.md` explica o projeto, a inicialização e aponta para a documentação da CP1.
 - [x] `AGENTS.md` define as regras que o Codex deve ler antes de alterar o monorepo.
-- [ ] Os diagramas C4 de contexto e contêineres renderizam corretamente.
+- [x] Os diagramas C4 de contexto e contêineres renderizam corretamente.
 - [ ] `mvn --file src/backend/pom.xml verify` conclui sem erros.
 - [x] `npm --prefix src/frontend run build` conclui sem erros.
 
