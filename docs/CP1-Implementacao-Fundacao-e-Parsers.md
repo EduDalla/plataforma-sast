@@ -944,11 +944,11 @@ O repositório contém código Java perigoso de propósito, porém seus arquivos
 
 ### Docker
 
-- [ ] `.env.example` não contém segredo real.
-- [ ] `docker compose up --build` inicia os três serviços.
-- [ ] Banco e API possuem health checks.
-- [ ] O frontend acessa a API por `/api`.
-- [ ] O volume mantém os dados após reiniciar os containers.
+- [x] `.env.example` não contém segredo real.
+- [x] `docker compose up --build` inicia os três serviços.
+- [x] Banco e API possuem health checks.
+- [x] O frontend acessa a API por `/api`.
+- [x] O volume mantém os dados após reiniciar os containers.
 
 ### Integração GitHub
 
@@ -961,11 +961,11 @@ O repositório contém código Java perigoso de propósito, porém seus arquivos
 
 ### Parser, AST e regras
 
-- [ ] Java válido gera AST com localização.
-- [ ] Java inválido retorna `422`.
-- [ ] Nenhum código baixado do GitHub é executado.
-- [ ] As três regras possuem testes positivos e negativos.
-- [ ] Cada finding apresenta regra, severidade, CWE, arquivo, linha, coluna e trecho.
+- [x] Java válido gera AST com localização.
+- [x] Java inválido retorna `422`.
+- [x] Nenhum código baixado do GitHub é executado.
+- [x] As três regras possuem testes positivos e negativos.
+- [x] Cada finding apresenta regra, severidade, CWE, arquivo, linha, coluna e trecho.
 
 ### API, banco e frontend
 
