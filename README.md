@@ -2,7 +2,7 @@
 
 Monorepo da plataforma de análise estática de segurança desenvolvida para a CP1 — Fundação e Parsers.
 
-Nesta etapa, a aplicação recebe a URL de um repositório público do GitHub, baixa seu snapshot, analisa arquivos JavaScript sem executá-los e apresenta vulnerabilidades encontradas por regras baseadas em AST.
+Nesta etapa, a aplicação recebe a URL de um repositório público do GitHub, baixa seu snapshot, analisa arquivos Java sem executá-los e apresenta vulnerabilidades encontradas por regras baseadas em AST.
 
 ## Documentação
 
@@ -12,8 +12,7 @@ Nesta etapa, a aplicação recebe a URL de um repositório público do GitHub, b
 ## Estrutura
 
 - `src/frontend`: aplicação React;
-- `src/backend/Sast.Api`: API ASP.NET Core e integração GitHub;
-- `src/backend/Sast.Engine`: parser, AST e Rules Engine;
+- `src/backend`: API Spring Boot, JavaParser e Rules Engine;
 - `tests`: testes automatizados;
 - `samples`: arquivo vulnerável para demonstração;
 - `docker` e `compose.yaml`: ambiente local;

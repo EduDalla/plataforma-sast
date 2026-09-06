@@ -1,0 +1,3 @@
+package com.fiap.sast.analysis;
+import com.fiap.sast.parsing.JavaSourceParser; import com.fiap.sast.rules.SecurityRule; import org.springframework.stereotype.Service; import java.util.*;
+@Service public class SastEngine { private final JavaSourceParser parser; private final List<SecurityRule> rules; public SastEngine(JavaSourceParser p,List<SecurityRule> r){parser=p;rules=r;} public List<SecurityFinding> analyze(String source,String file){return rules.stream().flatMap(r->r.analyze(parser.parse(source),source,file).stream()).sorted(Comparator.comparing(SecurityFinding::fileName).thenComparing(SecurityFinding::line).thenComparing(SecurityFinding::column).thenComparing(SecurityFinding::ruleId)).toList();} }

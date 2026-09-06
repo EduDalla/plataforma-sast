@@ -6,9 +6,9 @@
 
 ## 1. Objetivo da CP1
 
-A CP1 entrega a primeira versão funcional da plataforma de análise estática de segurança. Ao final, uma pessoa desenvolvedora deverá conseguir informar a URL de um repositório público do GitHub, solicitar a análise e receber uma lista de vulnerabilidades encontradas nos arquivos JavaScript pela inspeção de suas ASTs.
+A CP1 entrega a primeira versão funcional da plataforma de análise estática de segurança. Ao final, uma pessoa desenvolvedora deverá conseguir informar a URL de um repositório público do GitHub, solicitar a análise e receber uma lista de vulnerabilidades encontradas nos arquivos Java pela inspeção de suas ASTs.
 
-O código obtido do GitHub **nunca é executado**. A API baixa um snapshot do repositório, seleciona somente arquivos `.js`, transforma cada arquivo em uma árvore sintática e aplica regras determinísticas. Não são executados `git clone`, instalação de dependências, scripts, builds ou testes do repositório analisado.
+O código obtido do GitHub **nunca é executado**. A API baixa um snapshot do repositório, seleciona somente arquivos `.java`, transforma cada arquivo em uma árvore sintática e aplica regras determinísticas. Não são executados `git clone`, instalação de dependências, scripts, builds ou testes do repositório analisado.
 
 ### Entregáveis cobertos
 
@@ -17,10 +17,10 @@ O código obtido do GitHub **nunca é executado**. A API baixa um snapshot do re
 | Diagrama de Arquitetura Técnica | Diagramas C4 de contexto e contêineres |
 | Ambiente Docker + Docker Compose | `compose.yaml`, Dockerfiles e health checks |
 | Repositório estruturado | Monorepo com frontend, backend, engine, testes e documentação |
-| Parser funcional | Arquivos JavaScript do repositório convertidos em AST pelo Esprima .NET |
+| Parser funcional | Arquivos Java do repositório convertidos em AST pelo JavaParser |
 | Construção da AST | Nós com tipo e localização no código-fonte |
 | Rules Engine inicial | Contrato comum e execução independente das regras |
-| Três violações iniciais | Senha hardcoded, `eval()` e `innerHTML` |
+| Três violações iniciais | Credencial hardcoded, `Runtime.exec()` e `ObjectInputStream.readObject()` |
 | Demonstração da análise estática | Exemplo reproduzível com três achados |
 
 ### Escopo
@@ -28,7 +28,7 @@ O código obtido do GitHub **nunca é executado**. A API baixa um snapshot do re
 Incluído na CP1:
 
 - uma única origem: repositórios públicos em `github.com`;
-- uma única linguagem analisada: arquivos JavaScript `.js`;
+- uma única linguagem analisada: arquivos Java `.java`;
 - análise síncrona de um snapshot por requisição;
 - tela para URL/referência do GitHub e apresentação do resultado por arquivo;
 - persistência dos metadados e achados no PostgreSQL;
@@ -41,14 +41,14 @@ Ficam para entregas posteriores: autenticação, dashboard, histórico visual, r
 | Camada | Tecnologia | Responsabilidade |
 |---|---|---|
 | Frontend | React 19, TypeScript e Vite | Receber a URL do GitHub e exibir os achados |
-| API | ASP.NET Core / .NET 10 LTS | Baixar o snapshot, validar, orquestrar e expor os resultados |
+| API | Java 21 e Spring Boot 4.1 | Baixar o snapshot, validar, orquestrar e expor os resultados |
 | Integração | GitHub REST API | Fornecer o archive de um repositório público |
-| SAST Engine | C# e Esprima .NET 3.x | Gerar a AST e executar regras de segurança |
-| Persistência | EF Core e PostgreSQL | Salvar análises e vulnerabilidades |
+| SAST Engine | Java 21 e JavaParser | Gerar a AST e executar regras de segurança |
+| Persistência | Spring Data JPA e PostgreSQL | Salvar análises e vulnerabilidades |
 | Infraestrutura | Docker, Compose e Nginx | Executar todo o ambiente de forma reproduzível |
-| Testes | xUnit e Vitest | Validar backend, engine e frontend |
+| Testes | JUnit 5, Testcontainers e Vitest | Validar backend, engine e frontend |
 
-O Esprima .NET é um parser ECMAScript; ele gera uma AST compatível com o modelo ESTree, informa a localização dos nós e lança `ParserException` para erros sintáticos. Nenhum interpretador JavaScript será instalado no backend.
+JavaParser é uma biblioteca Java que lê código-fonte e produz uma AST Java com nós e localização no código-fonte. A JVM executa somente a plataforma SAST; nenhum compilador Java, classe ou aplicação do repositório analisado será executado.
 
 ## 3. Arquitetura C4
 
@@ -76,8 +76,7 @@ C4Container
 
     System_Boundary(sast, "Plataforma SAST") {
         Container(web, "Frontend", "React 19, TypeScript, Nginx", "Recebe URL/referência e apresenta os achados")
-        Container(api, "API", "ASP.NET Core / .NET 10", "Obtém o snapshot, coordena a análise e persiste o resultado")
-        Container(engine, "SAST Engine", "C# e Esprima .NET", "Cria a AST e aplica regras de segurança")
+        Container(api, "API e SAST Engine", "Java 21, Spring Boot e JavaParser", "Obtém o snapshot, cria a AST, aplica regras e persiste o resultado")
         ContainerDb(db, "Banco de dados", "PostgreSQL", "Armazena análises e achados")
     }
 
@@ -86,8 +85,7 @@ C4Container
     Rel(developer, web, "Utiliza", "HTTPS")
     Rel(web, api, "Envia URL/referência e recebe findings", "HTTP/JSON")
     Rel(api, github, "Baixa ZIP do snapshot", "GitHub REST API/HTTPS")
-    Rel(api, engine, "Solicita análise", "Chamada em processo")
-    Rel(api, db, "Salva e consulta análises", "EF Core/Npgsql")
+    Rel(api, db, "Salva e consulta análises", "Spring Data JPA/Hibernate")
 ```
 
 ### 3.3 Fluxo interno
@@ -96,9 +94,9 @@ C4Container
 sequenceDiagram
     actor Dev as Pessoa desenvolvedora
     participant Web as React
-    participant Api as ASP.NET Core
+    participant Api as Spring Boot
     participant GitHub as GitHub REST API
-    participant Parser as Esprima
+    participant Parser as JavaParser
     participant Rules as Rules Engine
     participant Db as PostgreSQL
 
@@ -107,9 +105,9 @@ sequenceDiagram
     Api->>Api: Valida host, owner, repo e referência
     Api->>GitHub: GET /repos/{owner}/{repo}/zipball/{ref}
     GitHub-->>Api: Snapshot ZIP
-    Api->>Api: Extrai e filtra arquivos .js
-    loop Para cada arquivo JavaScript
-        Api->>Parser: ParseScript(sourceCode)
+    Api->>Api: Extrai e filtra arquivos .java
+    loop Para cada arquivo Java
+        Api->>Parser: ParseCompilationUnit(sourceCode)
         Parser-->>Api: AST com localização
         Api->>Rules: Analyze(AST, sourceCode, relativePath)
         Rules-->>Api: Findings do arquivo
@@ -125,7 +123,8 @@ sequenceDiagram
 ### 4.1 Pré-requisitos
 
 - Git;
-- .NET SDK 10;
+- JDK 21;
+- Maven 3.9 ou superior;
 - Node.js em versão LTS e npm;
 - Docker Engine com Docker Compose v2.
 
@@ -133,7 +132,8 @@ Validar as instalações:
 
 ```bash
 git --version
-dotnet --version
+java --version
+mvn --version
 node --version
 npm --version
 docker --version
@@ -146,63 +146,22 @@ Executar na pasta que será a raiz do projeto:
 
 ```bash
 git init
-mkdir -p docs docker src/backend tests
-dotnet new sln --name Sast --format sln
+mkdir -p docs docker src/backend/src/{main,test}/java/com/fiap/sast tests
 ```
 
 Todo o projeto permanece em um único repositório Git. Não devem ser criados repositórios separados dentro de `src/frontend` ou `src/backend`.
 
-### 4.3 Criar o backend .NET
+### 4.3 Criar o backend Java com Spring Boot
+
+Gerar o projeto pelo Spring Initializr com Maven, Java 21, Spring Web, Validation, Spring Data JPA, PostgreSQL Driver, Flyway e Actuator. O artefato será `sast-api` em `src/backend`.
+
+O `pom.xml` deve usar o parent `spring-boot-starter-parent` 4.1.1, definir `<java.version>21</java.version>` e incluir `spring-boot-starter-web`, `spring-boot-starter-validation`, `spring-boot-starter-data-jpa`, `postgresql`, `flyway-core`, `javaparser-core`, `spring-boot-starter-test` e `org.testcontainers:postgresql` para testes.
+
+Conferir o esqueleto:
 
 ```bash
-dotnet new webapi --framework net10.0 --use-controllers \
-  --name Sast.Api --output src/backend/Sast.Api
-
-dotnet new classlib --framework net10.0 \
-  --name Sast.Engine --output src/backend/Sast.Engine
-
-dotnet new xunit --framework net10.0 \
-  --name Sast.Engine.Tests --output tests/Sast.Engine.Tests
-
-dotnet new xunit --framework net10.0 \
-  --name Sast.Api.Tests --output tests/Sast.Api.Tests
-```
-
-Adicionar os projetos à solução e configurar as referências:
-
-```bash
-dotnet sln Sast.sln add \
-  src/backend/Sast.Api/Sast.Api.csproj \
-  src/backend/Sast.Engine/Sast.Engine.csproj \
-  tests/Sast.Engine.Tests/Sast.Engine.Tests.csproj \
-  tests/Sast.Api.Tests/Sast.Api.Tests.csproj
-
-dotnet add src/backend/Sast.Api/Sast.Api.csproj reference \
-  src/backend/Sast.Engine/Sast.Engine.csproj
-
-dotnet add tests/Sast.Engine.Tests/Sast.Engine.Tests.csproj reference \
-  src/backend/Sast.Engine/Sast.Engine.csproj
-
-dotnet add tests/Sast.Api.Tests/Sast.Api.Tests.csproj reference \
-  src/backend/Sast.Api/Sast.Api.csproj
-```
-
-Adicionar as dependências:
-
-```bash
-dotnet add src/backend/Sast.Engine/Sast.Engine.csproj package Esprima --version 3.0.6
-dotnet add src/backend/Sast.Api/Sast.Api.csproj package Microsoft.EntityFrameworkCore.Design --version 10.0.0
-dotnet add src/backend/Sast.Api/Sast.Api.csproj package Npgsql.EntityFrameworkCore.PostgreSQL --version 10.0.0
-dotnet add tests/Sast.Api.Tests/Sast.Api.Tests.csproj package Microsoft.AspNetCore.Mvc.Testing --version 10.0.0
-dotnet add tests/Sast.Api.Tests/Sast.Api.Tests.csproj package Testcontainers.PostgreSql
-```
-
-Remover os arquivos de exemplo `WeatherForecast` gerados pelo template e conferir o esqueleto:
-
-```bash
-dotnet restore Sast.sln
-dotnet build Sast.sln
-dotnet run --project src/backend/Sast.Api
+mvn --file src/backend/pom.xml verify
+mvn --file src/backend/pom.xml spring-boot:run
 ```
 
 ### 4.4 Criar o frontend React
@@ -223,13 +182,12 @@ O `.gitignore` da raiz deve conter, no mínimo:
 
 ```gitignore
 .env
-**/bin/
-**/obj/
+**/target/
 **/node_modules/
 **/dist/
 .idea/
 .vscode/
-TestResults/
+*.log
 ```
 
 O `.dockerignore` deve impedir o envio de artefatos desnecessários para os builds:
@@ -237,11 +195,10 @@ O `.dockerignore` deve impedir o envio de artefatos desnecessários para os buil
 ```dockerignore
 .git
 .env
-**/bin
-**/obj
+**/target
 **/node_modules
 **/dist
-TestResults
+*.log
 ```
 
 O `README.md` da raiz deverá apresentar o objetivo do monorepo, os pré-requisitos, os comandos rápidos de inicialização e um link para este guia.
@@ -267,37 +224,26 @@ O `AGENTS.md` da raiz deverá ser lido por qualquer agente Codex antes de altera
 │   │   ├── Dockerfile
 │   │   └── package.json
 │   └── backend/
-│       ├── Sast.Api/
-│       │   ├── Controllers/
-│       │   ├── Contracts/
-│       │   ├── Data/
-│       │   ├── Integrations/GitHub/
-│       │   ├── Models/
-│       │   ├── Services/
-│       │   ├── Dockerfile
-│       │   └── Program.cs
-│       └── Sast.Engine/
-│           ├── Findings/
-│           ├── Parsing/
-│           └── Rules/
-├── tests/
-│   ├── Sast.Api.Tests/
-│   └── Sast.Engine.Tests/
+│       ├── src/main/java/com/fiap/sast/
+│       │   ├── analysis/ ├── github/ ├── persistence/ ├── rules/ └── web/
+│       ├── src/main/resources/db/migration/
+│       ├── src/test/java/com/fiap/sast/
+│       ├── Dockerfile
+│       └── pom.xml
 ├── samples/
-│   └── vulnerable.js
+│   └── VulnerableExample.java
 ├── .dockerignore
 ├── .env.example
 ├── .gitignore
 ├── AGENTS.md
 ├── compose.yaml
 ├── README.md
-└── Sast.sln
+└── pom.xml
 ```
 
 Responsabilidades:
 
-- `Sast.Api`: HTTP, integração de leitura com GitHub, validação, persistência e orquestração;
-- `Sast.Engine`: parsing, AST, regras e modelos independentes de infraestrutura;
+- `backend`: API HTTP, integração de leitura com GitHub, parsing, regras, persistência e orquestração;
 - `frontend`: formulário e visualização dos resultados;
 - `tests`: testes separados por unidade arquitetural;
 - `samples`: código propositalmente vulnerável usado somente na demonstração;
@@ -308,31 +254,21 @@ Responsabilidades:
 
 ### 5.1 Dockerfile da API
 
-Criar `src/backend/Sast.Api/Dockerfile` com build multi-stage. O contexto do build deve ser a raiz do monorepo para que a API consiga copiar o projeto do engine.
+Criar `src/backend/Dockerfile` com build multi-stage.
 
 ```dockerfile
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-WORKDIR /src
-
-COPY Sast.sln ./
-COPY src/backend/Sast.Api/Sast.Api.csproj src/backend/Sast.Api/
-COPY src/backend/Sast.Engine/Sast.Engine.csproj src/backend/Sast.Engine/
-RUN dotnet restore src/backend/Sast.Api/Sast.Api.csproj
-
-COPY src/backend/ src/backend/
-RUN dotnet publish src/backend/Sast.Api/Sast.Api.csproj \
-    --configuration Release \
-    --output /app/publish \
-    --no-restore
-
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+FROM eclipse-temurin:21-jdk AS build
 WORKDIR /app
-COPY --from=build /app/publish .
+COPY src/backend/pom.xml .
+RUN mvn dependency:go-offline
+COPY src/backend/src src
+RUN mvn package -DskipTests
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "Sast.Api.dll"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 ```
 
 ### 5.2 Dockerfile do frontend
@@ -432,16 +368,17 @@ services:
   api:
     build:
       context: .
-      dockerfile: src/backend/Sast.Api/Dockerfile
+      dockerfile: src/backend/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__SastDatabase: >-
-        Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      GitHub__Token: ${GITHUB_TOKEN:-}
-      GitHub__MaxArchiveBytes: 10485760
-      GitHub__MaxJavaScriptFiles: 200
-      GitHub__MaxFileBytes: 1048576
+      SPRING_PROFILES_ACTIVE: development
+      SPRING_DATASOURCE_URL: >-
+        jdbc:postgresql://db:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SAST_GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      SAST_GITHUB_MAX_ARCHIVE_BYTES: 10485760
+      SAST_GITHUB_MAX_JAVA_FILES: 200
+      SAST_GITHUB_MAX_FILE_BYTES: 1048576
     ports:
       - "${API_PORT}:8080"
     depends_on:
@@ -471,110 +408,15 @@ volumes:
 
 ### 6.1 Modelo de dados
 
-`Analysis` representa uma execução do SAST:
-
-```csharp
-public sealed class Analysis
-{
-    public Guid Id { get; set; } = Guid.NewGuid();
-    public required string RepositoryUrl { get; set; }
-    public required string RepositoryOwner { get; set; }
-    public required string RepositoryName { get; set; }
-    public string? Reference { get; set; }
-    public required string Language { get; set; }
-    public int FilesAnalyzed { get; set; }
-    public string Status { get; set; } = "Completed";
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
-    public List<Finding> Findings { get; set; } = [];
-}
-```
-
-`Finding` representa uma vulnerabilidade:
-
-```csharp
-public sealed class Finding
-{
-    public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid AnalysisId { get; set; }
-    public required string RuleId { get; set; }
-    public required string Title { get; set; }
-    public required string Severity { get; set; }
-    public required string Cwe { get; set; }
-    public required string Description { get; set; }
-    public required string FileName { get; set; }
-    public int Line { get; set; }
-    public int Column { get; set; }
-    public required string Snippet { get; set; }
-}
-```
+`Analysis` é uma entidade JPA com UUID, URL, owner, repositório, referência, linguagem, quantidade de arquivos, estado, data de criação e lista de `Finding`. `Finding` é uma entidade JPA vinculada à análise e contém UUID, regra, título, severidade, CWE, descrição, arquivo, linha, coluna e trecho.
 
 Não incluir o archive nem o conteúdo integral dos arquivos no banco. O snapshot existe apenas durante a requisição; somente URL, referência, metadados da análise e o trecho relacionado a cada achado são persistidos.
 
-### 6.2 DbContext
+### 6.2 Entidades JPA e migrations
 
-Criar `SastDbContext` em `Sast.Api/Data`:
+Criar entidades JPA em `persistence/entity` e repositórios `JpaRepository` em `persistence/repository`. `Analysis` possui relação `@OneToMany(cascade = CascadeType.ALL)` com `Finding`; UUID, URL, proprietário, repositório, referência, linguagem, data, estado e contagem são persistidos. `Finding` armazena regra, severidade, CWE, arquivo, linha, coluna e trecho.
 
-```csharp
-public sealed class SastDbContext(DbContextOptions<SastDbContext> options)
-    : DbContext(options)
-{
-    public DbSet<Analysis> Analyses => Set<Analysis>();
-    public DbSet<Finding> Findings => Set<Finding>();
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<Analysis>(entity =>
-        {
-            entity.HasKey(x => x.Id);
-            entity.Property(x => x.RepositoryUrl).HasMaxLength(500).IsRequired();
-            entity.Property(x => x.RepositoryOwner).HasMaxLength(100).IsRequired();
-            entity.Property(x => x.RepositoryName).HasMaxLength(100).IsRequired();
-            entity.Property(x => x.Reference).HasMaxLength(255);
-            entity.Property(x => x.Language).HasMaxLength(32).IsRequired();
-            entity.HasMany(x => x.Findings)
-                .WithOne()
-                .HasForeignKey(x => x.AnalysisId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        modelBuilder.Entity<Finding>(entity =>
-        {
-            entity.HasKey(x => x.Id);
-            entity.Property(x => x.RuleId).HasMaxLength(32).IsRequired();
-            entity.Property(x => x.Severity).HasMaxLength(16).IsRequired();
-            entity.Property(x => x.Cwe).HasMaxLength(32).IsRequired();
-        });
-    }
-}
-```
-
-Registrar no `Program.cs`:
-
-```csharp
-builder.Services.AddDbContext<SastDbContext>(options =>
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("SastDatabase")));
-```
-
-Criar a migration a partir da raiz:
-
-```bash
-dotnet tool install --global dotnet-ef --version 10.0.0
-dotnet ef migrations add InitialCreate \
-  --project src/backend/Sast.Api \
-  --startup-project src/backend/Sast.Api \
-  --output-dir Data/Migrations
-```
-
-Para a CP1, aplicar migrations automaticamente depois da construção do `app` e antes de `app.Run()`:
-
-```csharp
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<SastDbContext>();
-    db.Database.Migrate();
-}
-```
+Criar `src/backend/src/main/resources/db/migration/V1__initial_schema.sql` com o schema. O Flyway aplica a migration na inicialização. Para a CP1 isso é adequado; em produção, migrations devem ser controladas na implantação.
 
 Essa conveniência é adequada para a demonstração. Em produção, migrations devem ser uma etapa controlada de implantação.
 
@@ -594,10 +436,10 @@ O backend transformará a URL validada no endpoint oficial `GET /repos/{owner}/{
 Para manter o processamento controlado:
 
 - limitar o ZIP baixado a 10 MiB;
-- analisar no máximo 200 arquivos JavaScript;
+- analisar no máximo 200 arquivos Java;
 - limitar cada arquivo a 1 MiB;
 - ignorar links simbólicos e entradas ZIP que escapem do diretório temporário;
-- ignorar `node_modules`, `dist`, `build`, `coverage`, `vendor` e arquivos `*.min.js`;
+- ignorar diretórios gerados ou de dependências, como `target`, `build`, `out`, `.gradle`, `node_modules` e `vendor`;
 - apagar o diretório temporário em um bloco `finally` depois da análise.
 
 Esses limites devem vir de configuração e resultar em HTTP `413` quando excedidos.
@@ -606,24 +448,7 @@ Esses limites devem vir de configuração e resultar em HTTP `413` quando excedi
 
 Em `Sast.Api/Integrations/GitHub`, criar:
 
-```csharp
-public sealed record RepositorySourceFile(string RelativePath, string Content);
-
-public sealed record RepositorySnapshot(
-    string RepositoryUrl,
-    string Owner,
-    string Name,
-    string? Reference,
-    IReadOnlyList<RepositorySourceFile> JavaScriptFiles);
-
-public interface IGitHubRepositoryClient
-{
-    Task<RepositorySnapshot> DownloadAsync(
-        string repositoryUrl,
-        string? reference,
-        CancellationToken cancellationToken);
-}
-```
+O cliente retorna um `RepositorySnapshot` com metadados e `List<RepositorySourceFile> javaFiles`; a interface `GitHubRepositoryClient` expõe `RepositorySnapshot download(String repositoryUrl, String reference)`.
 
 Registrar um typed `HttpClient` com base `https://api.github.com`, `User-Agent`, `Accept: application/vnd.github+json` e timeout. Adicionar `Authorization: Bearer` somente quando `GitHub:Token` estiver preenchido. A API pública pode ser usada sem token, porém requisições não autenticadas estão limitadas a 60 por hora por endereço IP; o token opcional aumenta o limite e continua restrito ao backend.
 
@@ -632,100 +457,75 @@ O cliente deve mapear:
 - GitHub `404` para repositório ou referência inexistente;
 - GitHub `403`/`429` para indisponibilidade por rate limit, preservando `Retry-After` quando existir;
 - timeout ou falha de rede para `502 Bad Gateway`;
-- archive vazio ou sem `.js` para `422 Unprocessable Entity`.
+- archive vazio ou sem `.java` para `422 Unprocessable Entity`.
 
 ### 7.3 Contrato do parser
 
 Em `Sast.Engine/Parsing`, criar:
 
-```csharp
-using Esprima.Ast;
-
-public interface IJavaScriptParser
-{
-    Script Parse(string sourceCode);
+```java
+public interface JavaSourceParser {
+    CompilationUnit parse(String sourceCode);
 }
 ```
 
-### 7.4 Implementação com Esprima
+### 7.4 Implementação com JavaParser
 
-```csharp
-using Esprima;
-using Esprima.Ast;
+```java
+public final class JavaParserSourceParser implements JavaSourceParser {
+    private final JavaParser parser = new JavaParser();
 
-public sealed class EsprimaJavaScriptParser : IJavaScriptParser
-{
-    private static readonly ParserOptions Options = new()
-    {
-        Tolerant = false
-    };
-
-    public Script Parse(string sourceCode)
-    {
-        var parser = new JavaScriptParser(Options);
-        return parser.ParseScript(sourceCode);
+    public CompilationUnit parse(String sourceCode) {
+        ParseResult<CompilationUnit> result = parser.parse(sourceCode);
+        if (result.getResult().isEmpty()) throw InvalidJavaSourceException.from(result.getProblems());
+        return result.getResult().orElseThrow();
     }
 }
 ```
 
-O Esprima mantém `Range` e `Location` nos nós da AST. As regras usarão esses dados para informar índice, linha e coluna sem tentar interpretar ou executar o programa.
+Usar `com.github.javaparser:javaparser-core`. O `CompilationUnit` já é a AST Java; regras visitam seus nós e usam `node.getRange()` para linha e coluna, sem compilação ou execução.
 
 Uma entrada simples:
 
-```javascript
-const password = "123456";
+```java
+final String password = "123456";
 ```
 
 produz uma árvore equivalente a:
 
 ```text
-Script
-└── VariableDeclaration (const)
+CompilationUnit
+└── FieldDeclaration
     └── VariableDeclarator
         ├── Identifier: password
-        └── Literal: "123456"
+        └── StringLiteral: "123456"
 ```
 
-Durante o desenvolvimento, `program.ToJsonString(indent: "  ")` pode ser usado para demonstrar a AST no terminal. A AST não será devolvida pela API nem persistida.
+Durante o desenvolvimento, a AST interna pode ser serializada somente em testes ou depuração local para demonstrar sua estrutura. A AST não será devolvida pela API nem persistida.
 
 ### 7.5 Erro de sintaxe
 
-Encapsular `ParserException` em uma exceção do domínio, por exemplo `InvalidJavaScriptException`, preservando mensagem, linha e coluna. O controller converterá essa falha em HTTP `422 Unprocessable Entity` usando `ProblemDetails`.
+Encapsular os problemas retornados pelo JavaParser em `InvalidJavaSourceException`, preservando mensagem, linha e coluna. O controller usa `ProblemDetail` do Spring para responder HTTP `422 Unprocessable Entity`.
 
 ## 8. Fase 5 — Implementar o Rules Engine
 
 ### 8.1 Modelo de saída do engine
 
-```csharp
-public sealed record SecurityFinding(
-    string RuleId,
-    string Title,
-    string Severity,
-    string Cwe,
-    string Description,
-    string FileName,
-    int Line,
-    int Column,
-    string Snippet);
+```java
+public record SecurityFinding(String ruleId, String title, String severity,
+    String cwe, String description, String fileName, int line, int column, String snippet) {}
 ```
 
 ### 8.2 Contrato de regra
 
-```csharp
-using Esprima.Ast;
-
-public interface ISecurityRule
-{
-    string RuleId { get; }
-
-    IEnumerable<SecurityFinding> Analyze(
-        Script ast,
-        string sourceCode,
-        string fileName);
+```java
+public interface SecurityRule {
+    String ruleId();
+    List<SecurityFinding> analyze(CompilationUnit ast, String sourceCode, String fileName);
 }
 ```
 
-Cada regra deve herdar de `AstVisitor`, visitar somente os nós de seu interesse e emitir `SecurityFinding`. Uma função compartilhada extrairá a linha do `sourceCode` usando `node.Location.Start.Line` e normalizará a coluna para começar em 1 na resposta.
+Cada regra deve visitar somente os nós da AST Java de seu interesse e emitir `SecurityFinding`. Uma função compartilhada extrairá linha e coluna do nó, normalizando a coluna para começar em 1 na resposta.
 
 ### 8.3 Regra 1 — Credencial hardcoded
 
@@ -733,100 +533,86 @@ Metadados:
 
 | Campo | Valor |
 |---|---|
-| Rule ID | `SAST-JS-001` |
+| Rule ID | `SAST-JAVA-001` |
 | Título | Hardcoded credential |
 | Severidade | Critical |
 | CWE | CWE-798 |
 
-Detectar `VariableDeclarator` e `AssignmentExpression` quando:
+Detectar `VariableDeclarator` e atribuições quando:
 
 - o nome do identificador ou propriedade corresponder, sem diferenciar maiúsculas, a `password`, `passwd`, `pwd`, `secret`, `apiKey` ou `token`;
 - o valor atribuído for um literal textual não vazio.
 
 Exemplos detectados:
 
-```javascript
-const password = "123456";
+```java
+String password = "123456";
 config.apiKey = "abc-123";
 ```
 
 Exemplos que não devem gerar finding:
 
-```javascript
-const password = process.env.PASSWORD;
-const password = getSecret();
+```java
+String password = System.getenv("PASSWORD");
+String password = secretProvider.getSecret();
 ```
 
-### 8.4 Regra 2 — Uso de `eval()`
+### 8.4 Regra 2 — Uso de `Runtime.exec()`
 
 Metadados:
 
 | Campo | Valor |
 |---|---|
-| Rule ID | `SAST-JS-002` |
-| Título | Uso inseguro de eval |
+| Rule ID | `SAST-JAVA-002` |
+| Título | Uso potencialmente inseguro de Runtime.exec |
 | Severidade | High |
-| CWE | CWE-95 |
+| CWE | CWE-78 |
 
-Visitar `CallExpression` e detectar quando o `Callee` for o identificador global `eval`.
+Visitar invocações de método e detectar `Runtime.getRuntime().exec(...)`. Nesta primeira versão, qualquer chamada a esse método gera finding; o rastreamento de origem e sanitização do argumento fica para uma entrega posterior.
 
-```javascript
-eval(userInput);       // detectar
-obj.eval(userInput);   // não detectar nesta versão
+```java
+Runtime.getRuntime().exec(userInput); // detectar
+process.execute(userInput);            // não detectar nesta versão
 ```
 
-### 8.5 Regra 3 — Atribuição a `innerHTML`
+### 8.5 Regra 3 — Desserialização com `ObjectInputStream.readObject()`
 
 Metadados:
 
 | Campo | Valor |
 |---|---|
-| Rule ID | `SAST-JS-003` |
-| Título | Uso inseguro de innerHTML |
+| Rule ID | `SAST-JAVA-003` |
+| Título | Desserialização potencialmente insegura |
 | Severidade | High |
-| CWE | CWE-79 |
+| CWE | CWE-502 |
 
-Visitar `AssignmentExpression` e detectar quando o lado esquerdo for um `MemberExpression` cuja propriedade seja `innerHTML`, tanto na forma direta quanto computada:
+Visitar invocações de método e detectar chamadas a `readObject()` cujo receptor tenha tipo declarado `ObjectInputStream`. Nesta primeira versão, toda chamada correspondente gera finding; a validação da origem do fluxo e o uso de filtros de desserialização pertencem à análise semântica posterior.
 
-```javascript
-element.innerHTML = userInput;      // detectar
-element["innerHTML"] = userInput;  // detectar
-element.textContent = userInput;    // não detectar
+```java
+ObjectInputStream input = new ObjectInputStream(stream);
+Object value = input.readObject();  // detectar
+input.readUTF();                    // não detectar
 ```
 
-Na CP1, a regra reporta toda atribuição a `innerHTML`. Análise de sanitização e fluxo de dados pertence ao Taint Analysis da CP2.
+Na CP1, a regra reporta toda chamada correspondente. Análise de fluxo de dados pertence ao Taint Analysis da CP2.
 
 ### 8.6 Orquestrador
 
-```csharp
-public interface ISastEngine
-{
-    IReadOnlyList<SecurityFinding> Analyze(
-        string sourceCode,
-        string fileName);
-}
-
-public sealed class SastEngine(
-    IJavaScriptParser parser,
-    IEnumerable<ISecurityRule> rules) : ISastEngine
-{
-    public IReadOnlyList<SecurityFinding> Analyze(
-        string sourceCode,
-        string fileName)
-    {
-        var ast = parser.Parse(sourceCode);
-
-        return rules
-            .SelectMany(rule => rule.Analyze(ast, sourceCode, fileName))
-            .OrderBy(finding => finding.Line)
-            .ThenBy(finding => finding.Column)
-            .ThenBy(finding => finding.RuleId)
-            .ToArray();
+```java
+@Service
+public final class SastEngine {
+    private final JavaSourceParser parser;
+    private final List<SecurityRule> rules;
+    public List<SecurityFinding> analyze(String sourceCode, String fileName) {
+        var ast = parser.parse(sourceCode);
+        return rules.stream().flatMap(rule -> rule.analyze(ast, sourceCode, fileName).stream())
+            .sorted(comparing(SecurityFinding::line).thenComparing(SecurityFinding::column))
+            .toList();
     }
 }
 ```
 
-Registrar parser, regras e engine como serviços no `Program.cs`. As regras devem ser registradas individualmente como `ISecurityRule`, permitindo adicionar novas implementações sem alterar o orquestrador.
+Registrar parser, regras e engine como beans do Spring. As regras devem ser componentes individuais que implementem `SecurityRule`.
 
 ## 9. Fase 6 — Implementar a API
 
@@ -857,20 +643,20 @@ Resposta compartilhada por `POST /api/analyses` e `GET /api/analyses/{id}`:
   "status": "Completed",
   "repositoryUrl": "https://github.com/SEU_USUARIO/cp1-sast",
   "reference": "main",
-  "language": "javascript",
+  "language": "java",
   "filesAnalyzed": 1,
   "createdAt": "2026-09-03T22:00:00Z",
   "findings": [
     {
-      "ruleId": "SAST-JS-001",
+      "ruleId": "SAST-JAVA-001",
       "title": "Hardcoded credential",
       "severity": "Critical",
       "cwe": "CWE-798",
       "description": "Credencial armazenada diretamente no código-fonte.",
-      "fileName": "samples/vulnerable.js",
-      "line": 1,
-      "column": 7,
-      "snippet": "const password = \"123456\";"
+      "fileName": "samples/VulnerableExample.java",
+      "line": 6,
+      "column": 5,
+      "snippet": "private static final String password = \"123456\";"
     }
   ]
 }
@@ -882,17 +668,17 @@ Resposta compartilhada por `POST /api/analyses` e `GET /api/analyses/{id}`:
 
 1. validar e normalizar a URL do GitHub e a referência opcional;
 2. chamar `IGitHubRepositoryClient.DownloadAsync`;
-3. filtrar os arquivos JavaScript e seus limites;
+3. filtrar os arquivos Java e seus limites;
 4. chamar `ISastEngine.Analyze` uma vez para cada arquivo, usando o caminho relativo como `fileName`;
 5. agregar e ordenar os findings por arquivo, linha, coluna e regra;
-6. mapear o resultado para as entidades do EF Core;
+6. mapear o resultado para as entidades JPA;
 7. salvar `Analysis` e `Finding` em uma transação;
 8. eliminar o snapshot temporário;
 9. retornar `201 Created`, incluindo `Location: /api/analyses/{id}`.
 
 ### 9.3 Endpoint de consulta
 
-`GET /api/analyses/{id}` carregará a análise com `Include(x => x.Findings)`:
+`GET /api/analyses/{id}` carregará a análise e seus findings pelo repositório Spring Data JPA:
 
 - retornar `200 OK` quando encontrada;
 - retornar `404 Not Found` quando o identificador não existir.
@@ -904,15 +690,15 @@ Resposta compartilhada por `POST /api/analyses` e `GET /api/analyses/{id}`:
 | URL ausente ou formato/host inválido | 400 | `ValidationProblemDetails` |
 | Referência inválida | 400 | `ValidationProblemDetails` |
 | Repositório ou referência inexistente | 404 | `ProblemDetails` |
-| Archive vazio ou sem JavaScript | 422 | `ProblemDetails` |
-| JavaScript sintaticamente inválido | 422 | `ProblemDetails` com arquivo, linha e coluna |
+| Archive vazio ou sem Java | 422 | `ProblemDetails` |
+| Java sintaticamente inválido | 422 | `ProblemDetails` com arquivo, linha e coluna |
 | Limite de archive/arquivos/tamanho excedido | 413 | `ProblemDetails` |
 | Rate limit do GitHub | 429 | `ProblemDetails` e `Retry-After`, quando disponível |
 | GitHub indisponível ou timeout | 502 | `ProblemDetails` |
 | Análise não encontrada | 404 | `ProblemDetails` |
 | Erro inesperado | 500 | `ProblemDetails` sem stack trace |
 
-Adicionar `GET /health` com `AddHealthChecks()` e `MapHealthChecks("/health")`. O health check será usado pelo Compose e não fará parte da interface de negócio.
+Adicionar `GET /health` pelo Spring Boot Actuator. O health check será usado pelo Compose e não fará parte da interface de negócio.
 
 ## 10. Fase 7 — Implementar o frontend da CP1
 
@@ -945,7 +731,7 @@ export interface AnalysisResponse {
   status: 'Completed'
   repositoryUrl: string
   reference?: string
-  language: 'javascript'
+  language: 'java'
   filesAnalyzed: number
   createdAt: string
   findings: Finding[]
@@ -1016,18 +802,18 @@ Não adicionar rotas, autenticação ou dashboard nesta fase.
 - construir corretamente o endpoint de archive com e sem referência;
 - seguir somente o redirecionamento esperado para `codeload.github.com`;
 - extrair caminhos relativos sem permitir Zip Slip;
-- ignorar diretórios gerados, arquivos minificados e extensões diferentes de `.js`;
+- ignorar diretórios gerados/de dependências e extensões diferentes de `.java`;
 - rejeitar archive, quantidade de arquivos e arquivo individual acima dos limites;
 - mapear `404`, rate limit e timeout sem expor o token.
 
-Os testes usarão um `HttpMessageHandler` falso e archives ZIP criados em memória. Não dependerão da rede nem consumirão o rate limit real do GitHub.
+Os testes usarão um cliente HTTP falso e archives ZIP criados em memória. Não dependerão da rede nem consumirão o rate limit real do GitHub.
 
 ### 11.2 Parser
 
-- código válido retorna `Script` com declarações;
+- código válido retorna `CompilationUnit` com declarações;
 - a localização do primeiro nó aponta para a linha correta;
-- código inválido lança `InvalidJavaScriptException` com linha e coluna;
-- o teste confirma que nenhum runtime JavaScript é chamado.
+- código inválido lança `InvalidJavaSourceException` com linha e coluna;
+- o teste confirma que a análise não inicia subprocessos como `javac`, `java`, Maven ou Gradle sobre o código analisado.
 
 ### 11.3 Regras
 
@@ -1035,11 +821,11 @@ Cada regra deve possuir ao menos um caso positivo e um negativo:
 
 | Regra | Positivo | Negativo |
 |---|---|---|
-| Hardcoded credential | `const password = "123"` | `const password = process.env.PASSWORD` |
-| eval | `eval(input)` | `obj.eval(input)` |
-| innerHTML | `el.innerHTML = input` | `el.textContent = input` |
+| Hardcoded credential | `String password = "123"` | `String password = System.getenv("PASSWORD")` |
+| Runtime.exec | `Runtime.getRuntime().exec(input)` | `process.execute(input)` |
+| ObjectInputStream.readObject | `input.readObject()` | `input.readUTF()` |
 
-Adicionar testes para `element["innerHTML"]` e nomes de credencial com diferenças de maiúsculas.
+Adicionar testes para a cadeia completa `Runtime.getRuntime().exec(...)`, a tipagem de `ObjectInputStream` e nomes de credencial com diferenças de maiúsculas.
 
 ### 11.4 Engine
 
@@ -1050,7 +836,7 @@ Adicionar testes para `element["innerHTML"]` e nomes de credencial com diferenç
 
 ### 11.5 API
 
-Usar `WebApplicationFactory<Program>`, substituir a conexão normal por um PostgreSQL efêmero iniciado com `Testcontainers.PostgreSql` e trocar `IGitHubRepositoryClient` por um fake determinístico. O fixture deverá iniciar o container antes da fábrica da aplicação, fornecer sua connection string, aplicar as migrations e descartar o container ao final. Validar:
+Usar `@SpringBootTest`, substituir a conexão normal por um PostgreSQL efêmero com Testcontainers e trocar `GitHubRepositoryClient` por um fake determinístico. O teste deverá iniciar o container, fornecer a URL JDBC, aplicar as migrations e descartá-lo ao final. Validar:
 
 - `POST` válido retorna `201` e cabeçalho `Location`;
 - o registro e seus findings foram persistidos;
@@ -1073,7 +859,7 @@ Com Vitest e Testing Library, validar:
 Executar tudo a partir da raiz:
 
 ```bash
-dotnet test Sast.sln
+mvn --file src/backend/pom.xml verify
 npm --prefix src/frontend run test -- --run
 npm --prefix src/frontend run build
 ```
@@ -1097,14 +883,20 @@ Resultados esperados:
 
 ### 12.2 Repositório vulnerável oficial da CP1
 
-Criar `samples/vulnerable.js` no próprio monorepo com exatamente este conteúdo e publicar o repositório como público no GitHub:
+Criar `samples/VulnerableExample.java` no próprio monorepo com exatamente este conteúdo e publicar o repositório como público no GitHub:
 
-```javascript
-const password = "123456";
+```java
+import java.io.InputStream;
+import java.io.ObjectInputStream;
 
-function execute(userInput) {
-  eval(userInput);
-  document.querySelector("#output").innerHTML = userInput;
+public final class VulnerableExample {
+    private static final String password = "123456";
+
+    public Object execute(String userInput, InputStream stream) throws Exception {
+        Runtime.getRuntime().exec(userInput);
+        ObjectInputStream input = new ObjectInputStream(stream);
+        return input.readObject();
+    }
 }
 ```
 
@@ -1123,21 +915,21 @@ curl --request POST http://localhost:8080/api/analyses \
 
 | Ordem | Arquivo | Regra | Severidade | CWE | Linha |
 |---:|---|---|---|---|---:|
-| 1 | `samples/vulnerable.js` | Hardcoded credential | Critical | CWE-798 | 1 |
-| 2 | `samples/vulnerable.js` | Uso inseguro de eval | High | CWE-95 | 4 |
-| 3 | `samples/vulnerable.js` | Uso inseguro de innerHTML | High | CWE-79 | 5 |
+| 1 | `samples/VulnerableExample.java` | Hardcoded credential | Critical | CWE-798 | 6 |
+| 2 | `samples/VulnerableExample.java` | Uso potencialmente inseguro de Runtime.exec | High | CWE-78 | 9 |
+| 3 | `samples/VulnerableExample.java` | Desserialização potencialmente insegura | High | CWE-502 | 11 |
 
 A demonstração deve mostrar:
 
 1. a URL e a referência no formulário;
 2. o download do snapshot sem clonar ou executar o repositório;
 3. o estado de processamento;
-4. os três cards agrupados em `samples/vulnerable.js`;
+4. os três cards agrupados em `samples/VulnerableExample.java`;
 5. linha e trecho corretos;
 6. a análise persistida no PostgreSQL;
 7. a aplicação continuando saudável após analisar o snapshot.
 
-O repositório contém JavaScript perigoso de propósito, porém seus arquivos nunca devem ser encaminhados a um runtime, shell, `eval`, Jint, npm ou processo externo.
+O repositório contém código Java perigoso de propósito, porém seus arquivos nunca devem ser compilados, carregados ou encaminhados a shell, Maven, Gradle ou subprocesso externo.
 
 ## 13. Checklist de entrega
 
@@ -1148,7 +940,7 @@ O repositório contém JavaScript perigoso de propósito, porém seus arquivos n
 - [x] `README.md` explica o projeto, a inicialização e aponta para a documentação da CP1.
 - [x] `AGENTS.md` define as regras que o Codex deve ler antes de alterar o monorepo.
 - [ ] Os diagramas C4 de contexto e contêineres renderizam corretamente.
-- [x] `dotnet build Sast.sln` conclui sem erros.
+- [ ] `mvn --file src/backend/pom.xml verify` conclui sem erros.
 - [x] `npm --prefix src/frontend run build` conclui sem erros.
 
 ### Docker
@@ -1164,14 +956,14 @@ O repositório contém JavaScript perigoso de propósito, porém seus arquivos n
 - [ ] O frontend recebe URL pública e referência opcional.
 - [ ] A API aceita somente URLs válidas de `github.com`.
 - [ ] O snapshot é obtido pela GitHub REST API e removido após a análise.
-- [ ] Somente arquivos `.js` elegíveis são analisados.
+- [ ] Somente arquivos `.java` elegíveis são analisados.
 - [ ] Archives e arquivos acima dos limites são rejeitados.
 - [ ] O token opcional existe somente no backend e nunca aparece em logs.
 
 ### Parser, AST e regras
 
-- [ ] JavaScript válido gera AST com localização.
-- [ ] JavaScript inválido retorna `422`.
+- [ ] Java válido gera AST com localização.
+- [ ] Java inválido retorna `422`.
 - [ ] Nenhum código baixado do GitHub é executado.
 - [ ] As três regras possuem testes positivos e negativos.
 - [ ] Cada finding apresenta regra, severidade, CWE, arquivo, linha, coluna e trecho.
@@ -1186,16 +978,15 @@ O repositório contém JavaScript perigoso de propósito, porém seus arquivos n
 
 ## 14. Critério de conclusão da CP1
 
-A CP1 estará concluída quando um clone limpo do monorepo puder ser iniciado com Docker Compose, receber pelo frontend a URL pública do repositório de demonstração, baixar seu snapshot, analisar `samples/vulnerable.js`, aplicar as três regras, persistir os achados e apresentar exatamente três vulnerabilidades sem executar qualquer código do repositório.
+A CP1 estará concluída quando um clone limpo do monorepo puder ser iniciado com Docker Compose, receber pelo frontend a URL pública do repositório de demonstração, baixar seu snapshot, analisar `samples/VulnerableExample.java`, aplicar as três regras, persistir os achados e apresentar exatamente três vulnerabilidades sem executar qualquer código do repositório.
 
 ## Referências técnicas
 
-- [.NET e política de suporte](https://dotnet.microsoft.com/en-us/platform/support/policy)
-- [ASP.NET Core Web API](https://learn.microsoft.com/aspnet/core/web-api/)
+- [Spring Boot](https://spring.io/projects/spring-boot)
+- [JavaParser](https://javaparser.org/)
 - [React: criação de uma aplicação com Vite](https://react.dev/learn/build-a-react-app-from-scratch)
-- [Esprima .NET](https://github.com/sebastienros/esprima-dotnet)
-- [CWE-79 — Cross-site Scripting](https://cwe.mitre.org/data/definitions/79.html)
-- [CWE-95 — Eval Injection](https://cwe.mitre.org/data/definitions/95.html)
+- [CWE-78 — OS Command Injection](https://cwe.mitre.org/data/definitions/78.html)
+- [CWE-502 — Deserialization of Untrusted Data](https://cwe.mitre.org/data/definitions/502.html)
 - [CWE-798 — Hard-coded Credentials](https://cwe.mitre.org/data/definitions/798.html)
 - [GitHub REST API — Download de archive do repositório](https://docs.github.com/en/rest/repos/contents#download-a-repository-archive-zip)
 - [GitHub REST API — Rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api)

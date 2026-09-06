@@ -1,0 +1,3 @@
+package com.fiap.sast.persistence;
+import jakarta.persistence.*; import java.time.Instant; import java.util.*;
+@Entity @Table(name="analyses") public class Analysis { @Id public UUID id=UUID.randomUUID(); public String repositoryUrl; public String repositoryOwner; public String repositoryName; @Column(name="reference") public String reference; public String language="java"; public int filesAnalyzed; public String status="Completed"; public Instant createdAt=Instant.now(); @OneToMany(mappedBy="analysis",cascade=CascadeType.ALL,orphanRemoval=true) public List<Finding> findings=new ArrayList<>(); }

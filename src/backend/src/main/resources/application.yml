@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/sast}
+    username: ${SPRING_DATASOURCE_USERNAME:sast}
+    password: ${SPRING_DATASOURCE_PASSWORD:change-me}
+  jpa:
+    hibernate.ddl-auto: validate
+  flyway:
+    enabled: true
+management:
+  endpoints.web.base-path: /
+  endpoint.health.show-details: never
+sast:
+  github:
+    token: ${SAST_GITHUB_TOKEN:}
+    max-archive-bytes: ${SAST_GITHUB_MAX_ARCHIVE_BYTES:10485760}
+    max-java-files: ${SAST_GITHUB_MAX_JAVA_FILES:200}
+    max-file-bytes: ${SAST_GITHUB_MAX_FILE_BYTES:1048576}
+    max-extracted-bytes: ${SAST_GITHUB_MAX_EXTRACTED_BYTES:52428800}
