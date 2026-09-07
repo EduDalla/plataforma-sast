@@ -252,6 +252,18 @@ Responsabilidades:
 
 ## 5. Fase 2 — Preparar Docker e Docker Compose
 
+### 5.0 Depuração local do backend
+
+O ambiente padrão não expõe a interface de depuração da JVM. Para depurar a API dentro do container, use o override `compose.debug.yaml`:
+
+```bash
+docker compose -f compose.yaml -f compose.debug.yaml up --build
+```
+
+`compose.debug.yaml` é um override; mantenha o `compose.yaml` no comando para carregar a definição dos serviços.
+
+Esse override habilita JDWP na porta `5005` do container e publica a porta externa somente em `127.0.0.1` (por padrão, `localhost:5005`). A IDE deve usar uma configuração de conexão remota por socket. A aplicação continua iniciando normalmente; altere `suspend=n` para `suspend=y` no override apenas quando for necessário depurar o início da aplicação.
+
 ### 5.1 Dockerfile da API
 
 Criar `src/backend/Dockerfile` com build multi-stage.

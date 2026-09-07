@@ -30,6 +30,18 @@ docker compose up --build
 - API: http://localhost:8085
 - Health check: http://localhost:8085/health
 
+## Depuração remota do backend no Docker
+
+Para iniciar a API com a porta JDWP disponível somente no computador local:
+
+```bash
+docker compose -f compose.yaml -f compose.debug.yaml up --build
+```
+
+`compose.debug.yaml` é um override e não deve ser informado sozinho.
+
+Anexe a IDE a `localhost:5005` usando o transportador socket. A aplicação não fica suspensa na inicialização (`suspend=n`). Para usar outra porta externa, defina `DEBUG_PORT` no `.env`; a porta interna do container permanece `5005`.
+
 Consulte o guia da CP1 para criar os projetos, configurar o GitHub, executar testes e realizar a demonstração.
 
 ## Primeiro acesso

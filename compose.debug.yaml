@@ -1,0 +1,7 @@
+services:
+  api:
+    environment:
+      # Habilita depuração remota da JVM somente no ambiente local.
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    ports:
+      - "127.0.0.1:${DEBUG_PORT:-5005}:5005"
