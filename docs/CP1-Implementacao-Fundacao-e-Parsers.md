@@ -34,7 +34,7 @@ Incluído na CP1:
 - persistência dos metadados e achados no PostgreSQL;
 - testes automatizados do parser, das regras, do engine e da API.
 
-A extensão autorizada inclui autenticação real com usuários no PostgreSQL, bootstrap por ambiente, sessão protegida por CSRF e isolamento das análises por usuário. Consulte [Autenticação e frontend](CP1-Autenticacao-e-Frontend.md) para os contratos atuais e a inicialização da conta.
+A extensão autorizada inclui autenticação real com usuários no PostgreSQL, bootstrap por ambiente, tokens JWT Bearer e isolamento das análises por usuário. Consulte [Autenticação e frontend](CP1-Autenticacao-e-Frontend.md) para os contratos atuais e a inicialização da conta.
 
 Ficam para entregas posteriores: dashboard, histórico visual, relatórios, Taint Analysis, IA, sugestões de correção, filas, CI/CD e Security Gates.
 
@@ -985,11 +985,11 @@ O repositório contém código Java perigoso de propósito, porém seus arquivos
 
 ### API, banco e frontend
 
-- [ ] `POST /api/analyses` retorna `201 Created`.
-- [ ] `GET /api/analyses/{id}` retorna a análise salva.
-- [ ] O archive e o código completo não são persistidos.
-- [ ] O frontend trata carregamento, sucesso sem achados e erro.
-- [ ] O exemplo oficial produz exatamente três findings.
+- [x] `POST /api/analyses` retorna `201 Created`.
+- [x] `GET /api/analyses/{id}` retorna a análise salva.
+- [x] O archive e o código completo não são persistidos.
+- [x] O frontend trata carregamento, sucesso sem achados e erro.
+- [x] O exemplo oficial produz exatamente três findings.
 
 ## 14. Critério de conclusão da CP1
 
