@@ -31,6 +31,7 @@ class AnalysisControllerTest {
         var mvc = mvc(github, repository);
 
         mvc.perform(post("/api/analyses")
+                        .principal(() -> "test@example.com")
                         .contentType("application/json")
                         .content("{\"repositoryUrl\":\"https://github.com/acme/demo\",\"reference\":\"main\"}"))
                 .andExpect(status().isUnprocessableEntity())
@@ -52,6 +53,7 @@ class AnalysisControllerTest {
         var mvc = mvc(github, repository);
 
         mvc.perform(post("/api/analyses")
+                        .principal(() -> "test@example.com")
                         .contentType("application/json")
                         .content("{\"repositoryUrl\":\"https://github.com/acme/demo\",\"reference\":\"main\"}"))
                 .andExpect(status().isCreated())
@@ -67,7 +69,11 @@ class AnalysisControllerTest {
     private static MockMvc mvc(GitHubClient github, AnalysisRepository repository) {
         var engine = new SastEngine(new JavaParserSourceParser(), List.of(
                 new HardcodedCredentialRule(), new RuntimeExecRule(), new DeserializationRule()));
-        var controller = new AnalysisController(github, engine, repository);
+        var users = mock(com.fiap.sast.auth.UserRepository.class);
+        var user = new com.fiap.sast.auth.AppUser();
+        user.email = "test@example.com";
+        when(users.findByEmail(user.email)).thenReturn(java.util.Optional.of(user));
+        var controller = new AnalysisController(github, engine, repository, users);
         return MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();

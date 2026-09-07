@@ -11,7 +11,10 @@ final class RuleSupport {
         var range = node.getRange().orElseThrow();
         var lines = source.split("\\R", -1);
         var lineIndex = Math.max(0, Math.min(lines.length - 1, range.begin.line - 1));
-        var snippet = lines.length == 0 ? "" : lines[lineIndex].trim();
+        var line = lines[lineIndex];
+        int start = Math.min(line.length(), range.begin.column - 1);
+        int end = range.begin.line == range.end.line ? Math.min(line.length(), range.end.column) : line.length();
+        var snippet = line.substring(start, Math.min(end, start + 500)).trim();
         return new SecurityFinding(id, title, severity, cwe, description, file,
                 range.begin.line, range.begin.column, snippet);
     }

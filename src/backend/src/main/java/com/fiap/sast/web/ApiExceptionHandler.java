@@ -11,7 +11,7 @@ import java.util.NoSuchElementException;
 @RestControllerAdvice
 public class ApiExceptionHandler {
     private ProblemDetail problem(HttpStatus status, String detail) {
-        return ProblemDetail.forStatusAndDetail(status, detail);
+        return ProblemDetail.forStatusAndDetail(status, detail == null || detail.isBlank() ? status.getReasonPhrase() : detail);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -53,5 +53,22 @@ public class ApiExceptionHandler {
     @ExceptionHandler(SecurityException.class)
     ProblemDetail security(Exception exception) {
         return problem(HttpStatus.BAD_REQUEST, "Entrada inválida");
+    }
+
+    @ExceptionHandler(GitHubClient.UnavailableException.class)
+    ProblemDetail unavailable(Exception exception) {
+        return problem(HttpStatus.BAD_GATEWAY, "GitHub indisponível; tente novamente mais tarde");
+    }
+
+    @ExceptionHandler(Exception.class)
+    ProblemDetail unexpected(Exception exception) {
+        return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Não foi possível concluir a solicitação");
+    }
+
+    @ExceptionHandler({org.springframework.web.bind.MethodArgumentNotValidException.class,
+            org.springframework.http.converter.HttpMessageNotReadableException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})
+    ProblemDetail validation(Exception exception) {
+        return problem(HttpStatus.BAD_REQUEST, "Verifique os campos informados");
     }
 }

@@ -22,6 +22,7 @@ Nesta etapa, a aplicação recebe a URL de um repositório público do GitHub, b
 
 ```bash
 cp .env.example .env
+# Preencha SAST_BOOTSTRAP_EMAIL e SAST_BOOTSTRAP_PASSWORD no .env antes de iniciar.
 docker compose up --build
 ```
 
@@ -30,3 +31,26 @@ docker compose up --build
 - Health check: http://localhost:8080/health
 
 Consulte o guia da CP1 para criar os projetos, configurar o GitHub, executar testes e realizar a demonstração.
+
+## Primeiro acesso
+
+Configure `SAST_BOOTSTRAP_EMAIL` e `SAST_BOOTSTRAP_PASSWORD` no seu `.env` local. Use uma senha de pelo menos 12 caracteres e no máximo 72 bytes UTF-8. A primeira inicialização cria a conta e salva somente o hash BCrypt. Depois disso, as variáveis podem ser removidas: não atualizam contas já existentes. Não há cadastro público ou recuperação de senha nesta entrega.
+
+Abra o frontend e entre com essa conta. A sessão dura 30 minutos de inatividade. Cada usuário consulta apenas suas próprias análises; registros anteriores à autenticação são preservados, mas ficam inacessíveis. Para uma implantação HTTPS, configure `SAST_COOKIE_SECURE=true`.
+
+O fluxo visual inclui login, nova análise de repositório público Java, processamento, resultados e detalhes expansíveis. A URL de um resultado pode ser reaberta pelo mesmo usuário. Dashboard, histórico visual e relatórios continuam fora do escopo.
+
+## Verificação
+
+Com JDK 21, Maven, Node.js e Docker disponíveis:
+
+```bash
+mvn --file src/backend/pom.xml verify
+npm --prefix src/frontend run build
+npm --prefix src/frontend run test -- --run
+docker compose config --quiet
+```
+
+Os testes de integração iniciam um PostgreSQL descartável pelo Testcontainers. A amostra vulnerável é lida como texto; nunca é compilada ou executada.
+
+Decisões e contratos da extensão: [Autenticação e frontend](docs/CP1-Autenticacao-e-Frontend.md).

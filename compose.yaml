@@ -14,6 +14,9 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       SAST_GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      SAST_BOOTSTRAP_EMAIL: ${SAST_BOOTSTRAP_EMAIL:-}
+      SAST_BOOTSTRAP_PASSWORD: ${SAST_BOOTSTRAP_PASSWORD:-}
+      SAST_COOKIE_SECURE: ${SAST_COOKIE_SECURE:-false}
     ports: ["${API_PORT}:8080"]
     depends_on: { db: { condition: service_healthy } }
     healthcheck: { test: ["CMD","curl","--fail","http://localhost:8080/health"], interval: 5s, timeout: 5s, retries: 10 }

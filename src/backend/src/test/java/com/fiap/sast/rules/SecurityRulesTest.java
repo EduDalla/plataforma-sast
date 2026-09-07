@@ -10,6 +10,14 @@ class SecurityRulesTest {
     private final JavaParserSourceParser parser = new JavaParserSourceParser();
 
     @Test
+    void trechoNaoArmazenaArquivoInteiroEmUmaLinha() {
+        var source = "class Example { String password = \"" + "x".repeat(1000) + "\"; void unrelated() {} }";
+        var finding = new HardcodedCredentialRule().analyze(parser.parse(source), source, "Example.java").getFirst();
+        assertTrue(finding.snippet().length() <= 500);
+        assertTrue(!finding.snippet().contains("class Example") && !finding.snippet().contains("unrelated"));
+    }
+
+    @Test
     void detectaCredencialHardcodedEIgnoraOrigemSegura() {
         var source = "class Example {\n"
                 + "  String PASSWORD = \"123\";\n"

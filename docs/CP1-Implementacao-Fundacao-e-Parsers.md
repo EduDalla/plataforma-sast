@@ -34,7 +34,9 @@ Incluído na CP1:
 - persistência dos metadados e achados no PostgreSQL;
 - testes automatizados do parser, das regras, do engine e da API.
 
-Ficam para entregas posteriores: autenticação, dashboard, histórico visual, relatórios, Taint Analysis, IA, sugestões de correção, filas, CI/CD e Security Gates.
+A extensão autorizada inclui autenticação real com usuários no PostgreSQL, bootstrap por ambiente, sessão protegida por CSRF e isolamento das análises por usuário. Consulte [Autenticação e frontend](CP1-Autenticacao-e-Frontend.md) para os contratos atuais e a inicialização da conta.
+
+Ficam para entregas posteriores: dashboard, histórico visual, relatórios, Taint Analysis, IA, sugestões de correção, filas, CI/CD e Security Gates.
 
 ## 2. Tecnologias
 
@@ -332,6 +334,9 @@ POSTGRES_PASSWORD=change-me
 WEB_PORT=3000
 API_PORT=8080
 GITHUB_TOKEN=
+SAST_BOOTSTRAP_EMAIL=
+SAST_BOOTSTRAP_PASSWORD=
+SAST_COOKIE_SECURE=false
 ```
 
 `GITHUB_TOKEN` é opcional na CP1, pois o endpoint de archive aceita acesso anônimo a repositórios públicos. Quando preenchido, deve ser um token fine-grained somente leitura, mantido exclusivamente no backend. Ele nunca deve ser enviado ao frontend, persistido ou incluído em logs.
@@ -343,6 +348,8 @@ cp .env.example .env
 ```
 
 Adicionar `.env` ao `.gitignore`.
+
+Antes de iniciar, preencher e-mail e senha bootstrap no `.env` local. Em banco vazio, a senha deve ter pelo menos 12 caracteres e no máximo 72 bytes UTF-8. A conta é criada uma única vez; não há senha padrão. Em HTTPS, usar `SAST_COOKIE_SECURE=true`.
 
 ### 5.5 Compose da raiz
 
@@ -375,6 +382,9 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       SAST_GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      SAST_BOOTSTRAP_EMAIL: ${SAST_BOOTSTRAP_EMAIL:-}
+      SAST_BOOTSTRAP_PASSWORD: ${SAST_BOOTSTRAP_PASSWORD:-}
+      SAST_COOKIE_SECURE: ${SAST_COOKIE_SECURE:-false}
       SAST_GITHUB_MAX_ARCHIVE_BYTES: 10485760
       SAST_GITHUB_MAX_JAVA_FILES: 200
       SAST_GITHUB_MAX_FILE_BYTES: 1048576
@@ -409,7 +419,7 @@ volumes:
 
 `Analysis` é uma entidade JPA com UUID, URL, owner, repositório, referência, linguagem, quantidade de arquivos, estado, data de criação e lista de `Finding`. `Finding` é uma entidade JPA vinculada à análise e contém UUID, regra, título, severidade, CWE, descrição, arquivo, linha, coluna e trecho.
 
-Não incluir o archive nem o conteúdo integral dos arquivos no banco. O snapshot existe apenas durante a requisição; somente URL, referência, metadados da análise e o trecho relacionado a cada achado são persistidos.
+Não incluir o archive nem o conteúdo integral dos arquivos no banco. O snapshot existe apenas em memória durante a requisição; somente URL, referência, metadados da análise e o trecho relacionado a cada achado são persistidos. A migration V2 adiciona usuários e proprietário da análise; registros legados permanecem inacessíveis.
 
 ### 6.2 Entidades JPA e migrations
 
@@ -439,7 +449,7 @@ Para manter o processamento controlado:
 - limitar cada arquivo a 1 MiB;
 - ignorar links simbólicos e entradas ZIP que escapem do diretório temporário;
 - ignorar diretórios gerados ou de dependências, como `target`, `build`, `out`, `.gradle`, `node_modules` e `vendor`;
-- apagar o diretório temporário em um bloco `finally` depois da análise.
+- manter o snapshot somente em memória e fechar os streams com try-with-resources. Se arquivos temporários forem introduzidos futuramente, apagá-los em `finally`.
 
 Esses limites devem vir de configuração e resultar em HTTP `413` quando excedidos.
 
@@ -672,15 +682,17 @@ Resposta compartilhada por `POST /api/analyses` e `GET /api/analyses/{id}`:
 5. agregar e ordenar os findings por arquivo, linha, coluna e regra;
 6. mapear o resultado para as entidades JPA;
 7. salvar `Analysis` e `Finding` em uma transação;
-8. eliminar o snapshot temporário;
+8. descartar o snapshot em memória ao concluir a requisição;
 9. retornar `201 Created`, incluindo `Location: /api/analyses/{id}`.
 
 ### 9.3 Endpoint de consulta
 
-`GET /api/analyses/{id}` carregará a análise e seus findings pelo repositório Spring Data JPA:
+`GET /api/analyses/{id}` carregará a análise e seus findings pelo repositório Spring Data JPA, filtrando também pelo usuário autenticado:
 
 - retornar `200 OK` quando encontrada;
-- retornar `404 Not Found` quando o identificador não existir.
+- retornar `404 Not Found` quando o identificador não existir, pertencer a outro usuário ou for um registro legado sem proprietário.
+
+POST e GET exigem cookie de sessão autenticada. Todos os POST também exigem o header retornado por GET /api/auth/csrf. Autenticação ausente/expirada retorna 401 e CSRF inválido retorna 403 em JSON. Os DTOs usam `analysisId` e não expõem entidades de usuário.
 
 ### 9.4 Tratamento de falhas
 
@@ -745,9 +757,13 @@ O frontend chamará a API com caminho relativo:
 export async function createAnalysis(
   request: AnalysisRequest,
 ): Promise<AnalysisResponse> {
+  const csrfResponse = await fetch('/api/auth/csrf', { credentials: 'same-origin' })
+  if (!csrfResponse.ok) throw new Error('Não foi possível iniciar a solicitação')
+  const csrf = await csrfResponse.json()
   const response = await fetch('/api/analyses', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', [csrf.headerName]: csrf.token },
     body: JSON.stringify(request),
   })
 
@@ -790,7 +806,7 @@ idle -> loading -> success
 
 Enquanto estiver em `loading`, desabilitar o botão para impedir envios duplicados. Uma análise sem achados deve mostrar uma mensagem de sucesso, e não uma área vazia.
 
-Não adicionar rotas, autenticação ou dashboard nesta fase.
+A extensão autorizada adiciona rotas `/login`, `/analyses/new` e `/analyses/:analysisId`, restauração de sessão, processamento e detalhes expansíveis. O mockup é adaptado à entrada de repositório público Java. Dashboard continua fora desta fase.
 
 ## 11. Fase 8 — Testes automatizados
 
@@ -887,10 +903,8 @@ Criar `samples/VulnerableExample.java` no próprio monorepo com exatamente este 
 ```java
 import java.io.InputStream;
 import java.io.ObjectInputStream;
-
 public final class VulnerableExample {
     private static final String password = "123456";
-
     public Object execute(String userInput, InputStream stream) throws Exception {
         Runtime.getRuntime().exec(userInput);
         ObjectInputStream input = new ObjectInputStream(stream);
@@ -899,14 +913,16 @@ public final class VulnerableExample {
 }
 ```
 
-Depois do `git push`, informar no frontend a URL pública do monorepo e a referência `main`. A mesma análise pode ser iniciada pelo terminal, substituindo `SEU_USUARIO` pelo owner real:
+Depois da publicação, entrar no frontend com a conta bootstrap e informar a URL pública do monorepo e a referência publicada (neste repositório, `master`). Para chamadas pelo terminal, autenticar primeiro, manter o cookie JSESSIONID e enviar o header CSRF atual. O corpo da análise continua:
 
 ```bash
 curl --request POST http://localhost:8080/api/analyses \
+  --cookie cookies.txt \
+  --header "X-CSRF-TOKEN: $SAST_CSRF_TOKEN" \
   --header 'Content-Type: application/json' \
   --data '{
     "repositoryUrl": "https://github.com/SEU_USUARIO/cp1-sast",
-    "reference": "main"
+    "reference": "master"
   }'
 ```
 
@@ -914,9 +930,9 @@ curl --request POST http://localhost:8080/api/analyses \
 
 | Ordem | Arquivo | Regra | Severidade | CWE | Linha |
 |---:|---|---|---|---|---:|
-| 1 | `samples/VulnerableExample.java` | Hardcoded credential | Critical | CWE-798 | 6 |
-| 2 | `samples/VulnerableExample.java` | Uso potencialmente inseguro de Runtime.exec | High | CWE-78 | 9 |
-| 3 | `samples/VulnerableExample.java` | Desserialização potencialmente insegura | High | CWE-502 | 11 |
+| 1 | `samples/VulnerableExample.java` | Hardcoded credential | Critical | CWE-798 | 4 |
+| 2 | `samples/VulnerableExample.java` | Uso potencialmente inseguro de Runtime.exec | High | CWE-78 | 6 |
+| 3 | `samples/VulnerableExample.java` | Desserialização potencialmente insegura | High | CWE-502 | 8 |
 
 A demonstração deve mostrar:
 

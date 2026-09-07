@@ -1,6 +1,13 @@
-import { StrictMode, useState } from 'react'
-import { createRoot } from 'react-dom/client'
-type Finding={ruleId:string;title:string;severity:string;cwe:string;description:string;fileName:string;line:number;column:number;snippet:string}; type Result={filesAnalyzed:number;findings:Finding[]}
-export function App(){const [url,setUrl]=useState('');const [reference,setReference]=useState('');const [data,setData]=useState<Result>();const [error,setError]=useState('');const [loading,setLoading]=useState(false);async function submit(e:React.FormEvent){e.preventDefault();setLoading(true);setError('');try{const r=await fetch('/api/analyses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({repositoryUrl:url,reference:reference||null})});const b=await r.json();if(!r.ok)throw new Error(b.detail||b.title);setData(b)}catch(e){setError(e instanceof Error?e.message:'Falha ao analisar')}finally{setLoading(false)}}return <main><h1>Plataforma SAST</h1><form onSubmit={submit}><label>URL do GitHub<input required type="url" value={url} onChange={e=>setUrl(e.target.value)}/></label><label>Referência<input value={reference} onChange={e=>setReference(e.target.value)}/></label><button disabled={loading}>{loading?'Analisando…':'Analisar repositório'}</button></form>{error&&<p role="alert">{error}</p>}{data&&<section><p>{data.filesAnalyzed} arquivo(s), {data.findings.length} achado(s)</p>{data.findings.length===0?<p>Nenhuma vulnerabilidade encontrada</p>:data.findings.map(f=><article key={`${f.fileName}-${f.line}-${f.ruleId}`}><h2>{f.title} — {f.severity}</h2><p>{f.cwe} · {f.fileName}:{f.line}:{f.column}</p><code>{f.snippet}</code><p>{f.description}</p></article>)}</section>}</main>}
-const root = document.getElementById('root')
-if (root) createRoot(root).render(<StrictMode><App /></StrictMode>)
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { App } from "./App";
+import "./styles.css";
+
+export { App } from "./App";
+const root = document.getElementById("root");
+if (root)
+  createRoot(root).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );

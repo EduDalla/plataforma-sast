@@ -1,4 +1,5 @@
 .env
+**/target/
 **/bin/
 **/obj/
 **/node_modules/
