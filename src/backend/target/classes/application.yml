@@ -4,6 +4,7 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:sast}
     password: ${SPRING_DATASOURCE_PASSWORD:change-me}
   jpa:
+    open-in-view: false
     hibernate.ddl-auto: validate
   flyway:
     enabled: true
@@ -11,9 +12,24 @@ management:
   endpoints.web.base-path: /
   endpoint.health.show-details: never
 sast:
+  jwt:
+    secret: ${SAST_JWT_SECRET:}
+    issuer: ${SAST_JWT_ISSUER:sast-api}
+    access-token-minutes: ${SAST_JWT_ACCESS_TOKEN_MINUTES:15}
+  bootstrap:
+    email: ${SAST_BOOTSTRAP_EMAIL:}
+    password: ${SAST_BOOTSTRAP_PASSWORD:}
   github:
     token: ${SAST_GITHUB_TOKEN:}
     max-archive-bytes: ${SAST_GITHUB_MAX_ARCHIVE_BYTES:10485760}
     max-java-files: ${SAST_GITHUB_MAX_JAVA_FILES:200}
     max-file-bytes: ${SAST_GITHUB_MAX_FILE_BYTES:1048576}
     max-extracted-bytes: ${SAST_GITHUB_MAX_EXTRACTED_BYTES:52428800}
+server:
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${SAST_COOKIE_SECURE:false}

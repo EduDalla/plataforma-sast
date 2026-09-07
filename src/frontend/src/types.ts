@@ -21,4 +21,13 @@ export interface Analysis {
 }
 export interface Session {
   email: string;
+  accessToken?: string;
+  tokenType?: "Bearer";
+  expiresIn?: number;
+}
+
+export interface LoginResponse extends Session {
+  accessToken: string;
+  tokenType: "Bearer";
+  expiresIn: number;
 }

@@ -1,22 +1,28 @@
 package com.fiap.sast.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
-
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
 import java.io.IOException;
 
 @Configuration
@@ -43,56 +49,71 @@ public class SecurityConfig {
     }
 
     @Bean
-    HttpSessionSecurityContextRepository securityContextRepository() {
-        return new HttpSessionSecurityContextRepository();
+    SecretKey jwtSecretKey(@Value("${sast.jwt.secret}") String encodedSecret) {
+        try {
+            var decoded = Base64.getDecoder().decode(encodedSecret);
+            if (decoded.length < 32) {
+                throw new IllegalStateException("SAST_JWT_SECRET deve conter ao menos 256 bits");
+            }
+            return new SecretKeySpec(decoded, "HmacSHA256");
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalStateException("SAST_JWT_SECRET deve ser Base64 válido", exception);
+        }
     }
 
     @Bean
-    CsrfTokenRepository csrfTokenRepository() {
-        return CookieCsrfTokenRepository.withHttpOnlyFalse();
+    JwtEncoder jwtEncoder(SecretKey secretKey) {
+        return new NimbusJwtEncoder(new ImmutableSecret<>(secretKey));
+    }
+
+    @Bean
+    JwtDecoder jwtDecoder(
+            SecretKey secretKey,
+            @Value("${sast.jwt.issuer}") String issuer) {
+        var decoder = NimbusJwtDecoder.withSecretKey(secretKey)
+                .macAlgorithm(MacAlgorithm.HS256)
+                .build();
+        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
+        return decoder;
     }
 
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            HttpSessionSecurityContextRepository securityContexts,
-            CsrfTokenRepository csrfTokens,
-            ObjectMapper objectMapper) throws Exception {
+            @Value("${sast.jwt.issuer}") String issuer) throws Exception {
         return http
-                .csrf(csrf -> csrf.csrfTokenRepository(csrfTokens))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/health", "/api/auth/csrf", "/api/auth/login")
+                        .requestMatchers("/health", "/api/auth/login")
                         .permitAll()
                         .anyRequest()
                         .authenticated())
-                .securityContext(security -> security
-                        .securityContextRepository(securityContexts))
-                .requestCache(cache -> cache
-                        .requestCache(new org.springframework.security.web.savedrequest.NullRequestCache()))
+                .oauth2ResourceServer(resourceServer -> resourceServer
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
                 .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint((request, response, exception) -> writeProblem(
-                                objectMapper, response, 401, "Sessão ausente ou expirada"))
-                        .accessDeniedHandler((request, response, exception) -> writeProblem(
-                                objectMapper, response, 403, "Requisição não autorizada; atualize a página")))
-                .logout(logout -> logout
-                        .logoutUrl("/api/auth/logout")
-                        .invalidateHttpSession(true)
-                        .deleteCookies("JSESSIONID", "XSRF-TOKEN")
-                        .logoutSuccessHandler((request, response, authentication) ->
-                                response.setStatus(HttpServletResponse.SC_NO_CONTENT)))
+                        .authenticationEntryPoint((request, response, exception) -> {
+                            writeProblem(response, 401, "Token ausente, inválido ou expirado");
+                        })
+                        .accessDeniedHandler((request, response, exception) -> {
+                            writeProblem(response, 403, "Permissão insuficiente");
+                        }))
                 .build();
     }
 
-    private static void writeProblem(
-            ObjectMapper objectMapper,
-            HttpServletResponse response,
-            int status,
-            String detail) throws IOException {
+    private static void writeProblem(jakarta.servlet.http.HttpServletResponse response,
+            int status, String detail) throws IOException {
         response.setStatus(status);
         response.setContentType("application/problem+json");
         response.setCharacterEncoding("UTF-8");
-        var problem = org.springframework.http.ProblemDetail.forStatusAndDetail(
-                org.springframework.http.HttpStatus.valueOf(status), detail);
-        objectMapper.writeValue(response.getWriter(), problem);
+        response.getWriter().write("{\"status\":" + status + ",\"detail\":\"" + detail + "\"}");
+    }
+
+    @Bean
+    org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter jwtAuthenticationConverter() {
+        var converter = new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter();
+        converter.setPrincipalClaimName("sub");
+        return converter;
     }
 }

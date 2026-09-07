@@ -226,6 +226,64 @@ export function AnalysisForm({
     </>
   );
 }
+
+export function Dashboard({
+  data,
+  onNew,
+  onOpen,
+}: {
+  data?: Analysis;
+  onNew: () => void;
+  onOpen: () => void;
+}) {
+  const findings = data?.findings || [];
+  const severity = {
+    Critical: findings.filter((finding) => finding.severity === "Critical").length,
+    High: findings.filter((finding) => finding.severity === "High").length,
+    Medium: findings.filter((finding) => finding.severity === "Medium").length,
+    Low: findings.filter((finding) => finding.severity === "Low").length,
+  };
+  const files = [...new Set(findings.map((finding) => finding.fileName))]
+    .map((fileName) => ({
+      fileName,
+      count: findings.filter((finding) => finding.fileName === fileName).length,
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+  const chartPoints = findings.length ? "8,100 72,112 136,74 200,88 264,35" : "8,100 72,100 136,100 200,100 264,100";
+
+  return (
+    <section className="dashboard-page">
+      <div className="dashboard-title">
+        <div>
+          <span className="eyebrow">VISÃO GERAL</span>
+          <h1>Dashboard</h1>
+          <p>Acompanhe a segurança dos seus repositórios em um só lugar.</p>
+        </div>
+        <button onClick={onNew}>Nova análise <span aria-hidden="true">→</span></button>
+      </div>
+      <div className="dashboard-stats">
+        <div><span>Análises</span><strong>{data ? 1 : 0}</strong><small>nesta sessão</small></div>
+        <div><span>Vulnerabilidades</span><strong>{findings.length}</strong><small>encontradas</small></div>
+        <div><span>Críticas</span><strong className="dashboard-red">{severity.Critical}</strong><small>atenção imediata</small></div>
+        <div><span>Arquivos analisados</span><strong>{data?.filesAnalyzed || 0}</strong><small>arquivos Java</small></div>
+      </div>
+      <div className="dashboard-grid">
+        <article className="dashboard-card severity-card">
+          <h2><span className="chart-icon">◔</span> Severidade</h2>
+          {findings.length ? <div className="severity-chart-row"><div className="severity-donut" style={{ background: `conic-gradient(#f04444 0 ${severity.Critical / findings.length * 100}%, #ff761c ${severity.Critical / findings.length * 100}% ${(severity.Critical + severity.High) / findings.length * 100}%, #ffcc19 ${(severity.Critical + severity.High) / findings.length * 100}% ${(severity.Critical + severity.High + severity.Medium) / findings.length * 100}%, #3d82f4 ${(severity.Critical + severity.High + severity.Medium) / findings.length * 100}% 100%)` }}><span>{findings.length}</span></div><div className="severity-legend"><span><i className="legend-critical"/>Crítico <b>{severity.Critical}</b></span><span><i className="legend-high"/>Alto <b>{severity.High}</b></span><span><i className="legend-medium"/>Médio <b>{severity.Medium}</b></span><span><i className="legend-low"/>Baixo <b>{severity.Low}</b></span></div></div> : <div className="dashboard-empty"><span>✓</span><p>Nenhuma vulnerabilidade<br/>nesta sessão.</p></div>}
+        </article>
+        <article className="dashboard-card trend-card">
+          <h2><span className="chart-icon">⌁</span> Tendência de falhas</h2>
+          <div className="trend-chart"><svg viewBox="0 0 272 140" role="img" aria-label="Tendência de falhas"><path className="trend-area" d={`M${chartPoints.replace(/ /g, " L")} L264,130 L8,130 Z`} /><polyline points={chartPoints} /><circle cx="264" cy={findings.length ? "35" : "100"} r="3" /><line x1="8" y1="130" x2="264" y2="130" /></svg><div className="trend-labels"><span>Agora</span><span>Última análise</span></div></div>
+        </article>
+        <article className="dashboard-card files-card"><h2><span className="chart-icon">☷</span> Top arquivos críticos</h2>{files.length ? <ul>{files.map((file) => <li key={file.fileName}><span>{file.fileName}</span><b>{file.count} {file.count === 1 ? "falha" : "falhas"}</b></li>)}</ul> : <div className="dashboard-list-empty">Execute uma análise para identificar os arquivos críticos.</div>}</article>
+        <article className="dashboard-card detected-card"><h2><span className="chart-icon">▣</span> Falhas detectadas</h2>{findings.length ? <ul>{findings.slice(0, 4).map((finding) => <li key={finding.ruleId + finding.line}><i className={finding.severity.toLowerCase()}/><div><strong>{finding.cwe} · {finding.title}</strong><p>{finding.description}</p></div></li>)}</ul> : <div className="dashboard-list-empty">Nenhuma falha detectada. Seu código está pronto para ser analisado.</div>}</article>
+      </div>
+      {data && <button className="dashboard-last" onClick={onOpen}>Ver resultados da última análise <span aria-hidden="true">↗</span></button>}
+    </section>
+  );
+}
 const severityNames = {
   Critical: "Crítica",
   High: "Alta",

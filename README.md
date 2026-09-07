@@ -27,8 +27,8 @@ docker compose up --build
 ```
 
 - Frontend: http://localhost:3000
-- API: http://localhost:8080
-- Health check: http://localhost:8080/health
+- API: http://localhost:8085
+- Health check: http://localhost:8085/health
 
 Consulte o guia da CP1 para criar os projetos, configurar o GitHub, executar testes e realizar a demonstração.
 
@@ -36,7 +36,7 @@ Consulte o guia da CP1 para criar os projetos, configurar o GitHub, executar tes
 
 Configure `SAST_BOOTSTRAP_EMAIL` e `SAST_BOOTSTRAP_PASSWORD` no seu `.env` local. Use uma senha de pelo menos 12 caracteres e no máximo 72 bytes UTF-8. A primeira inicialização cria a conta e salva somente o hash BCrypt. Depois disso, as variáveis podem ser removidas: não atualizam contas já existentes. Não há cadastro público ou recuperação de senha nesta entrega.
 
-Abra o frontend e entre com essa conta. A sessão dura 30 minutos de inatividade. Cada usuário consulta apenas suas próprias análises; registros anteriores à autenticação são preservados, mas ficam inacessíveis. Para uma implantação HTTPS, configure `SAST_COOKIE_SECURE=true`.
+Abra o frontend e entre com essa conta. O access token JWT dura 15 minutos e permanece somente em memória. Cada usuário consulta apenas suas próprias análises; registros anteriores à autenticação são preservados, mas ficam inacessíveis. Configure `SAST_JWT_SECRET` com uma chave Base64 de pelo menos 32 bytes.
 
 O fluxo visual inclui login, nova análise de repositório público Java, processamento, resultados e detalhes expansíveis. A URL de um resultado pode ser reaberta pelo mesmo usuário. Dashboard, histórico visual e relatórios continuam fora do escopo.
 

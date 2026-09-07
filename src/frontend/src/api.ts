@@ -1,4 +1,6 @@
-import type { Analysis, Session } from "./types";
+import type { Analysis, LoginResponse, Session } from "./types";
+
+let accessToken: string | null = null;
 
 export class ApiError extends Error {
   constructor(
@@ -12,7 +14,13 @@ export class ApiError extends Error {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(path, { ...options, credentials: "same-origin" });
+    const headers = new Headers(options.headers);
+    if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+    response = await fetch(path, {
+      ...options,
+      headers,
+      credentials: "same-origin",
+    });
   } catch {
     throw new ApiError(
       0,
@@ -23,38 +31,44 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     response.status === 204
       ? undefined
       : await response.json().catch(() => undefined);
-  if (!response.ok)
+  if (!response.ok) {
+    if (response.status === 401) accessToken = null;
     throw new ApiError(
       response.status,
       body?.detail || body?.title || "Não foi possível concluir a solicitação.",
     );
+  }
   return body as T;
 }
 
-async function post<T>(path: string, body?: unknown): Promise<T> {
-  // Obtém um token atual inclusive após login, logout e expiração da sessão.
-  const csrf = await request<{ headerName: string; token: string }>(
-    "/api/auth/csrf",
-  );
-  return request<T>(path, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      [csrf.headerName]: csrf.token,
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
-
 export const api = {
-  session: () => request<Session>("/api/auth/session"),
-  login: (email: string, password: string) =>
-    post<Session>("/api/auth/login", { email, password }),
-  logout: () => post<void>("/api/auth/logout"),
+  session: async () => {
+    if (!accessToken) throw new ApiError(401, "Sessão ausente ou expirada");
+    return request<Session>("/api/auth/session");
+  },
+  login: async (email: string, password: string): Promise<Session> => {
+    const response = await request<LoginResponse>(
+      "/api/auth/login",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      },
+    );
+    accessToken = response.accessToken;
+    return response;
+  },
+  logout: async () => {
+    accessToken = null;
+  },
   create: (repositoryUrl: string, reference: string) =>
-    post<Analysis>("/api/analyses", {
-      repositoryUrl,
-      reference: reference.trim() || null,
+    request<Analysis>("/api/analyses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        repositoryUrl,
+        reference: reference.trim() || null,
+      }),
     }),
   analysis: (id: string) =>
     request<Analysis>("/api/analyses/" + encodeURIComponent(id)),

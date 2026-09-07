@@ -4,25 +4,24 @@ A CP1 foi ampliada por solicitação explícita para incluir login, persistênci
 
 ## Acesso e implantação
 
-A migration V2 cria `app_users` (UUID, e-mail único normalizado, hash BCrypt) e `analyses.user_id` com FK e índice. Registros legados preservam proprietário nulo e não são acessíveis pelos endpoints. Toda nova análise recebe o ID do usuário da sessão.
+A migration V2 cria `app_users` (UUID, e-mail único normalizado, hash BCrypt) e `analyses.user_id` com FK e índice. Registros legados preservam proprietário nulo e não são acessíveis pelos endpoints. Toda nova análise recebe o ID do usuário autenticado pelo JWT.
 
 Se o banco estiver vazio, a API exige `SAST_BOOTSTRAP_EMAIL` válido e `SAST_BOOTSTRAP_PASSWORD` com 12 caracteres a 72 bytes UTF-8. O bootstrap só atua quando não existem usuários e nunca altera senhas existentes. Credenciais não devem ser versionadas, devolvidas pela API ou escritas em logs. Remova as variáveis bootstrap após a primeira inicialização.
 
-A autenticação usa sessão Spring Security com cookie JSESSIONID HttpOnly, SameSite=Lax, 30 minutos de inatividade, rotação do ID após login e invalidação após logout. Em HTTPS, configure `SAST_COOKIE_SECURE=true`; o padrão false permite a demonstração HTTP local. Reiniciar a API encerra as sessões em memória. O frontend guarda apenas a identidade em memória e usa cookies da mesma origem, sem tokens no localStorage.
+A autenticação usa JWT Bearer assinado com HMAC-SHA256. `SAST_JWT_SECRET` deve ser Base64 com pelo menos 256 bits, fica somente no backend e nunca é registrado. O token contém emissor, assunto, escopos, emissão e expiração de 15 minutos. O frontend mantém o access token somente em memória; não usa localStorage, sessionStorage ou cookies para o token. Reiniciar a API invalida tokens emitidos com o segredo anterior. Logout limpa o token local; a expiração curta limita a janela de reutilização.
 
 ## Contratos
 
 | Método e rota | Entrada | Resultado |
 |---|---|---|
-| GET /api/auth/csrf | Nenhuma | 200 com `{headerName, token}`; cria token de sessão |
-| POST /api/auth/login | JSON `{email, password}` e header CSRF | 200 com `{email}`; 401 genérico para credencial inválida |
-| GET /api/auth/session | Cookie de sessão | 200 com `{email}` ou 401 |
-| POST /api/auth/logout | Cookie e header CSRF | 204 e sessão invalidada |
-| POST /api/analyses | Cookie, header CSRF, JSON `{repositoryUrl, reference?}` | 201, Location e DTO da análise |
-| GET /api/analyses/{id} | Cookie de sessão | 200 com o mesmo DTO; 404 para ID inexistente, legado ou de outro usuário |
+| POST /api/auth/login | JSON `{email, password}` | 200 com `{email, accessToken, tokenType, expiresIn}`; 401 genérico para credencial inválida |
+| GET /api/auth/session | Header `Authorization: Bearer ...` | 200 com `{email}` ou 401 |
+| POST /api/auth/logout | Nenhuma (logout local) | 204 |
+| POST /api/analyses | Header Bearer e JSON `{repositoryUrl, reference?}` | 201, Location e DTO da análise |
+| GET /api/analyses/{id} | Header Bearer | 200 com o mesmo DTO; 404 para ID inexistente, legado ou de outro usuário |
 | GET /health | Nenhuma | Saúde da aplicação, sem detalhes internos |
 
-O frontend busca CSRF antes de cada POST, incluindo login/logout; tokens antigos deixam de valer depois do login. Requisições sem CSRF válido recebem 403. A API não redireciona para páginas de login e usa erros JSON legíveis.
+O frontend envia o Bearer em cada requisição protegida. A API não redireciona para páginas de login e usa erros JSON legíveis. Requisições sem token, com assinatura inválida, emissor incorreto ou token expirado recebem 401.
 
 O DTO contém apenas `analysisId, status, repositoryUrl, reference, language, filesAnalyzed, createdAt, findings`. Cada finding mantém regra, título, severidade, CWE, descrição, caminho, linha, coluna e trecho. O timestamp usa precisão de microssegundos, compatível com PostgreSQL. Findings são ordenados por arquivo, linha, coluna e regra.
 
@@ -36,6 +35,6 @@ A validação exige HTTPS, host github.com exato e owner/repositório/referênci
 
 Rotas: `/login`, `/analyses/new`, `/analyses/:analysisId`. Recarregar uma URL restaura sessão e busca o resultado salvo. Os detalhes usam disclosure acessível por teclado. Processamento síncrono mostra indicador e bloqueia novos envios. Sem achados é sucesso explícito. Sessão expirada apaga o resultado em memória e retorna ao login. Não há cancelamento de jobs porque não existem jobs assíncronos.
 
-Vitest cobre login, erro, sessão, logout, restauração do resultado, carregamento, duplicação, cards, detalhes e sucesso vazio. SpringBootTest com PostgreSQL/Testcontainers valida migration, hash, sessão, rotação, CSRF, POST 201/Location, GET equivalente, isolamento, registros legados e erros HTTP. O engine lê a amostra oficial e exige exatamente três findings sem executá-la.
+Vitest cobre login, erro, token em memória, logout, restauração do resultado, carregamento, duplicação, cards, detalhes e sucesso vazio. SpringBootTest com PostgreSQL/Testcontainers valida migration, hash, assinatura, expiração, POST 201/Location, GET equivalente, isolamento, registros legados e erros HTTP. O engine lê a amostra oficial e exige exatamente três findings sem executá-la.
 
-Referência usada para a sessão e a renovação CSRF: [Spring Security — CSRF](https://docs.spring.io/spring-security/reference/7.0/servlet/exploits/csrf.html).
+Referência técnica: [Spring Security — OAuth 2.0 Resource Server JWT](https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/jwt.html).

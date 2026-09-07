@@ -12,6 +12,10 @@ management:
   endpoints.web.base-path: /
   endpoint.health.show-details: never
 sast:
+  jwt:
+    secret: ${SAST_JWT_SECRET:}
+    issuer: ${SAST_JWT_ISSUER:sast-api}
+    access-token-minutes: ${SAST_JWT_ACCESS_TOKEN_MINUTES:15}
   bootstrap:
     email: ${SAST_BOOTSTRAP_EMAIL:}
     password: ${SAST_BOOTSTRAP_PASSWORD:}

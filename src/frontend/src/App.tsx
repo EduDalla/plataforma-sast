@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "./api";
 import {
   AnalysisForm,
+  Dashboard,
   ErrorMessage,
   Login,
   Processing,
@@ -42,7 +43,7 @@ export function App() {
         if (!active) return;
         setSession(user);
         if (location.pathname === "/login" || location.pathname === "/")
-          navigate("/analyses/new", true);
+          navigate("/dashboard", true);
       })
       .catch((e) => {
         if (!active) return;
@@ -148,6 +149,10 @@ export function App() {
     setResult(undefined);
     navigate("/analyses/new");
   }
+  function dashboard() {
+    setError("");
+    navigate("/dashboard");
+  }
   if (!ready)
     return (
       <main className="startup">
@@ -165,16 +170,20 @@ export function App() {
       <header className="topbar">
         <a
           className="brand"
-          href="/analyses/new"
+          href="/dashboard"
           onClick={(e) => {
             e.preventDefault();
-            if (!loading) newAnalysis();
+            if (!loading) dashboard();
           }}
         >
           <Shield />
           <strong>SAST</strong>
           <span>Code security</span>
         </a>
+        <nav className="topnav" aria-label="Navegação principal">
+          <a className={path === "/dashboard" ? "active" : ""} href="/dashboard" onClick={(event) => { event.preventDefault(); dashboard(); }}>Dashboard</a>
+          <a className={path === "/analyses/new" ? "active" : ""} href="/analyses/new" onClick={(event) => { event.preventDefault(); newAnalysis(); }}>Nova análise</a>
+        </nav>
         <div className="account">
           <span>{session.email}</span>
           <button className="text-button" onClick={logout} disabled={loading}>
@@ -185,6 +194,8 @@ export function App() {
       <main className="workspace">
         {loading ? (
           <Processing />
+        ) : path === "/dashboard" ? (
+          <Dashboard data={result} onNew={newAnalysis} onOpen={() => result && navigate(`/analyses/${result.analysisId}`)} />
         ) : path === "/analyses/new" ? (
           <AnalysisForm onSubmit={create} error={error} />
         ) : result ? (

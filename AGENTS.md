@@ -15,7 +15,7 @@ Leia este arquivo antes de alterar o monorepo. Estas regras complementam a solic
 - A CP1 analisa exclusivamente arquivos Java `.java` de repositórios públicos do GitHub.
 - O fluxo é síncrono: URL/referência → archive → filtro de arquivos → parser/AST → Rules Engine → PostgreSQL → frontend.
 - As regras iniciais são credencial hardcoded (CWE-798), `Runtime.exec()` (CWE-78) e `ObjectInputStream.readObject()` (CWE-502).
-- A extensão autorizada da CP1 inclui autenticação com usuários no PostgreSQL, bootstrap por ambiente, sessão com CSRF e análises isoladas por usuário.
+- A extensão autorizada da CP1 inclui autenticação com usuários no PostgreSQL, bootstrap por ambiente, JWT Bearer e análises isoladas por usuário.
 - IA, Taint Analysis, CI/CD, Security Gates, dashboard, histórico e relatórios estão fora da CP1.
 
 ## Segurança obrigatória
@@ -33,7 +33,7 @@ Leia este arquivo antes de alterar o monorepo. Estas regras complementam a solic
 ## Limites arquiteturais
 
 - O frontend conhece somente os contratos HTTP; não acessa PostgreSQL, filesystem temporário ou token.
-- Rotas de análise exigem sessão autenticada. Nunca consultar uma análise sem filtrar também seu proprietário.
+- Rotas de análise exigem JWT Bearer autenticado. Nunca consultar uma análise sem filtrar também seu proprietário.
 - Senhas ficam somente como hash BCrypt no banco; credenciais bootstrap nunca devem ser registradas ou sobrescrever usuários existentes.
 - A API valida a origem, baixa o snapshot, orquestra a análise e persiste o resultado.
 - Parser e regras devem permanecer independentes de HTTP, GitHub e JPA.

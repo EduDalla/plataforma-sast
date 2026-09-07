@@ -1,7 +1,5 @@
 package com.fiap.sast.auth;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -13,12 +11,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,16 +22,11 @@ import java.util.Locale;
 @RequestMapping("/api/auth")
 public class AuthController {
     private final AuthenticationManager authenticationManager;
-    private final HttpSessionSecurityContextRepository securityContexts;
-    private final CsrfTokenRepository csrfTokens;
+    private final JwtService jwtService;
 
-    public AuthController(
-            AuthenticationManager authenticationManager,
-            HttpSessionSecurityContextRepository securityContexts,
-            CsrfTokenRepository csrfTokens) {
+    public AuthController(AuthenticationManager authenticationManager, JwtService jwtService) {
         this.authenticationManager = authenticationManager;
-        this.securityContexts = securityContexts;
-        this.csrfTokens = csrfTokens;
+        this.jwtService = jwtService;
     }
 
     public record Login(
@@ -47,26 +34,19 @@ public class AuthController {
             @NotBlank @Size(max = 72) String password) {
     }
 
-    public record Session(String email) {
+    public record Session(String email, String accessToken, String tokenType, long expiresIn) {
     }
 
-    public record Token(String headerName, String token) {
+    public record CurrentSession(String email) {
     }
 
-    @GetMapping("/csrf")
-    public Token csrf(CsrfToken token) {
-        return new Token(token.getHeaderName(), token.getToken());
-    }
-
-    @GetMapping("/session")
-    public Session session(Authentication authentication) {
-        return new Session(authentication.getName());
+    @org.springframework.web.bind.annotation.GetMapping("/session")
+    public CurrentSession session(Authentication authentication) {
+        return new CurrentSession(authentication.getName());
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(
-            @Valid @RequestBody Login input,
-            HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<?> login(@Valid @RequestBody Login input) {
         var email = input.email().trim().toLowerCase(Locale.ROOT);
         Authentication authentication;
 
@@ -82,17 +62,17 @@ public class AuthController {
                             "E-mail ou senha inválidos"));
         }
 
-        if (request.getSession(false) != null) {
-            request.changeSessionId();
-        }
+        var issued = jwtService.issue(authentication.getName());
+        return ResponseEntity.ok(new Session(
+                authentication.getName(),
+                issued.accessToken(),
+                "Bearer",
+                issued.expiresIn()));
+    }
 
-        // O token anterior deixa de ser válido após a autenticação.
-        csrfTokens.saveToken(null, request, response);
-
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(authentication);
-        SecurityContextHolder.setContext(context);
-        securityContexts.saveContext(context, request, response);
-        return ResponseEntity.ok(new Session(email));
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        // JWT é stateless: o cliente descarta o token em memória.
+        return ResponseEntity.noContent().build();
     }
 }
