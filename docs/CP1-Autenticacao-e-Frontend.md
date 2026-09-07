@@ -35,7 +35,7 @@ A validação exige HTTPS, host github.com exato e owner/repositório/referênci
 
 ## Frontend e testes
 
-Rotas: `/login`, `/analyses/new`, `/analyses/:analysisId`. Recarregar uma URL restaura sessão e busca o resultado salvo. Os detalhes usam disclosure acessível por teclado. Processamento síncrono mostra indicador e bloqueia novos envios. Sem achados é sucesso explícito. Sessão expirada apaga o resultado em memória e retorna ao login. Não há cancelamento de jobs porque não existem jobs assíncronos.
+Rotas: `/login`, `/analyses/new`, `/analyses/:analysisId` e o resumo de sessão em `/dashboard`. Após autenticar, a pessoa usuária é direcionada para `/analyses/new`, que permanece nessa rota quando carregada com uma sessão válida. O Dashboard só é liberado quando há uma análise concluída carregada; acesso direto sem resultado retorna à nova análise e o clique na navegação exibe orientação para cadastrar um sistema. Recarregar uma URL de análise restaura sessão e busca o resultado salvo quando a sessão ainda é válida. Os detalhes usam disclosure acessível por teclado. Processamento síncrono mostra indicador e bloqueia novos envios. Sem achados é sucesso explícito. Sessão expirada apaga o resultado em memória e retorna ao login. Não há cancelamento de jobs porque não existem jobs assíncronos.
 
 Vitest cobre login, erro, token em memória, logout, restauração do resultado, carregamento, duplicação, cards, detalhes e sucesso vazio. SpringBootTest com PostgreSQL/Testcontainers valida migration, hash, assinatura, expiração, POST 201/Location, GET equivalente, isolamento, registros legados e erros HTTP. O engine lê a amostra oficial e exige exatamente três findings sem executá-la.
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { Analysis } from "./types";
 
@@ -160,6 +160,7 @@ export function AnalysisForm({
             <label>
               Repositório público do GitHub
               <input
+                id="repository-url"
                 required
                 type="url"
                 value={url}
@@ -224,6 +225,45 @@ export function AnalysisForm({
         </aside>
       </div>
     </>
+  );
+}
+
+export function DashboardPrompt({
+  onClose,
+  onNew,
+}: {
+  onClose: () => void;
+  onNew: () => void;
+}) {
+  const actionRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    actionRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    addEventListener("keydown", onKeyDown);
+    return () => removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section
+        className="dashboard-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dashboard-modal-title"
+      >
+        <button className="modal-close" type="button" aria-label="Fechar" onClick={onClose}>×</button>
+        <span className="modal-icon" aria-hidden="true"><Shield /></span>
+        <h2 id="dashboard-modal-title">Cadastre um sistema primeiro</h2>
+        <p>Conclua uma análise de repositório para visualizar o Dashboard e identificar vulnerabilidades.</p>
+        <div className="modal-actions">
+          <button ref={actionRef} type="button" onClick={onNew}>Cadastrar novo</button>
+          <button className="secondary" type="button" onClick={onClose}>Fechar</button>
+        </div>
+      </section>
+    </div>
   );
 }
 

@@ -66,19 +66,21 @@ describe("fluxo autenticado da análise", () => {
     const { unmount } = render(<App />);
     const shell = await screen.findByRole("banner");
     expect(shell.closest(".app-shell")).toHaveAttribute("data-theme", "light");
-    const toggle = screen.getByRole("button", { name: "Ativar modo escuro" });
-    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    const lightOption = screen.getByRole("button", { name: "Tema claro" });
+    const darkOption = screen.getByRole("button", { name: "Tema escuro" });
+    expect(lightOption).toHaveAttribute("aria-pressed", "true");
+    expect(darkOption).toHaveAttribute("aria-pressed", "false");
     expect(localStorage.getItem("sast-theme")).toBeNull();
-    fireEvent.click(toggle);
+    fireEvent.click(darkOption);
     expect(shell.closest(".app-shell")).toHaveAttribute("data-theme", "dark");
-    expect(toggle).toHaveAttribute("aria-label", "Ativar modo claro");
-    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(lightOption).toHaveAttribute("aria-pressed", "false");
+    expect(darkOption).toHaveAttribute("aria-pressed", "true");
     expect(localStorage.getItem("sast-theme")).toBe("dark");
     unmount();
     render(<App />);
     const restoredShell = await screen.findByRole("banner");
     expect(restoredShell.closest(".app-shell")).toHaveAttribute("data-theme", "dark");
-    fireEvent.click(screen.getByRole("button", { name: "Ativar modo claro" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tema claro" }));
     expect(restoredShell.closest(".app-shell")).toHaveAttribute("data-theme", "light");
     expect(localStorage.getItem("sast-theme")).toBe("light");
   });
@@ -86,6 +88,33 @@ describe("fluxo autenticado da análise", () => {
     localStorage.setItem("sast-theme", "sepia");
     render(<App />);
     expect((await screen.findByRole("banner")).closest(".app-shell")).toHaveAttribute("data-theme", "light");
+  });
+  it("redireciona a URL direta do dashboard e orienta pelo clique", async () => {
+    history.replaceState(null, "", "/dashboard");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Nova análise" })).toBeInTheDocument();
+    expect(location.pathname).toBe("/analyses/new");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const dashboardLink = screen.getByRole("link", { name: "Dashboard" });
+    fireEvent.click(dashboardLink);
+    expect(location.pathname).toBe("/analyses/new");
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Cadastre um sistema primeiro");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(document.activeElement).toBe(dashboardLink));
+    fireEvent.click(dashboardLink);
+    fireEvent.click(screen.getByRole("button", { name: "Cadastrar novo" }));
+    expect(location.pathname).toBe("/analyses/new");
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(/Repositório público do GitHub/)));
+  });
+  it("libera o dashboard após concluir uma análise", async () => {
+    vi.mocked(api.create).mockResolvedValue(sample);
+    render(<App />);
+    await submit();
+    await screen.findByRole("heading", { name: /Análise concluída/ });
+    fireEvent.click(screen.getByRole("link", { name: "Dashboard" }));
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
   it("protege rotas e realiza login sem armazenar senha", async () => {
     vi.mocked(api.session).mockRejectedValue(

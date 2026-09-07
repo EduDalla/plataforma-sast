@@ -3,6 +3,7 @@ import { api, ApiError } from "./api";
 import {
   AnalysisForm,
   Dashboard,
+  DashboardPrompt,
   ErrorMessage,
   Login,
   Processing,
@@ -30,6 +31,8 @@ export function App() {
   const [result, setResult] = useState<Analysis>();
   const [loading, setLoading] = useState(false);
   const [theme, setTheme] = useState<Theme>(readTheme);
+  const [dashboardPromptOpen, setDashboardPromptOpen] = useState(false);
+  const dashboardLinkRef = useRef<HTMLAnchorElement>(null);
   const pending = useRef(false);
   const generation = useRef(0);
   const navigate = useCallback((next: string, replace = false) => {
@@ -55,7 +58,7 @@ export function App() {
         if (!active) return;
         setSession(user);
         if (location.pathname === "/login" || location.pathname === "/")
-          navigate("/dashboard", true);
+          navigate("/analyses/new", true);
       })
       .catch((e) => {
         if (!active) return;
@@ -88,6 +91,10 @@ export function App() {
   );
   useEffect(() => {
     if (!session) return;
+    if (path === "/dashboard") {
+      if (!result) navigate("/analyses/new", true);
+      return;
+    }
     const match = path.match(/^\/analyses\/([^/]+)$/);
     if (!match || match[1] === "new") {
       if (path !== "/analyses/new") navigate("/analyses/new", true);
@@ -159,14 +166,16 @@ export function App() {
   function newAnalysis() {
     setError("");
     setResult(undefined);
+    setDashboardPromptOpen(false);
     navigate("/analyses/new");
+    requestAnimationFrame(() => document.getElementById("repository-url")?.focus());
   }
   function dashboard() {
     setError("");
-    navigate("/dashboard");
+    if (result) navigate("/dashboard");
+    else setDashboardPromptOpen(true);
   }
-  function toggleTheme() {
-    const next: Theme = theme === "light" ? "dark" : "light";
+  function selectTheme(next: Theme) {
     setTheme(next);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, next);
@@ -202,21 +211,33 @@ export function App() {
           <span>Code security</span>
         </a>
         <nav className="topnav" aria-label="Navegação principal">
-          <a className={path === "/dashboard" ? "active" : ""} href="/dashboard" onClick={(event) => { event.preventDefault(); dashboard(); }}>Dashboard</a>
+          <a ref={dashboardLinkRef} className={path === "/dashboard" ? "active" : ""} href="/dashboard" onClick={(event) => { event.preventDefault(); dashboard(); }}>Dashboard</a>
           <a className={path === "/analyses/new" ? "active" : ""} href="/analyses/new" onClick={(event) => { event.preventDefault(); newAnalysis(); }}>Nova análise</a>
         </nav>
         <div className="account">
           <span>{session.email}</span>
-          <button
-            className="theme-toggle"
-            type="button"
-            aria-pressed={theme === "dark"}
-            aria-label={theme === "light" ? "Ativar modo escuro" : "Ativar modo claro"}
-            onClick={toggleTheme}
-          >
-            <span aria-hidden="true">{theme === "light" ? "☾" : "☀"}</span>
-            <span className="theme-toggle-label">{theme === "light" ? "Modo escuro" : "Modo claro"}</span>
-          </button>
+          <div className="theme-switcher" role="group" aria-label="Tema da interface">
+            <button
+              className="theme-option"
+              type="button"
+              aria-label="Tema claro"
+              aria-pressed={theme === "light"}
+              onClick={() => selectTheme("light")}
+            >
+              <span aria-hidden="true">☀</span>
+              <span className="theme-option-label">Claro</span>
+            </button>
+            <button
+              className="theme-option"
+              type="button"
+              aria-label="Tema escuro"
+              aria-pressed={theme === "dark"}
+              onClick={() => selectTheme("dark")}
+            >
+              <span aria-hidden="true">☾</span>
+              <span className="theme-option-label">Escuro</span>
+            </button>
+          </div>
           <button className="text-button" onClick={logout} disabled={loading}>
             Sair <span aria-hidden="true">↗</span>
           </button>
@@ -242,6 +263,15 @@ export function App() {
           </section>
         )}
       </main>
+      {dashboardPromptOpen && (
+        <DashboardPrompt
+          onClose={() => {
+            setDashboardPromptOpen(false);
+            requestAnimationFrame(() => dashboardLinkRef.current?.focus());
+          }}
+          onNew={newAnalysis}
+        />
+      )}
       <footer className="app-footer">
         <span>SAST / Segurança de código</span>
         <span>Fundação & Parsers · CP1</span>
