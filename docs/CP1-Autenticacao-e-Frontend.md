@@ -23,6 +23,8 @@ A autenticação usa JWT Bearer assinado com HMAC-SHA256. `SAST_JWT_SECRET` deve
 
 O frontend envia o Bearer em cada requisição protegida. A API não redireciona para páginas de login e usa erros JSON legíveis. Requisições sem token, com assinatura inválida, emissor incorreto ou token expirado recebem 401.
 
+Na área autenticada, a barra superior oferece um seletor de tema claro/escuro. O modo claro usa uma base branco-esverdeada; a escolha do usuário é persistida somente como preferência visual na chave `sast-theme` do `localStorage`. O padrão é o modo claro e a tela de login não participa dessa preferência.
+
 O DTO contém apenas `analysisId, status, repositoryUrl, reference, language, filesAnalyzed, createdAt, findings`. Cada finding mantém regra, título, severidade, CWE, descrição, caminho, linha, coluna e trecho. O timestamp usa precisão de microssegundos, compatível com PostgreSQL. Findings são ordenados por arquivo, linha, coluna e regra.
 
 ## Dados temporários e segurança

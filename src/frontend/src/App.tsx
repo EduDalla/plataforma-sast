@@ -11,6 +11,17 @@ import {
 } from "./components";
 import type { Analysis, Session } from "./types";
 
+type Theme = "light" | "dark";
+const THEME_STORAGE_KEY = "sast-theme";
+
+function readTheme(): Theme {
+  try {
+    return localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
@@ -18,6 +29,7 @@ export function App() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<Analysis>();
   const [loading, setLoading] = useState(false);
+  const [theme, setTheme] = useState<Theme>(readTheme);
   const pending = useRef(false);
   const generation = useRef(0);
   const navigate = useCallback((next: string, replace = false) => {
@@ -153,6 +165,15 @@ export function App() {
     setError("");
     navigate("/dashboard");
   }
+  function toggleTheme() {
+    const next: Theme = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, next);
+    } catch {
+      // Preferência visual é opcional quando o armazenamento não está disponível.
+    }
+  }
   if (!ready)
     return (
       <main className="startup">
@@ -166,7 +187,7 @@ export function App() {
       </main>
     );
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-theme={theme}>
       <header className="topbar">
         <a
           className="brand"
@@ -186,6 +207,16 @@ export function App() {
         </nav>
         <div className="account">
           <span>{session.email}</span>
+          <button
+            className="theme-toggle"
+            type="button"
+            aria-pressed={theme === "dark"}
+            aria-label={theme === "light" ? "Ativar modo escuro" : "Ativar modo claro"}
+            onClick={toggleTheme}
+          >
+            <span aria-hidden="true">{theme === "light" ? "☾" : "☀"}</span>
+            <span className="theme-toggle-label">{theme === "light" ? "Modo escuro" : "Modo claro"}</span>
+          </button>
           <button className="text-button" onClick={logout} disabled={loading}>
             Sair <span aria-hidden="true">↗</span>
           </button>

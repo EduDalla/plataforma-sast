@@ -48,6 +48,7 @@ const sample: Analysis = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  localStorage.clear();
   history.replaceState(null, "", "/analyses/new");
   vi.mocked(api.session).mockResolvedValue({ email: "test@example.com" });
 });
@@ -61,6 +62,31 @@ async function submit() {
 }
 
 describe("fluxo autenticado da análise", () => {
+  it("alterna e restaura o tema escuro sem persistir no carregamento inicial", async () => {
+    const { unmount } = render(<App />);
+    const shell = await screen.findByRole("banner");
+    expect(shell.closest(".app-shell")).toHaveAttribute("data-theme", "light");
+    const toggle = screen.getByRole("button", { name: "Ativar modo escuro" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(localStorage.getItem("sast-theme")).toBeNull();
+    fireEvent.click(toggle);
+    expect(shell.closest(".app-shell")).toHaveAttribute("data-theme", "dark");
+    expect(toggle).toHaveAttribute("aria-label", "Ativar modo claro");
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(localStorage.getItem("sast-theme")).toBe("dark");
+    unmount();
+    render(<App />);
+    const restoredShell = await screen.findByRole("banner");
+    expect(restoredShell.closest(".app-shell")).toHaveAttribute("data-theme", "dark");
+    fireEvent.click(screen.getByRole("button", { name: "Ativar modo claro" }));
+    expect(restoredShell.closest(".app-shell")).toHaveAttribute("data-theme", "light");
+    expect(localStorage.getItem("sast-theme")).toBe("light");
+  });
+  it("ignora uma preferência de tema inválida", async () => {
+    localStorage.setItem("sast-theme", "sepia");
+    render(<App />);
+    expect((await screen.findByRole("banner")).closest(".app-shell")).toHaveAttribute("data-theme", "light");
+  });
   it("protege rotas e realiza login sem armazenar senha", async () => {
     vi.mocked(api.session).mockRejectedValue(
       new ApiError(401, "Sessão expirada"),

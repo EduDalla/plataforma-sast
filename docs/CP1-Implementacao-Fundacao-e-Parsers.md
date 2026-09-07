@@ -455,7 +455,7 @@ Esses limites devem vir de configuração e resultar em HTTP `413` quando excedi
 
 ### 7.2 Contrato do cliente GitHub
 
-Em `Sast.Api/Integrations/GitHub`, criar:
+Em `src/backend/src/main/java/com/fiap/sast/github/GitHubClient.java`, manter o cliente:
 
 O cliente retorna um `RepositorySnapshot` com metadados e `List<RepositorySourceFile> javaFiles`; a interface `GitHubRepositoryClient` expõe `RepositorySnapshot download(String repositoryUrl, String reference)`.
 
@@ -470,7 +470,7 @@ O cliente deve mapear:
 
 ### 7.3 Contrato do parser
 
-Em `Sast.Engine/Parsing`, criar:
+Em `src/backend/src/main/java/com/fiap/sast/parsing`, manter o contrato:
 
 ```java
 public interface JavaSourceParser {
