@@ -48,7 +48,8 @@ const sample: Analysis = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
-  localStorage.clear();
+    localStorage.clear();
+    sessionStorage.clear();
   history.replaceState(null, "", "/analyses/new");
   vi.mocked(api.session).mockResolvedValue({ email: "test@example.com" });
 });
@@ -111,10 +112,18 @@ describe("fluxo autenticado da análise", () => {
     vi.mocked(api.create).mockResolvedValue(sample);
     render(<App />);
     await submit();
-    await screen.findByRole("heading", { name: /Análise concluída/ });
-    fireEvent.click(screen.getByRole("link", { name: "Dashboard" }));
     expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(location.pathname).toBe("/dashboard");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+  it("restaura o dashboard depois de recarregar a página", async () => {
+    history.replaceState(null, "", "/dashboard");
+    sessionStorage.setItem("sast-last-analysis", "analysis-1");
+    vi.mocked(api.analysis).mockResolvedValue(sample);
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(api.analysis).toHaveBeenCalledWith("analysis-1");
+    expect(location.pathname).toBe("/dashboard");
   });
   it("protege rotas e realiza login sem armazenar senha", async () => {
     vi.mocked(api.session).mockRejectedValue(
@@ -175,9 +184,10 @@ describe("fluxo autenticado da análise", () => {
       "main",
     );
     resolve(sample);
-    expect(
-      await screen.findByRole("heading", { name: /Análise concluída/ }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(location.pathname).toBe("/dashboard");
+    fireEvent.click(screen.getByRole("button", { name: /Ver mais detalhes/ }));
+    expect(await screen.findByRole("heading", { name: /Análise concluída/ })).toBeInTheDocument();
     expect(location.pathname).toBe("/analyses/analysis-1");
     fireEvent.click(screen.getByText("Ver detalhes"));
     expect(screen.getByText(sample.findings[0].description)).toBeVisible();
@@ -187,9 +197,10 @@ describe("fluxo autenticado da análise", () => {
     vi.mocked(api.create).mockResolvedValue({ ...sample, findings: [] });
     render(<App />);
     await submit();
-    expect(
-      await screen.findByText("Nenhuma vulnerabilidade encontrada"),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(document.querySelector(".severity-card")).toHaveTextContent(
+      "Nenhuma vulnerabilidade",
+    );
     expect(api.create).toHaveBeenCalledWith("https://github.com/acme/demo", "");
   });
   it("mostra erro legível e permite nova tentativa", async () => {

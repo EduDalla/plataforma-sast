@@ -320,7 +320,7 @@ export function Dashboard({
         <article className="dashboard-card files-card"><h2><span className="chart-icon">☷</span> Top arquivos críticos</h2>{files.length ? <ul>{files.map((file) => <li key={file.fileName}><span>{file.fileName}</span><b>{file.count} {file.count === 1 ? "falha" : "falhas"}</b></li>)}</ul> : <div className="dashboard-list-empty">Execute uma análise para identificar os arquivos críticos.</div>}</article>
         <article className="dashboard-card detected-card"><h2><span className="chart-icon">▣</span> Falhas detectadas</h2>{findings.length ? <ul>{findings.slice(0, 4).map((finding) => <li key={finding.ruleId + finding.line}><i className={finding.severity.toLowerCase()}/><div><strong>{finding.cwe} · {finding.title}</strong><p>{finding.description}</p></div></li>)}</ul> : <div className="dashboard-list-empty">Nenhuma falha detectada. Seu código está pronto para ser analisado.</div>}</article>
       </div>
-      {data && <button className="dashboard-last" onClick={onOpen}>Ver resultados da última análise <span aria-hidden="true">↗</span></button>}
+      {data && <button className="dashboard-last" onClick={onOpen}>Ver mais detalhes <span aria-hidden="true">↗</span></button>}
     </section>
   );
 }

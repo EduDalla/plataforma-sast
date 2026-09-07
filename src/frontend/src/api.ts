@@ -1,6 +1,25 @@
 import type { Analysis, LoginResponse, Session } from "./types";
 
-let accessToken: string | null = null;
+const ACCESS_TOKEN_KEY = "sast-access-token";
+
+function readStoredToken(): string | null {
+  try {
+    return sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeToken(token: string | null) {
+  try {
+    if (token) sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+    else sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  } catch {
+    // A sessão em memória continua funcionando quando o storage está indisponível.
+  }
+}
+
+let accessToken: string | null = readStoredToken();
 
 export class ApiError extends Error {
   constructor(
@@ -32,7 +51,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       ? undefined
       : await response.json().catch(() => undefined);
   if (!response.ok) {
-    if (response.status === 401) accessToken = null;
+    if (response.status === 401) {
+      accessToken = null;
+      storeToken(null);
+    }
     throw new ApiError(
       response.status,
       body?.detail || body?.title || "Não foi possível concluir a solicitação.",
@@ -56,10 +78,12 @@ export const api = {
       },
     );
     accessToken = response.accessToken;
+    storeToken(accessToken);
     return response;
   },
   logout: async () => {
     accessToken = null;
+    storeToken(null);
   },
   create: (repositoryUrl: string, reference: string) =>
     request<Analysis>("/api/analyses", {

@@ -14,12 +14,30 @@ import type { Analysis, Session } from "./types";
 
 type Theme = "light" | "dark";
 const THEME_STORAGE_KEY = "sast-theme";
+const LAST_ANALYSIS_KEY = "sast-last-analysis";
 
 function readTheme(): Theme {
   try {
     return localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light";
   } catch {
     return "light";
+  }
+}
+
+function readLastAnalysisId(): string | null {
+  try {
+    return sessionStorage.getItem(LAST_ANALYSIS_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeLastAnalysisId(analysisId: string | null) {
+  try {
+    if (analysisId) sessionStorage.setItem(LAST_ANALYSIS_KEY, analysisId);
+    else sessionStorage.removeItem(LAST_ANALYSIS_KEY);
+  } catch {
+    // A restauração é opcional quando o armazenamento não está disponível.
   }
 }
 
@@ -92,8 +110,35 @@ export function App() {
   useEffect(() => {
     if (!session) return;
     if (path === "/dashboard") {
-      if (!result) navigate("/analyses/new", true);
-      return;
+      if (result) return;
+      const analysisId = readLastAnalysisId();
+      if (!analysisId) {
+        navigate("/analyses/new", true);
+        return;
+      }
+      let active = true;
+      setLoading(true);
+      api
+        .analysis(analysisId)
+        .then((value) => {
+          if (active) {
+            setResult(value);
+            setLoading(false);
+          }
+        })
+        .catch((e) => {
+          if (!active) return;
+          storeLastAnalysisId(null);
+          failure(e);
+          if (!(e instanceof ApiError && e.status === 401))
+            navigate("/analyses/new", true);
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+      return () => {
+        active = false;
+      };
     }
     const match = path.match(/^\/analyses\/([^/]+)$/);
     if (!match || match[1] === "new") {
@@ -108,6 +153,7 @@ export function App() {
       .then((value) => {
         if (active) {
           setResult(value);
+          storeLastAnalysisId(value.analysisId);
           setLoading(false);
         }
       })
@@ -141,7 +187,8 @@ export function App() {
       const data = await api.create(url, reference);
       if (generation.current === operation) {
         setResult(data);
-        navigate("/analyses/" + data.analysisId);
+        storeLastAnalysisId(data.analysisId);
+        navigate("/dashboard");
       }
     } catch (e) {
       if (generation.current === operation) failure(e);
@@ -157,6 +204,7 @@ export function App() {
       generation.current++;
       setSession(null);
       setResult(undefined);
+      storeLastAnalysisId(null);
       setError("");
       navigate("/login", true);
     } catch (e) {
