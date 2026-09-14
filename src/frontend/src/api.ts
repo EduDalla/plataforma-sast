@@ -25,8 +25,9 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public requestId?: string,
   ) {
-    super(message);
+    super(requestId ? `${message} (ID da requisição: ${requestId})` : message);
   }
 }
 
@@ -58,6 +59,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new ApiError(
       response.status,
       body?.detail || body?.title || "Não foi possível concluir a solicitação.",
+      response.headers.get("X-Request-Id") || undefined,
     );
   }
   return body as T;

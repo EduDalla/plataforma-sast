@@ -1,5 +1,11 @@
 # CP1 — Implementação da Fundação e dos Parsers
 
+## Logs operacionais
+
+A API envia logs estruturados em JSON para a saída padrão do contêiner. Consulte-os com `docker compose logs api`; não são gravados tokens, senhas, e-mails, URLs, referências, código-fonte, snippets ou corpos de requisição. Cada requisição `/api` recebe um `requestId`, devolvido em `X-Request-Id` e incluído no contexto do log; o mesmo identificador aparece na mensagem de erro da interface.
+
+Os eventos estáveis são `http_request_completed` (INFO, método, rota normalizada, status e duração), `http_request_failed` (WARN para 4xx e ERROR para 5xx), `login_succeeded` (INFO), `login_failed` (WARN), `analysis_started` (INFO), `analysis_completed` (INFO após commit), `bootstrap_user_created` (INFO), além de `invalid_request`, `analysis_rejected`, `github_rate_limited`, `github_unavailable`, `analysis_limit_exceeded`, `invalid_java_source`, `invalid_security_input`, `resource_not_found` (WARN) e `request_failed` (ERROR). O campo `requestId` permite correlacionar a falha HTTP aos eventos internos.
+
 > Guia incremental para a primeira entrega da Plataforma SAST.
 >
 > Documento-base: `CP - Cyber - Documentação de Desenvolvimento.docx`.

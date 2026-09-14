@@ -13,9 +13,14 @@ import java.net.URI;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @RestController @RequestMapping("/api/analyses")
 public class AnalysisController {
+    private static final Logger log = LoggerFactory.getLogger(AnalysisController.class);
     private final GitHubClient git;
     private final SastEngine engine;
     private final AnalysisRepository repo;
@@ -38,6 +43,8 @@ public class AnalysisController {
     @PostMapping @Transactional
     public ResponseEntity<Result> create(@Valid @RequestBody Request request, Principal principal) {
         var owner = users.findByEmail(principal.getName()).orElseThrow();
+        log.atInfo().setMessage("analysis_started").addKeyValue("event", "analysis_started")
+                .addKeyValue("userId", owner.id.toString()).log();
         var snapshot = git.download(request.repositoryUrl(), request.reference());
         if (snapshot.files().isEmpty()) throw new Unprocessable();
         var analysis = new Analysis(); analysis.userId = owner.id;
@@ -52,6 +59,19 @@ public class AnalysisController {
             analysis.findings.add(finding);
         }));
         repo.save(analysis);
+        var findingCount = analysis.findings.size();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() {
+                    log.atInfo().setMessage("analysis_completed")
+                            .addKeyValue("event", "analysis_completed")
+                            .addKeyValue("analysisId", analysis.id.toString())
+                            .addKeyValue("userId", owner.id.toString())
+                            .addKeyValue("filesAnalyzed", analysis.filesAnalyzed)
+                            .addKeyValue("findings", findingCount).log();
+                }
+            });
+        }
         return ResponseEntity.created(URI.create("/api/analyses/" + analysis.id)).body(Result.from(analysis));
     }
     @GetMapping("/{id}") @Transactional(readOnly = true)

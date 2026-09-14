@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: sast-api
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/sast}
     username: ${SPRING_DATASOURCE_USERNAME:sast}
@@ -33,3 +35,10 @@ server:
         http-only: true
         same-site: lax
         secure: ${SAST_COOKIE_SECURE:false}
+logging:
+  structured:
+    format:
+      console: logstash
+  level:
+    root: INFO
+    com.fiap.sast: INFO

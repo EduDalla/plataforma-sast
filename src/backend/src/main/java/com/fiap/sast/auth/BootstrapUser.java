@@ -8,9 +8,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class BootstrapUser implements ApplicationRunner {
+    private static final Logger log = LoggerFactory.getLogger(BootstrapUser.class);
     private final UserRepository users;
     private final PasswordEncoder encoder;
     private final String email;
@@ -32,5 +35,7 @@ public class BootstrapUser implements ApplicationRunner {
         }
         var user = new AppUser(); user.email = email; user.passwordHash = encoder.encode(password);
         users.save(user);
+        log.atInfo().setMessage("bootstrap_user_created")
+                .addKeyValue("event", "bootstrap_user_created").log();
     }
 }

@@ -17,10 +17,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Locale;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
 
@@ -56,6 +59,8 @@ public class AuthController {
                     input.password());
             authentication = authenticationManager.authenticate(credentials);
         } catch (AuthenticationException exception) {
+            log.atWarn().setMessage("login_failed").addKeyValue("event", "login_failed")
+                    .addKeyValue("reason", "invalid_credentials").log();
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ProblemDetail.forStatusAndDetail(
                             HttpStatus.UNAUTHORIZED,
@@ -63,6 +68,7 @@ public class AuthController {
         }
 
         var issued = jwtService.issue(authentication.getName());
+        log.atInfo().setMessage("login_succeeded").addKeyValue("event", "login_succeeded").log();
         return ResponseEntity.ok(new Session(
                 authentication.getName(),
                 issued.accessToken(),
