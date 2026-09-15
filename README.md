@@ -7,6 +7,7 @@ Nesta etapa, a aplicação recebe a URL de um repositório público do GitHub, b
 ## Documentação
 
 - [Guia de implementação da CP1](docs/CP1-Implementacao-Fundacao-e-Parsers.md)
+- [ADR-001 — IA local e análise semântica da CP2](docs/adr/ADR-001-ia-e-analise-semantica.md)
 - [Regras para agentes Codex](AGENTS.md)
 
 ## Estrutura
