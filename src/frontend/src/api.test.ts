@@ -27,3 +27,20 @@ it("trata respostas não JSON e falhas de rede", async () => {
   });
   await expect(api.login("test@example.com", "password")).rejects.toMatchObject({ status: 0 });
 });
+
+it("não exibe o identificador técnico da requisição na mensagem", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: "Não foi possível analisar o repositório." }), {
+        status: 500,
+        headers: { "Content-Type": "application/json", "X-Request-Id": "0f5569c6-9ea5-4080-9df1-9e469e312750" },
+      }),
+    ),
+  );
+
+  await expect(api.login("test@example.com", "password")).rejects.toMatchObject({
+    status: 500,
+    message: "Não foi possível analisar o repositório.",
+  });
+});

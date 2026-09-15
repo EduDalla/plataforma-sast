@@ -27,7 +27,7 @@ export class ApiError extends Error {
     message: string,
     public requestId?: string,
   ) {
-    super(requestId ? `${message} (ID da requisição: ${requestId})` : message);
+    super(message);
   }
 }
 
