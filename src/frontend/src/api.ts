@@ -1,4 +1,4 @@
-import type { Analysis, LoginResponse, Session } from "./types";
+import type { Analysis, HistoryPage, LoginResponse, Session, SystemsPage } from "./types";
 
 const ACCESS_TOKEN_KEY = "sast-access-token";
 
@@ -98,4 +98,8 @@ export const api = {
     }),
   analysis: (id: string) =>
     request<Analysis>("/api/analyses/" + encodeURIComponent(id)),
+  systems: (page = 0, size = 20) =>
+    request<SystemsPage>(`/api/analyses/systems?page=${page}&size=${size}`),
+  history: (owner: string, repository: string, page = 0, size = 20) =>
+    request<HistoryPage>(`/api/analyses/systems/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/history?page=${page}&size=${size}`),
 };

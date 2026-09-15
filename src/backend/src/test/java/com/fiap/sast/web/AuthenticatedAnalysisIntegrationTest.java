@@ -149,4 +149,23 @@ class AuthenticatedAnalysisIntegrationTest {
         }
         assertEquals(before, analyses.count());
     }
+
+    @Test void reusesAnalysisWhenSecurityFindingsDoNotChange() throws Exception {
+        var session = login("first@example.com", "integration-test-password");
+        when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot("acme", "dedupe",
+                "https://github.com/acme/dedupe", "main", List.of(new GitHubClient.File("Example.java",
+                "class Example { String password = \"x\"; }"))));
+        var first = mvc.perform(post("/api/analyses").session(session).with(csrf()).contentType("application/json")
+                        .content("{\"repositoryUrl\":\"https://github.com/acme/dedupe\",\"reference\":\"main\"}"))
+                .andExpect(status().isCreated()).andReturn();
+        var firstId = JsonPath.read(first.getResponse().getContentAsString(), "$.analysisId").toString();
+
+        var repeated = mvc.perform(post("/api/analyses").session(session).with(csrf()).contentType("application/json")
+                        .content("{\"repositoryUrl\":\"https://github.com/acme/dedupe\",\"reference\":\"main\"}"))
+                .andExpect(status().isOk()).andReturn();
+        assertEquals(firstId, JsonPath.read(repeated.getResponse().getContentAsString(), "$.analysisId").toString());
+        assertEquals(1, analyses.findByUserIdOrderByCreatedAtDescIdDesc(
+                users.findByEmail("first@example.com").orElseThrow().id).stream()
+                .filter(analysis -> "dedupe".equals(analysis.repositoryName)).count());
+    }
 }

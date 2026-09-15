@@ -9,8 +9,9 @@ import {
   Processing,
   Results,
   Shield,
+  SystemDashboard,
 } from "./components";
-import type { Analysis, Session } from "./types";
+import type { Analysis, HistoryEntry, Session, SystemsPage } from "./types";
 
 type Theme = "light" | "dark";
 const THEME_STORAGE_KEY = "sast-theme";
@@ -47,12 +48,25 @@ export function App() {
   const [path, setPath] = useState(location.pathname);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Analysis>();
+  const [systems, setSystems] = useState<SystemsPage>();
+  const [systemHistory, setSystemHistory] = useState<HistoryEntry[]>([]);
+  const [systemHistoryTotal, setSystemHistoryTotal] = useState(0);
+  const [systemHistoryPage, setSystemHistoryPage] = useState(0);
+  const [systemKey, setSystemKey] = useState<{ owner: string; repository: string }>();
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [systemUpdating, setSystemUpdating] = useState(false);
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [dashboardPromptOpen, setDashboardPromptOpen] = useState(false);
   const dashboardLinkRef = useRef<HTMLAnchorElement>(null);
   const pending = useRef(false);
   const generation = useRef(0);
+  const loadSystems = useCallback(async (page = 0) => {
+    if (typeof api.systems !== "function") return undefined;
+    const value = await api.systems(page);
+    setSystems(value);
+    return value;
+  }, []);
   const navigate = useCallback((next: string, replace = false) => {
     if (replace) history.replaceState(null, "", next);
     else history.pushState(null, "", next);
@@ -64,6 +78,10 @@ export function App() {
       setPath(location.pathname);
       setError("");
       setResult(undefined);
+      setSystemHistory([]);
+      setSystemHistoryTotal(0);
+      setSystemHistoryPage(0);
+      setSystemKey(undefined);
     };
     addEventListener("popstate", pop);
     return () => removeEventListener("popstate", pop);
@@ -75,8 +93,17 @@ export function App() {
       .then((user) => {
         if (!active) return;
         setSession(user);
-        if (location.pathname === "/login" || location.pathname === "/")
-          navigate("/analyses/new", true);
+        if (typeof api.systems !== "function") {
+          if (location.pathname === "/login" || location.pathname === "/") navigate("/analyses/new", true);
+          return;
+        }
+        loadSystems().then((value) => {
+          if (!active) return;
+          if (location.pathname === "/login" || location.pathname === "/")
+            navigate(value?.totalSystems ? "/dashboard" : "/analyses/new", true);
+          else if (location.pathname === "/dashboard" && !value?.totalSystems)
+            navigate("/analyses/new", true);
+        }).catch(failure);
       })
       .catch((e) => {
         if (!active) return;
@@ -89,7 +116,7 @@ export function App() {
     return () => {
       active = false;
     };
-  }, [navigate]);
+  }, [navigate, loadSystems]);
   const failure = useCallback(
     (e: unknown) => {
       setError(
@@ -109,7 +136,35 @@ export function App() {
   );
   useEffect(() => {
     if (!session) return;
+    const systemMatch = path.match(/^\/systems\/([^/]+)\/([^/]+)$/);
+    if (systemMatch) {
+      const owner = decodeURIComponent(systemMatch[1]);
+      const repository = decodeURIComponent(systemMatch[2]);
+      if (systemKey?.owner === owner && systemKey.repository === repository && result) return;
+      setSystemKey({ owner, repository });
+      let active = true;
+      setSystemUpdating(true);
+      api.history(owner, repository).then((page) => {
+        if (!active) return;
+        setSystemHistory(page.history);
+        setSystemHistoryTotal(page.total);
+        setSystemHistoryPage(0);
+        const selected = page.history[0];
+        if (!selected) throw new Error("Este sistema ainda não possui análises.");
+        return api.analysis(selected.analysisId);
+      }).then((value) => {
+        if (active && value) setResult(value);
+      }).catch((e) => active && failure(e)).finally(() => active && setSystemUpdating(false));
+      return () => { active = false; };
+    }
     if (path === "/dashboard") {
+      if (systems) return;
+      if (typeof api.systems === "function") {
+        let active = true;
+        setLoading(true);
+        loadSystems().catch((e) => active && failure(e)).finally(() => active && setLoading(false));
+        return () => { active = false; };
+      }
       if (result) return;
       const analysisId = readLastAnalysisId();
       if (!analysisId) {
@@ -166,12 +221,17 @@ export function App() {
     return () => {
       active = false;
     };
-  }, [path, session, result?.analysisId, navigate, failure]);
+  }, [path, session, systems, result?.analysisId, navigate, failure, loadSystems]);
   async function login(email: string, password: string) {
     setError("");
     try {
-      setSession(await api.login(email, password));
-      navigate("/analyses/new", true);
+      const value = await api.login(email, password);
+      setSession(value);
+      if (typeof api.systems !== "function") navigate("/analyses/new", true);
+      else {
+        const page = await loadSystems();
+        navigate(page?.totalSystems ? "/dashboard" : "/analyses/new", true);
+      }
     } catch (e) {
       failure(e);
     }
@@ -179,7 +239,7 @@ export function App() {
   async function create(url: string, reference: string) {
     if (pending.current) return;
     pending.current = true;
-    setLoading(true);
+    setSubmitting(true);
     setError("");
     setResult(undefined);
     const operation = ++generation.current;
@@ -188,13 +248,14 @@ export function App() {
       if (generation.current === operation) {
         setResult(data);
         storeLastAnalysisId(data.analysisId);
+        if (typeof api.systems === "function") await loadSystems();
         navigate("/dashboard");
       }
     } catch (e) {
       if (generation.current === operation) failure(e);
     } finally {
       pending.current = false;
-      setLoading(false);
+      setSubmitting(false);
     }
   }
   async function logout() {
@@ -204,6 +265,7 @@ export function App() {
       generation.current++;
       setSession(null);
       setResult(undefined);
+      setSystems(undefined);
       storeLastAnalysisId(null);
       setError("");
       navigate("/login", true);
@@ -214,14 +276,36 @@ export function App() {
   function newAnalysis() {
     setError("");
     setResult(undefined);
+    setSubmitting(false);
     setDashboardPromptOpen(false);
     navigate("/analyses/new");
     requestAnimationFrame(() => document.getElementById("repository-url")?.focus());
   }
   function dashboard() {
     setError("");
-    if (result) navigate("/dashboard");
+    if (result || systems?.totalSystems) navigate("/dashboard");
     else setDashboardPromptOpen(true);
+  }
+  function openSystem(owner: string, repository: string) {
+    setError("");
+    setResult(undefined);
+    setSystemHistory([]);
+    setSystemHistoryTotal(0);
+    setSystemHistoryPage(0);
+    navigate(`/systems/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}`);
+  }
+  function loadMoreSystemHistory() {
+    if (!systemKey) return;
+    const nextPage = systemHistoryPage + 1;
+    setSystemUpdating(true);
+    api.history(systemKey.owner, systemKey.repository, nextPage).then((page) => {
+      setSystemHistory((current) => [...current, ...page.history]);
+      setSystemHistoryPage(nextPage);
+    }).catch(failure).finally(() => setSystemUpdating(false));
+  }
+  function changeSystemsPage(page: number) {
+    setLoading(true);
+    loadSystems(page).catch(failure).finally(() => setLoading(false));
   }
   function selectTheme(next: Theme) {
     setTheme(next);
@@ -292,22 +376,23 @@ export function App() {
         </div>
       </header>
       <main className="workspace">
-        {loading ? (
-          <Processing />
-        ) : path === "/dashboard" ? (
-          <Dashboard data={result} onNew={newAnalysis} onOpen={() => result && navigate(`/analyses/${result.analysisId}`)} />
+        {path === "/dashboard" ? (
+          systems ? <Dashboard systems={systems} central onOpen={() => undefined} onOpenSystem={openSystem} onPage={changeSystemsPage} /> : <section className="panel system-page-loading" role="status">Carregando sistemas analisados…</section>
+        ) : path.match(/^\/systems\/[^/]+\/[^/]+$/) && result ? (
+          <SystemDashboard data={result} history={systemHistory} totalHistory={systemHistoryTotal} loading={systemUpdating} onSelect={(id) => { if (id === result.analysisId) return; setSystemUpdating(true); api.analysis(id).then(setResult).catch(failure).finally(() => setSystemUpdating(false)); }} onMore={loadMoreSystemHistory} hasMore={systemHistory.length < systemHistoryTotal} onBack={() => navigate("/dashboard")} onOpen={() => navigate(`/analyses/${result.analysisId}`)} />
+        ) : path.match(/^\/systems\/[^/]+\/[^/]+$/) ? (
+          <section className="panel system-page-loading" role="status">Carregando dashboard do sistema…</section>
         ) : path === "/analyses/new" ? (
-          <AnalysisForm onSubmit={create} error={error} />
+          <AnalysisForm onSubmit={create} error={error} busy={submitting} />
         ) : result ? (
           <>
             <ErrorMessage message={error} />
-            <Results data={result} onNew={newAnalysis} />
+            <Results data={result} />
           </>
         ) : (
           <section className="panel">
             <h1>Não foi possível abrir a análise</h1>
             <ErrorMessage message={error} />
-            <button onClick={newAnalysis}>Nova análise</button>
           </section>
         )}
       </main>

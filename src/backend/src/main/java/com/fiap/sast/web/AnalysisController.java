@@ -13,6 +13,7 @@ import java.net.URI;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -40,6 +41,67 @@ public class AnalysisController {
                     analysis.language, analysis.filesAnalyzed, analysis.createdAt, findings);
         }
     }
+    public record HistoryEntry(UUID analysisId, String reference, Instant createdAt, int filesAnalyzed, int findings) {}
+    public record SystemCard(String owner, String repositoryName, String repositoryUrl,
+            Instant latestCreatedAt, int totalAnalyses, HistoryEntry latest) {}
+    public record SystemsPage(List<SystemCard> systems, int page, int size, int totalSystems,
+            int totalAnalyses, int totalFindings, int totalCritical, int totalFiles) {}
+    public record HistoryPage(String owner, String repositoryName, List<HistoryEntry> history,
+            int page, int size, int total) {}
+
+    private static HistoryEntry history(Analysis a) {
+        return new HistoryEntry(a.id, a.reference, a.createdAt, a.filesAnalyzed, a.findings.size());
+    }
+
+    private static String findingsFingerprint(Analysis analysis) {
+        return analysis.findings.stream()
+                .map(f -> String.join("\u001f", f.ruleId, f.title, f.severity, f.cwe, f.description,
+                        f.fileName, Integer.toString(f.line), Integer.toString(f.column), f.snippet))
+                .sorted().collect(Collectors.joining("\u001e"));
+    }
+
+    private static List<Analysis> distinctExecutions(List<Analysis> analyses) {
+        var known = new HashSet<String>();
+        return analyses.stream().filter(analysis -> known.add(analysis.repositoryOwner + "\u001d"
+                + analysis.repositoryName + "\u001d" + String.valueOf(analysis.reference) + "\u001d"
+                + findingsFingerprint(analysis))).toList();
+    }
+
+    @GetMapping("/systems") @Transactional(readOnly = true)
+    public SystemsPage systems(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size, Principal principal) {
+        var owner = users.findByEmail(principal.getName()).orElseThrow();
+        page = Math.max(0, page); size = Math.min(20, Math.max(1, size));
+        var analyses = distinctExecutions(repo.findByUserIdOrderByCreatedAtDescIdDesc(owner.id));
+        var grouped = new LinkedHashMap<String, List<Analysis>>();
+        analyses.forEach(a -> grouped.computeIfAbsent(a.repositoryOwner + "/" + a.repositoryName,
+                ignored -> new ArrayList<>()).add(a));
+        var cards = grouped.values().stream().map(items -> {
+            var latest = items.get(0);
+            return new SystemCard(latest.repositoryOwner, latest.repositoryName, latest.repositoryUrl,
+                    latest.createdAt, items.size(), history(latest));
+        }).toList();
+        var from = Math.min(page * size, cards.size());
+        var to = Math.min(from + size, cards.size());
+        return new SystemsPage(cards.subList(from, to), page, size, cards.size(), analyses.size(),
+                analyses.stream().mapToInt(a -> a.findings.size()).sum(),
+                analyses.stream().flatMap(a -> a.findings.stream()).mapToInt(f -> "Critical".equals(f.severity) ? 1 : 0).sum(),
+                analyses.stream().mapToInt(a -> a.filesAnalyzed).sum());
+    }
+
+    @GetMapping("/systems/{owner}/{repository}/history") @Transactional(readOnly = true)
+    public HistoryPage history(@PathVariable String owner, @PathVariable String repository,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,
+            Principal principal) {
+        var user = users.findByEmail(principal.getName()).orElseThrow();
+        page = Math.max(0, page); size = Math.min(20, Math.max(1, size));
+        var all = distinctExecutions(repo.findByUserIdOrderByCreatedAtDescIdDesc(user.id).stream()
+                .filter(a -> owner.equals(a.repositoryOwner) && repository.equals(a.repositoryName)).toList());
+        var from = Math.min(page * size, all.size());
+        var to = Math.min(from + size, all.size());
+        return new HistoryPage(owner, repository, all.subList(from, to).stream().map(AnalysisController::history).toList(),
+                page, size, all.size());
+    }
     @PostMapping @Transactional
     public ResponseEntity<Result> create(@Valid @RequestBody Request request, Principal principal) {
         var owner = users.findByEmail(principal.getName()).orElseThrow();
@@ -58,6 +120,18 @@ public class AnalysisController {
             finding.line = f.line(); finding.column = f.column(); finding.snippet = f.snippet();
             analysis.findings.add(finding);
         }));
+        var previous = repo.findFirstByUserIdAndRepositoryOwnerAndRepositoryNameAndReferenceOrderByCreatedAtDescIdDesc(
+                owner.id, analysis.repositoryOwner, analysis.repositoryName, analysis.reference);
+        if (previous.isPresent() && findingsFingerprint(previous.get()).equals(findingsFingerprint(analysis))) {
+            var reused = previous.get();
+            reused.createdAt = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+            repo.save(reused);
+            log.atInfo().setMessage("analysis_reused")
+                    .addKeyValue("event", "analysis_reused")
+                    .addKeyValue("analysisId", reused.id.toString())
+                    .addKeyValue("userId", owner.id.toString()).log();
+            return ResponseEntity.ok(Result.from(reused));
+        }
         repo.save(analysis);
         var findingCount = analysis.findings.size();
         if (TransactionSynchronizationManager.isSynchronizationActive()) {

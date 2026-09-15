@@ -2,7 +2,7 @@
 
 Monorepo da plataforma de análise estática de segurança desenvolvida para a CP1 — Fundação e Parsers.
 
-Nesta etapa, a aplicação recebe a URL de um repositório público do GitHub, baixa seu snapshot, analisa arquivos Java sem executá-los e apresenta vulnerabilidades encontradas por regras baseadas em AST.
+Nesta etapa, a aplicação recebe a URL de um repositório público do GitHub, baixa seu snapshot, analisa arquivos Java sem executá-los e apresenta vulnerabilidades encontradas por regras baseadas em AST. O Dashboard agrupa os sistemas por repositório e mantém o histórico das análises por data e referência Git.
 
 ## Documentação
 
@@ -50,7 +50,7 @@ Configure `SAST_BOOTSTRAP_EMAIL` e `SAST_BOOTSTRAP_PASSWORD` no seu `.env` local
 
 Abra o frontend e entre com essa conta. O access token JWT dura 15 minutos e fica na `sessionStorage` somente para preservar a sessão durante um F5 na mesma aba; ao sair, expirar ou fechar a aba, ele é removido. Cada usuário consulta apenas suas próprias análises; registros anteriores à autenticação são preservados, mas ficam inacessíveis. Configure `SAST_JWT_SECRET` com uma chave Base64 de pelo menos 32 bytes.
 
-O fluxo visual inclui login, nova análise de repositório público Java, processamento, resultados e detalhes expansíveis. A URL de um resultado pode ser reaberta pelo mesmo usuário. Dashboard, histórico visual e relatórios continuam fora do escopo.
+O fluxo visual inclui login, nova análise de repositório público Java, processamento, uma central de sistemas e um dashboard individual por sistema. Cada dashboard individual permite selecionar uma execução do histórico por data e referência Git, com a mais recente à direita e rolagem para as anteriores. Repetir uma análise sem mudanças nos findings atualiza a data da execução existente, sem criar outro item. A URL de um resultado pode ser reaberta pelo mesmo usuário.
 
 ## Verificação
 

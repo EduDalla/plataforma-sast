@@ -1,6 +1,6 @@
 # Extensão autorizada — autenticação e frontend
 
-A CP1 foi ampliada por solicitação explícita para incluir login, persistência de usuários e isolamento de análises. O mockup orienta login, nova análise, processamento, resultados e detalhes. A entrada continua sendo URL pública do GitHub e referência opcional, exclusivamente para Java. Dashboard, histórico, relatórios, configurações, cadastro e recuperação de senha não fazem parte desta extensão.
+A CP1 foi ampliada por solicitação explícita para incluir login, persistência de usuários, isolamento de análises e dashboard com histórico por sistema. O mockup orienta login, nova análise, processamento, resultados e detalhes. A entrada continua sendo URL pública do GitHub e referência opcional, exclusivamente para Java. Relatórios, configurações, cadastro e recuperação de senha não fazem parte desta extensão.
 
 ## Acesso e implantação
 
@@ -17,7 +17,7 @@ A autenticação usa JWT Bearer assinado com HMAC-SHA256. `SAST_JWT_SECRET` deve
 | POST /api/auth/login | JSON `{email, password}` | 200 com `{email, accessToken, tokenType, expiresIn}`; 401 genérico para credencial inválida |
 | GET /api/auth/session | Header `Authorization: Bearer ...` | 200 com `{email}` ou 401 |
 | POST /api/auth/logout | Nenhuma (logout local) | 204 |
-| POST /api/analyses | Header Bearer e JSON `{repositoryUrl, reference?}` | 201, Location e DTO da análise |
+| POST /api/analyses | Header Bearer e JSON `{repositoryUrl, reference?}` | 201 e Location para uma execução nova; 200 e o mesmo `analysisId` quando os findings da mesma referência não mudaram |
 | GET /api/analyses/{id} | Header Bearer | 200 com o mesmo DTO; 404 para ID inexistente, legado ou de outro usuário |
 | GET /health | Nenhuma | Saúde da aplicação, sem detalhes internos |
 
@@ -35,7 +35,7 @@ A validação exige HTTPS, host github.com exato e owner/repositório/referênci
 
 ## Frontend e testes
 
-Rotas: `/login`, `/analyses/new`, `/analyses/:analysisId` e o resumo de sessão em `/dashboard`. Após autenticar, a pessoa usuária é direcionada para `/analyses/new`, que permanece nessa rota quando carregada com uma sessão válida. Depois de concluir uma análise, a pessoa usuária é direcionada ao `/dashboard`; o botão **Ver mais detalhes** abre `/analyses/:analysisId` com os achados completos. O Dashboard só é liberado quando há uma análise concluída carregada; acesso direto sem resultado retorna à nova análise e o clique na navegação exibe orientação para cadastrar um sistema. Recarregar a página mantém o JWT da `sessionStorage`, restaura o ID da última análise e busca novamente o resultado no backend quando a sessão ainda é válida. Os detalhes usam disclosure acessível por teclado. Processamento síncrono mostra indicador e bloqueia novos envios. Sem achados é sucesso explícito. Sessão expirada apaga o resultado em memória e retorna ao login. Não há cancelamento de jobs porque não existem jobs assíncronos.
+Rotas: `/login`, `/analyses/new`, `/analyses/:analysisId`, `/dashboard` e `/systems/:owner/:repository`. A API expõe `/api/analyses/systems` para listar sistemas agrupados por owner/repositório e `/api/analyses/systems/{owner}/{repository}/history` para o histórico paginado. Após autenticar ou recarregar, a pessoa usuária vai à central `/dashboard` quando possui sistemas analisados e à nova análise quando não possui. A central mostra somente cards; cada card abre o dashboard individual do sistema. Esse dashboard seleciona a análise mais recente por padrão e permite trocar a execução por data e referência Git, atualizando todos os indicadores e gráficos para a execução selecionada. O histórico é horizontal, com a execução recente à direita e rolagem para as anteriores. Ao repetir uma análise da mesma referência com findings idênticos, a API atualiza a data da execução existente, sem adicionar item ao histórico. O acesso aos achados completos permanece em `/analyses/:analysisId`. Processamento síncrono mostra indicador e bloqueia novos envios. Sem achados é sucesso explícito. Sessão expirada apaga o resultado em memória e retorna ao login. Não há cancelamento de jobs porque não existem jobs assíncronos.
 
 Vitest cobre login, erro, token em memória, logout, restauração do resultado, carregamento, duplicação, cards, detalhes e sucesso vazio. SpringBootTest com PostgreSQL/Testcontainers valida migration, hash, assinatura, expiração, POST 201/Location, GET equivalente, isolamento, registros legados e erros HTTP. O engine lê a amostra oficial e exige exatamente três findings sem executá-la.
 

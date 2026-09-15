@@ -13,7 +13,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -64,6 +67,36 @@ class AnalysisControllerTest {
                 .andExpect(jsonPath("$.findings[0].line").isNumber())
                 .andExpect(jsonPath("$.findings[0].column").isNumber())
                 .andExpect(jsonPath("$.findings[0].snippet").isString());
+    }
+
+    @Test
+    void reusesExistingAnalysisWhenFindingsAreUnchanged() throws Exception {
+        var github = mock(GitHubClient.class);
+        when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot(
+                "acme", "demo", "https://github.com/acme/demo", "main",
+                List.of(new GitHubClient.File("Example.java", "class Example { String password = \"x\"; }"))));
+        var repository = mock(AnalysisRepository.class);
+        var saved = new AtomicReference<Analysis>();
+        when(repository.findFirstByUserIdAndRepositoryOwnerAndRepositoryNameAndReferenceOrderByCreatedAtDescIdDesc(
+                any(), eq("acme"), eq("demo"), eq("main"))).thenAnswer(invocation -> Optional.ofNullable(saved.get()));
+        when(repository.save(any(Analysis.class))).thenAnswer(invocation -> {
+            saved.set(invocation.getArgument(0));
+            return saved.get();
+        });
+        var mvc = mvc(github, repository);
+
+        var first = mvc.perform(post("/api/analyses").principal(() -> "test@example.com")
+                        .contentType("application/json")
+                        .content("{\"repositoryUrl\":\"https://github.com/acme/demo\",\"reference\":\"main\"}"))
+                .andExpect(status().isCreated()).andReturn();
+        var second = mvc.perform(post("/api/analyses").principal(() -> "test@example.com")
+                        .contentType("application/json")
+                        .content("{\"repositoryUrl\":\"https://github.com/acme/demo\",\"reference\":\"main\"}"))
+                .andExpect(status().isOk()).andReturn();
+
+        var idPattern = ".*\\\"analysisId\\\":\\\"([^\\\"]+).*";
+        assertEquals(first.getResponse().getContentAsString().replaceAll(idPattern, "$1"),
+                second.getResponse().getContentAsString().replaceAll(idPattern, "$1"));
     }
 
     private static MockMvc mvc(GitHubClient github, AnalysisRepository repository) {

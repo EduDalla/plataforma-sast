@@ -21,6 +21,8 @@ vi.mock("./api", async (importOriginal) => {
       logout: vi.fn(),
       create: vi.fn(),
       analysis: vi.fn(),
+      systems: vi.fn(),
+      history: vi.fn(),
     },
   };
 });
@@ -52,6 +54,7 @@ beforeEach(() => {
     sessionStorage.clear();
   history.replaceState(null, "", "/analyses/new");
   vi.mocked(api.session).mockResolvedValue({ email: "test@example.com" });
+  vi.mocked(api.systems).mockResolvedValue({ systems: [], page: 0, size: 20, totalSystems: 0, totalAnalyses: 0, totalFindings: 0, totalCritical: 0, totalFiles: 0 });
 });
 afterEach(cleanup);
 async function submit() {
@@ -116,13 +119,43 @@ describe("fluxo autenticado da análise", () => {
     expect(location.pathname).toBe("/dashboard");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+  it("abre o dashboard individual pelo card do sistema", async () => {
+    vi.mocked(api.systems).mockResolvedValue({
+      systems: [{ owner: "acme", repositoryName: "demo", repositoryUrl: sample.repositoryUrl, latestCreatedAt: sample.createdAt, totalAnalyses: 2, latest: { analysisId: "analysis-1", reference: "main", createdAt: sample.createdAt, filesAnalyzed: 1, findings: 1 } }],
+      page: 0, size: 20, totalSystems: 1, totalAnalyses: 2, totalFindings: 2, totalCritical: 2, totalFiles: 2,
+    });
+    vi.mocked(api.history).mockResolvedValue({ owner: "acme", repositoryName: "demo", page: 0, size: 20, total: 1, history: [{ analysisId: "analysis-1", reference: "main", createdAt: sample.createdAt, filesAnalyzed: 1, findings: 1 }] });
+    vi.mocked(api.analysis).mockResolvedValue(sample);
+    history.replaceState(null, "", "/dashboard");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Histórico de aplicações" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Abrir dashboard de demo" }));
+    expect(location.pathname).toBe("/systems/acme/demo");
+    expect(await screen.findByText("DASHBOARD DO SISTEMA")).toBeInTheDocument();
+  });
+  it("mantém o dashboard do sistema visível ao trocar uma execução do histórico", async () => {
+    const older = { ...sample, analysisId: "analysis-2", reference: "release", createdAt: "2026-09-05T12:00:00Z", findings: [] };
+    vi.mocked(api.history).mockResolvedValue({ owner: "acme", repositoryName: "demo", page: 0, size: 20, total: 2, history: [
+      { analysisId: "analysis-1", reference: "main", createdAt: sample.createdAt, filesAnalyzed: 1, findings: 1 },
+      { analysisId: "analysis-2", reference: "release", createdAt: older.createdAt, filesAnalyzed: 1, findings: 0 },
+    ] });
+    vi.mocked(api.analysis).mockImplementation(async (id) => id === "analysis-2" ? older : sample);
+    history.replaceState(null, "", "/systems/acme/demo");
+    render(<App />);
+    expect(await screen.findByText("DASHBOARD DO SISTEMA")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /release/ }));
+    expect(screen.getByText("DASHBOARD DO SISTEMA")).toBeInTheDocument();
+    expect(await screen.findByText(/Nenhuma vulnerabilidade/)).toBeInTheDocument();
+    expect(api.analysis).toHaveBeenCalledWith("analysis-2");
+  });
   it("restaura o dashboard depois de recarregar a página", async () => {
     history.replaceState(null, "", "/dashboard");
     sessionStorage.setItem("sast-last-analysis", "analysis-1");
+    vi.mocked(api.systems).mockResolvedValue({ systems: [{ owner: "acme", repositoryName: "demo", repositoryUrl: sample.repositoryUrl, latestCreatedAt: sample.createdAt, totalAnalyses: 1, latest: { analysisId: "analysis-1", reference: "main", createdAt: sample.createdAt, filesAnalyzed: 1, findings: 1 } }], page: 0, size: 20, totalSystems: 1, totalAnalyses: 1, totalFindings: 1, totalCritical: 1, totalFiles: 1 });
     vi.mocked(api.analysis).mockResolvedValue(sample);
     render(<App />);
     expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
-    expect(api.analysis).toHaveBeenCalledWith("analysis-1");
+    expect(api.systems).toHaveBeenCalled();
     expect(location.pathname).toBe("/dashboard");
   });
   it("protege rotas e realiza login sem armazenar senha", async () => {
@@ -163,6 +196,7 @@ describe("fluxo autenticado da análise", () => {
     );
   });
   it("envia referência, impede duplicação e exibe detalhes do resultado", async () => {
+    vi.mocked(api.systems).mockResolvedValue({ systems: [{ owner: "acme", repositoryName: "demo", repositoryUrl: sample.repositoryUrl, latestCreatedAt: sample.createdAt, totalAnalyses: 1, latest: { analysisId: sample.analysisId, reference: sample.reference, createdAt: sample.createdAt, filesAnalyzed: 1, findings: 1 } }], page: 0, size: 20, totalSystems: 1, totalAnalyses: 1, totalFindings: 1, totalCritical: 1, totalFiles: 1 });
     let resolve!: (value: Analysis) => void;
     vi.mocked(api.create).mockReturnValue(
       new Promise((r) => {
@@ -178,6 +212,8 @@ describe("fluxo autenticado da análise", () => {
       "Análise em andamento",
     );
     expect(screen.getByRole("button", { name: "Analisando…" })).toBeDisabled();
+    expect(screen.queryByText("Analisando os arquivos Java do repositório.")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nova análise" })).toBeInTheDocument();
     expect(api.create).toHaveBeenCalledTimes(1);
     expect(api.create).toHaveBeenCalledWith(
       "https://github.com/acme/demo",
@@ -186,21 +222,15 @@ describe("fluxo autenticado da análise", () => {
     resolve(sample);
     expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
     expect(location.pathname).toBe("/dashboard");
-    fireEvent.click(screen.getByRole("button", { name: /Ver mais detalhes/ }));
-    expect(await screen.findByRole("heading", { name: /Análise concluída/ })).toBeInTheDocument();
-    expect(location.pathname).toBe("/analyses/analysis-1");
-    fireEvent.click(screen.getByText("Ver detalhes"));
-    expect(screen.getByText(sample.findings[0].description)).toBeVisible();
-    expect(screen.getByText(sample.findings[0].snippet)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Abrir dashboard de demo" })).toBeInTheDocument();
   });
   it("trata sucesso sem achados", async () => {
+    vi.mocked(api.systems).mockResolvedValue({ systems: [{ owner: "acme", repositoryName: "demo", repositoryUrl: sample.repositoryUrl, latestCreatedAt: sample.createdAt, totalAnalyses: 1, latest: { analysisId: sample.analysisId, reference: sample.reference, createdAt: sample.createdAt, filesAnalyzed: 1, findings: 0 } }], page: 0, size: 20, totalSystems: 1, totalAnalyses: 1, totalFindings: 0, totalCritical: 0, totalFiles: 1 });
     vi.mocked(api.create).mockResolvedValue({ ...sample, findings: [] });
     render(<App />);
     await submit();
     expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
-    expect(document.querySelector(".severity-card")).toHaveTextContent(
-      "Nenhuma vulnerabilidade",
-    );
+    expect(screen.getByRole("button", { name: "Abrir dashboard de demo" })).toBeInTheDocument();
     expect(api.create).toHaveBeenCalledWith("https://github.com/acme/demo", "");
   });
   it("mostra erro legível e permite nova tentativa", async () => {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { Analysis } from "./types";
+import { api } from "./api";
+import type { Analysis, HistoryEntry, SystemCard, SystemsPage } from "./types";
 
 export function Shield() {
   return (
@@ -132,9 +133,11 @@ export function Login({
 export function AnalysisForm({
   onSubmit,
   error,
+  busy = false,
 }: {
   onSubmit: (url: string, reference: string) => void;
   error: string;
+  busy?: boolean;
 }) {
   const [url, setUrl] = useState("");
   const [reference, setReference] = useState("");
@@ -166,6 +169,7 @@ export function AnalysisForm({
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://github.com/usuario/repositorio"
+                disabled={busy}
               />
               <small>Informe a URL do repositório que deseja analisar.</small>
             </label>
@@ -176,6 +180,7 @@ export function AnalysisForm({
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
                   placeholder="Branch, tag ou SHA"
+                  disabled={busy}
                 />
                 <small>Em branco, usamos o branch padrão.</small>
               </label>
@@ -187,9 +192,11 @@ export function AnalysisForm({
               </label>
             </div>
             <div className="form-action">
-              <span>Somente repositórios públicos</span>
-              <button type="submit">
-                Iniciar análise <span aria-hidden="true">→</span>
+              <span role={busy ? "status" : undefined} aria-live="polite">
+                {busy ? "Análise em andamento. Você pode continuar nesta página." : "Somente repositórios públicos"}
+              </span>
+              <button type="submit" disabled={busy}>
+                {busy ? "Analisando…" : "Iniciar análise"} <span aria-hidden="true">→</span>
               </button>
             </div>
           </form>
@@ -269,13 +276,27 @@ export function DashboardPrompt({
 
 export function Dashboard({
   data,
-  onNew,
   onOpen,
+  systems,
+  onOpenAnalysis,
+  central = false,
+  onOpenSystem,
+  onPage,
 }: {
   data?: Analysis;
-  onNew: () => void;
   onOpen: () => void;
+  systems?: SystemsPage;
+  onOpenAnalysis?: (id: string) => void;
+  central?: boolean;
+  onOpenSystem?: (owner: string, repository: string) => void;
+  onPage?: (page: number) => void;
 }) {
+  if (central && systems) {
+    return <section className="dashboard-page dashboard-central">
+      <div className="dashboard-title"><div><span className="eyebrow">SEUS SISTEMAS</span><h1>Dashboard</h1><p>Selecione um sistema para acompanhar suas análises.</p></div></div>
+      <SystemCards data={systems} onOpenSystem={onOpenSystem} onPage={onPage} />
+    </section>;
+  }
   const findings = data?.findings || [];
   const severity = {
     Critical: findings.filter((finding) => finding.severity === "Critical").length,
@@ -300,13 +321,12 @@ export function Dashboard({
           <h1>Dashboard</h1>
           <p>Acompanhe a segurança dos seus repositórios em um só lugar.</p>
         </div>
-        <button onClick={onNew}>Nova análise <span aria-hidden="true">→</span></button>
       </div>
       <div className="dashboard-stats">
-        <div><span>Análises</span><strong>{data ? 1 : 0}</strong><small>nesta sessão</small></div>
-        <div><span>Vulnerabilidades</span><strong>{findings.length}</strong><small>encontradas</small></div>
-        <div><span>Críticas</span><strong className="dashboard-red">{severity.Critical}</strong><small>atenção imediata</small></div>
-        <div><span>Arquivos analisados</span><strong>{data?.filesAnalyzed || 0}</strong><small>arquivos Java</small></div>
+        <div><span>Análises</span><strong>{systems?.totalAnalyses ?? (data ? 1 : 0)}</strong><small>no histórico</small></div>
+        <div><span>Vulnerabilidades</span><strong>{systems?.totalFindings ?? findings.length}</strong><small>encontradas</small></div>
+        <div><span>Críticas</span><strong className="dashboard-red">{systems?.totalCritical ?? severity.Critical}</strong><small>atenção imediata</small></div>
+        <div><span>Arquivos analisados</span><strong>{systems?.totalFiles ?? data?.filesAnalyzed ?? 0}</strong><small>arquivos Java</small></div>
       </div>
       <div className="dashboard-grid">
         <article className="dashboard-card severity-card">
@@ -324,6 +344,70 @@ export function Dashboard({
     </section>
   );
 }
+
+function dateLabel(value: string) {
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+}
+
+function SystemCards({ data, onOpenSystem, onPage }: { data: SystemsPage; onOpenSystem?: (owner: string, repository: string) => void; onPage?: (page: number) => void }) {
+  if (!data.systems.length) return <div className="systems-empty">Nenhum sistema analisado ainda.</div>;
+  return <section className="systems-section" aria-labelledby="systems-heading">
+    <div className="systems-heading"><div><span className="eyebrow">SEUS SISTEMAS</span><h2 id="systems-heading">Histórico de aplicações</h2></div><span>{data.totalSystems} sistema{data.totalSystems === 1 ? "" : "s"}</span></div>
+    <div className="systems-grid">{data.systems.map((system) => {
+      const key = `${system.owner}/${system.repositoryName}`;
+      return <button className="system-card" key={key} type="button" onClick={() => onOpenSystem?.(system.owner, system.repositoryName)} aria-label={`Abrir dashboard de ${system.repositoryName}`}>
+        <div className="system-card-top"><div><span className="system-kicker">SISTEMA</span><h3>{system.repositoryName}</h3><p>{system.owner}/{system.repositoryName}</p></div><span className="system-count">{system.totalAnalyses} análise{system.totalAnalyses === 1 ? "" : "s"}</span></div>
+        <div className="system-latest"><span>Última análise</span><strong>{dateLabel(system.latest.createdAt)}</strong><small>{system.latest.reference || "Branch padrão"} · {system.latest.findings} achado{system.latest.findings === 1 ? "" : "s"}</small></div>
+        <span className="system-open">Abrir dashboard <span aria-hidden="true">→</span></span>
+      </button>;
+    })}</div>
+    {data.totalSystems > data.systems.length && <div className="systems-pagination"><button type="button" disabled={data.page === 0} onClick={() => onPage?.(data.page - 1)}>← Anteriores</button><span>Página {data.page + 1} de {Math.ceil(data.totalSystems / data.size)}</span><button type="button" disabled={(data.page + 1) * data.size >= data.totalSystems} onClick={() => onPage?.(data.page + 1)}>Próximos →</button></div>}
+  </section>;
+}
+
+export function SystemDashboard({
+  data,
+  history,
+  onSelect,
+  onBack,
+  onMore,
+  hasMore,
+  totalHistory,
+  loading = false,
+  onOpen,
+}: {
+  data: Analysis;
+  history: HistoryEntry[];
+  onSelect: (id: string) => void;
+  onBack: () => void;
+  onMore: () => void;
+  hasMore: boolean;
+  totalHistory: number;
+  loading?: boolean;
+  onOpen: () => void;
+}) {
+  return <>
+    <div className="system-dashboard-heading">
+      <button className="back-link" type="button" onClick={onBack}>← Sistemas</button>
+      <span className="eyebrow">DASHBOARD DO SISTEMA</span>
+      <h1>{data.repositoryUrl.replace("https://github.com/", "")}</h1>
+      <p>Visão da execução selecionada: <strong>{dateLabel(data.createdAt)}</strong> · {data.reference || "Branch padrão"}</p>
+      <div className="system-history" aria-label="Histórico de análises">
+        <div className="system-history-heading">
+          <span>Histórico de execuções</span>
+          <small>{totalHistory} execução{totalHistory === 1 ? "" : "ões"} · mais recente à direita</small>
+        </div>
+        <div className="system-history-list">
+          {history.map((entry) => <button key={entry.analysisId} type="button" className={entry.analysisId === data.analysisId ? "selected" : ""} onClick={() => onSelect(entry.analysisId)} disabled={loading || entry.analysisId === data.analysisId} aria-current={entry.analysisId === data.analysisId ? "page" : undefined}>{dateLabel(entry.createdAt)} · {entry.reference || "padrão"}</button>)}
+          {hasMore && <button type="button" onClick={onMore} disabled={loading}>{loading ? "Carregando…" : "Carregar anteriores"}</button>}
+        </div>
+      </div>
+      {loading && <p className="system-status" role="status" aria-live="polite">Atualizando os dados da análise selecionada…</p>}
+    </div>
+    <Dashboard data={data} onOpen={onOpen} />
+  </>;
+}
+
 const severityNames = {
   Critical: "Crítica",
   High: "Alta",
@@ -332,10 +416,8 @@ const severityNames = {
 };
 export function Results({
   data,
-  onNew,
 }: {
   data: Analysis;
-  onNew: () => void;
 }) {
   const groups = new Map<string, Analysis["findings"]>();
   data.findings.forEach((f) =>
@@ -357,9 +439,6 @@ export function Results({
             <span className="ref">{data.reference || "Branch padrão"}</span>
           </p>
         </div>
-        <button className="secondary" onClick={onNew}>
-          Nova análise <span aria-hidden="true">↗</span>
-        </button>
       </div>
       <div className="stats">
         <div>

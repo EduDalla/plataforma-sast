@@ -699,9 +699,9 @@ Resposta compartilhada por `POST /api/analyses` e `GET /api/analyses/{id}`:
 4. chamar `ISastEngine.Analyze` uma vez para cada arquivo, usando o caminho relativo como `fileName`;
 5. agregar e ordenar os findings por arquivo, linha, coluna e regra;
 6. mapear o resultado para as entidades JPA;
-7. salvar `Analysis` e `Finding` em uma transação;
+7. comparar os findings com a execução mais recente do mesmo usuário, repositório e referência; quando forem idênticos, atualizar apenas sua data;
 8. descartar o snapshot em memória ao concluir a requisição;
-9. retornar `201 Created`, incluindo `Location: /api/analyses/{id}`.
+9. retornar `201 Created`, incluindo `Location: /api/analyses/{id}`, para uma execução nova; ou `200 OK` com o mesmo identificador quando o resultado for reutilizado.
 
 ### 9.3 Endpoint de consulta
 
@@ -1003,7 +1003,7 @@ O repositório contém código Java perigoso de propósito, porém seus arquivos
 
 ### API, banco e frontend
 
-- [x] `POST /api/analyses` retorna `201 Created`.
+- [x] `POST /api/analyses` retorna `201 Created` para resultado novo e `200 OK` para resultado idêntico reutilizado.
 - [x] `GET /api/analyses/{id}` retorna a análise salva.
 - [x] O archive e o código completo não são persistidos.
 - [x] O frontend trata carregamento, sucesso sem achados e erro.
