@@ -395,6 +395,16 @@ function dateLabel(value: string) {
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
+function repositoryBreadcrumb(url: string) {
+  const path = url.replace(/^https:\/\/github\.com\//, "").replace(/\/+$/, "");
+  const [owner, repository] = path.split("/");
+  if (!owner || !repository) return undefined;
+  return {
+    label: `${owner}/${repository}`,
+    href: `/systems/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}`,
+  };
+}
+
 function SystemCards({ data, onOpenSystem, onPage }: { data: SystemsPage; onOpenSystem?: (owner: string, repository: string) => void; onPage?: (page: number) => void }) {
   if (!data.systems.length) return <div className="systems-empty">Nenhum sistema analisado ainda.</div>;
   return <section className="systems-section" aria-labelledby="systems-heading">
@@ -473,9 +483,17 @@ export function Results({
   data.findings.forEach((f) =>
     groups.set(f.fileName, [...(groups.get(f.fileName) || []), f]),
   );
+  const systemBreadcrumb = repositoryBreadcrumb(data.repositoryUrl);
   return (
     <>
-      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Análise" }]} onNavigate={onNavigate} />
+      <Breadcrumb
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          ...(systemBreadcrumb ? [systemBreadcrumb] : []),
+          { label: "Análise" },
+        ]}
+        onNavigate={onNavigate}
+      />
       <div className="result-heading">
         <div>
           <span className="eyebrow">RESULTADOS DA ANÁLISE</span>
