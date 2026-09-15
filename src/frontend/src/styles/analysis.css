@@ -1,0 +1,133 @@
+.analysis-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 25px;
+  align-items: start;
+}
+.panel {
+  background: white;
+  border: 1px solid #e1e5e1;
+  border-radius: 10px;
+  padding: 32px;
+}
+.section-number {
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: #9da59e;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  border-bottom: 1px solid #edf0ed;
+  padding-bottom: 24px;
+  margin-bottom: 28px;
+}
+.section-number span {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: #343b36;
+}
+.form-panel form {
+  display: grid;
+  gap: 28px;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 150px;
+  gap: 22px;
+}
+.optional {
+  color: #98a099;
+  font-size: 10px;
+  font-weight: 400;
+  margin-left: 5px;
+}
+.readonly-value {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f5f7f4;
+  border: 1px solid #e4e7e3;
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-top: 9px;
+  font-weight: 400;
+}
+.readonly-value span {
+  font-size: 11px;
+  color: #949e96;
+}
+.form-action {
+  border-top: 1px solid #edf0ed;
+  padding-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+.form-action > span {
+  font-size: 10px;
+  color: #919a92;
+}
+.form-action button {
+  font-size: 12px;
+  padding: 12px 17px;
+}
+.scope-card {
+  border: 1px solid #e3e7df;
+  border-radius: 10px;
+  padding: 26px;
+  background: #f0f3ed;
+}
+.scope-card > svg {
+  width: 26px;
+  height: 31px;
+  color: #64765f;
+  margin-bottom: 18px;
+}
+.scope-card h2 {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+.scope-card > p {
+  color: #84907f;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.scope-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 23px 0;
+}
+.scope-card li {
+  display: flex;
+  gap: 13px;
+  font-size: 12px;
+  margin: 20px 0;
+  color: #465242;
+}
+.scope-card li > span {
+  font-size: 9px;
+  color: #9ba793;
+  padding-top: 3px;
+}
+.scope-card li small {
+  margin-top: 3px;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+.scope-card .scope-note {
+  border-top: 1px solid #dde4d7;
+  padding-top: 20px;
+  font-size: 11px;
+  margin-bottom: 0;
+}
+.app-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 20px 5vw;
+  border-top: 1px solid #e5e8e5;
+  color: #929b94;
+  font-size: 10px;
+}

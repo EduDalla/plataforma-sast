@@ -1,0 +1,143 @@
+@media (max-width: 800px) {
+  .login-layout {
+    grid-template-columns: 1fr;
+  }
+  .login-intro {
+    display: none;
+  }
+  .login-side {
+    min-height: 100dvh;
+  }
+  .analysis-layout {
+    grid-template-columns: 1fr;
+  }
+  .scope-card {
+    display: none;
+  }
+  .workspace {
+    padding: 35px 22px 50px;
+  }
+  .topbar {
+    padding: 0 22px;
+  }
+  .brand > span {
+    display: none;
+  }
+  .result-heading {
+    align-items: flex-start;
+  }
+  .result-heading h1 {
+    font-size: 27px;
+  }
+  .stats > div {
+    padding: 0 16px;
+  }
+  .stats span {
+    font-size: 10px;
+  }
+}
+@media (max-width: 500px) {
+  .topbar {
+    height: 70px;
+    padding: 0 18px;
+  }
+  .account {
+    gap: 9px;
+  }
+  .account > span {
+    max-width: 145px;
+    font-size: 10px;
+  }
+  .theme-switcher {
+    gap: 1px;
+  }
+  .theme-option {
+    width: 29px;
+    height: 27px;
+    padding: 4px;
+  }
+  .theme-option-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .workspace {
+    padding: 30px 16px 45px;
+  }
+  h1 {
+    font-size: 29px;
+  }
+  .panel {
+    padding: 22px;
+  }
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  .form-action {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    text-align: center;
+  }
+  .form-action button {
+    width: 100%;
+  }
+  .stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 23px 0;
+  }
+  .stats > div:nth-child(2) {
+    border: 0;
+  }
+  .result-heading {
+    flex-direction: column;
+    gap: 7px;
+  }
+  .result-heading h1 {
+    font-size: 27px;
+  }
+  .findings-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .finding summary {
+    padding: 19px 17px;
+  }
+  .expand {
+    font-size: 0;
+  }
+  .expand > span {
+    font-size: 17px;
+    margin: 0;
+  }
+  .finding-detail {
+    padding: 19px 17px;
+  }
+  .app-footer {
+    font-size: 9px;
+  }
+  .processing {
+    margin: 10px auto;
+    padding: 50px 20px;
+  }
+  .processing h1 {
+    font-size: 24px;
+  }
+  .repository .ref {
+    margin: 8px 0 0;
+    display: table;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+

@@ -1,0 +1,127 @@
+.login-layout {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.login-intro {
+  background: #202923;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  padding: 12vh 6vw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.intro-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(#ffffff04 1px, transparent 1px),
+    linear-gradient(90deg, #ffffff04 1px, transparent 1px);
+  background-size: 54px 54px;
+  pointer-events: none;
+}
+.login-intro:after {
+  content: "";
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border: 1px solid #b3cbb718;
+  border-radius: 50%;
+  bottom: -280px;
+  right: -240px;
+  box-shadow:
+    0 0 0 55px #b3cbb707,
+    0 0 0 110px #b3cbb705;
+}
+.login-intro .eyebrow {
+  color: #aabdaf;
+}
+.login-intro h1 {
+  font-size: clamp(38px, 4.4vw, 68px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -2.8px;
+  margin: 22px 0 30px;
+  z-index: 1;
+}
+.login-intro h1 span {
+  color: #b8cbb8;
+}
+.login-intro > p {
+  color: #a7b3aa;
+  max-width: 345px;
+  line-height: 1.8;
+  font-size: 14px;
+  z-index: 1;
+}
+.intro-foot {
+  position: absolute;
+  bottom: 44px;
+  color: #a7b3aa;
+  font-size: 11px;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #aacaad;
+}
+.login-side {
+  position: relative;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 65px 35px;
+}
+.login-card {
+  width: 100%;
+  max-width: 330px;
+}
+.login-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 42px;
+}
+.login-logo svg {
+  width: 33px;
+  height: 38px;
+}
+.login-logo strong {
+  font-family: Manrope, sans-serif;
+  font-size: 27px;
+  letter-spacing: -1px;
+}
+.login-card h2 {
+  font-size: 25px;
+  margin-bottom: 8px;
+}
+.login-card form {
+  margin-top: 28px;
+  display: grid;
+  gap: 20px;
+}
+.login-card button {
+  width: 100%;
+  margin-top: 5px;
+  justify-content: space-between;
+}
+.login-note {
+  text-align: center;
+  color: #939994;
+  font-size: 11px;
+  margin-top: 23px;
+}
+.login-bottom {
+  position: absolute;
+  bottom: 35px;
+  font-size: 9px;
+  letter-spacing: 1.8px;
+  color: #a2aaa4;
+}

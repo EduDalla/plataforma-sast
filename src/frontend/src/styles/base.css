@@ -1,0 +1,139 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap");
+
+:root {
+  font-family: "DM Sans", sans-serif;
+  color: #202323;
+  background: #f7f8f7;
+  font-synthesis: none;
+  font-weight: 400;
+  line-height: 1.5;
+  font-size: 15px;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input {
+  font: inherit;
+}
+button,
+a,
+input,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  border: 1px solid #202323;
+  background: #202323;
+  color: white;
+  padding: 12px 22px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+button:hover:not(:disabled) {
+  background: #383f3d;
+}
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+a {
+  color: inherit;
+}
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+input:focus-visible {
+  outline: 3px solid #4c8b71;
+  outline-offset: 4px;
+}
+h1,
+h2,
+h3,
+h4,
+p {
+  margin-top: 0;
+}
+h1,
+h2,
+h3,
+h4 {
+  font-family: Manrope, sans-serif;
+}
+h1 {
+  font-size: 34px;
+  font-weight: 750;
+  letter-spacing: -1.2px;
+  line-height: 1.25;
+}
+h2 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+input {
+  display: block;
+  width: 100%;
+  background: #fff;
+  border: 1px solid #d8dcda;
+  border-radius: 6px;
+  padding: 12px 14px;
+  color: #202323;
+  margin-top: 9px;
+  min-width: 0;
+}
+input::placeholder {
+  color: #9b9e9c;
+  font-weight: 400;
+  font-size: 13px;
+}
+input:focus {
+  border-color: #626e67;
+}
+small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: #878d88;
+  margin-top: 8px;
+}
+.muted {
+  color: #7a827d;
+  font-size: 13px;
+}
+.eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #868f88;
+  display: block;
+  margin-bottom: 18px;
+}
+.error {
+  background: #fff1ef;
+  border: 1px solid #f0c7c1;
+  border-radius: 6px;
+  padding: 12px 15px;
+  color: #a53427;
+  font-size: 13px;
+  margin: 16px 0;
+}

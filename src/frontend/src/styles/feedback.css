@@ -1,0 +1,40 @@
+.processing {
+  max-width: 630px;
+  text-align: center;
+  padding: 70px 30px;
+  margin: 40px auto;
+}
+.processing h1 {
+  font-size: 27px;
+}
+.processing p {
+  font-size: 14px;
+  color: #78817a;
+}
+.processing button {
+  display: flex;
+  margin: 30px auto 0;
+  min-width: 180px;
+}
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5eae5;
+  border-top-color: #536854;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 35px auto;
+}
+.startup {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+}
+.startup .panel {
+  width: min(90vw, 630px);
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
