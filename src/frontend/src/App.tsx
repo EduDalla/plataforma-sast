@@ -379,15 +379,15 @@ export function App() {
         {path === "/dashboard" ? (
           systems ? <Dashboard systems={systems} central onOpen={() => undefined} onOpenSystem={openSystem} onPage={changeSystemsPage} /> : <section className="panel system-page-loading" role="status">Carregando sistemas analisados…</section>
         ) : path.match(/^\/systems\/[^/]+\/[^/]+$/) && result ? (
-          <SystemDashboard data={result} history={systemHistory} totalHistory={systemHistoryTotal} loading={systemUpdating} onSelect={(id) => { if (id === result.analysisId) return; setSystemUpdating(true); api.analysis(id).then(setResult).catch(failure).finally(() => setSystemUpdating(false)); }} onMore={loadMoreSystemHistory} hasMore={systemHistory.length < systemHistoryTotal} onBack={() => navigate("/dashboard")} onOpen={() => navigate(`/analyses/${result.analysisId}`)} />
+          <SystemDashboard data={result} history={systemHistory} totalHistory={systemHistoryTotal} loading={systemUpdating} onSelect={(id) => { if (id === result.analysisId) return; setSystemUpdating(true); api.analysis(id).then(setResult).catch(failure).finally(() => setSystemUpdating(false)); }} onMore={loadMoreSystemHistory} hasMore={systemHistory.length < systemHistoryTotal} onBack={() => navigate("/dashboard")} onNavigate={(href) => navigate(href)} onOpen={() => navigate(`/analyses/${result.analysisId}`)} />
         ) : path.match(/^\/systems\/[^/]+\/[^/]+$/) ? (
           <section className="panel system-page-loading" role="status">Carregando dashboard do sistema…</section>
         ) : path === "/analyses/new" ? (
-          <AnalysisForm onSubmit={create} error={error} busy={submitting} />
+          <AnalysisForm onSubmit={create} error={error} busy={submitting} onNavigate={(href) => navigate(href)} />
         ) : result ? (
           <>
             <ErrorMessage message={error} />
-            <Results data={result} />
+            <Results data={result} onNavigate={(href) => navigate(href)} />
           </>
         ) : (
           <section className="panel">

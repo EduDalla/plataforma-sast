@@ -28,6 +28,48 @@ export function ErrorMessage({ message }: { message: string }) {
     </div>
   ) : null;
 }
+
+type BreadcrumbItem = {
+  label: string;
+  href?: string;
+};
+
+export function Breadcrumb({
+  items,
+  onNavigate,
+}: {
+  items: BreadcrumbItem[];
+  onNavigate?: (href: string) => void;
+}) {
+  return (
+    <nav className="breadcrumb" aria-label="Breadcrumb">
+      <ol>
+        {items.map((item, index) => {
+          const current = index === items.length - 1;
+          return (
+            <li key={`${item.label}-${index}`}>
+              {current || !item.href ? (
+                <span aria-current={current ? "page" : undefined}>{item.label}</span>
+              ) : (
+                <a
+                  href={item.href}
+                  aria-label={`Voltar para ${item.label}`}
+                  onClick={(event) => {
+                    if (!onNavigate) return;
+                    event.preventDefault();
+                    onNavigate(item.href!);
+                  }}
+                >
+                  {item.label}
+                </a>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
 export function Processing({ restoring = false }: { restoring?: boolean }) {
   return (
     <section className="panel processing" role="status" aria-live="polite">
@@ -134,15 +176,18 @@ export function AnalysisForm({
   onSubmit,
   error,
   busy = false,
+  onNavigate,
 }: {
   onSubmit: (url: string, reference: string) => void;
   error: string;
   busy?: boolean;
+  onNavigate?: (href: string) => void;
 }) {
   const [url, setUrl] = useState("");
   const [reference, setReference] = useState("");
   return (
     <>
+      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Nova análise" }]} onNavigate={onNavigate} />
       <div className="page-heading">
         <span className="eyebrow">SEU PRÓXIMO PASSO</span>
         <h1>Nova análise</h1>
@@ -293,6 +338,7 @@ export function Dashboard({
 }) {
   if (central && systems) {
     return <section className="dashboard-page dashboard-central">
+      <Breadcrumb items={[{ label: "Dashboard" }]} />
       <div className="dashboard-title"><div><span className="eyebrow">SEUS SISTEMAS</span><h1>Dashboard</h1><p>Selecione um sistema para acompanhar suas análises.</p></div></div>
       <SystemCards data={systems} onOpenSystem={onOpenSystem} onPage={onPage} />
     </section>;
@@ -375,6 +421,7 @@ export function SystemDashboard({
   totalHistory,
   loading = false,
   onOpen,
+  onNavigate,
 }: {
   data: Analysis;
   history: HistoryEntry[];
@@ -385,10 +432,11 @@ export function SystemDashboard({
   totalHistory: number;
   loading?: boolean;
   onOpen: () => void;
+  onNavigate?: (href: string) => void;
 }) {
   return <>
     <div className="system-dashboard-heading">
-      <button className="back-link" type="button" onClick={onBack}>← Sistemas</button>
+      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: data.repositoryUrl.replace("https://github.com/", "") }]} onNavigate={onNavigate || (() => onBack())} />
       <span className="eyebrow">DASHBOARD DO SISTEMA</span>
       <h1>{data.repositoryUrl.replace("https://github.com/", "")}</h1>
       <p>Visão da execução selecionada: <strong>{dateLabel(data.createdAt)}</strong> · {data.reference || "Branch padrão"}</p>
@@ -416,8 +464,10 @@ const severityNames = {
 };
 export function Results({
   data,
+  onNavigate,
 }: {
   data: Analysis;
+  onNavigate?: (href: string) => void;
 }) {
   const groups = new Map<string, Analysis["findings"]>();
   data.findings.forEach((f) =>
@@ -425,6 +475,7 @@ export function Results({
   );
   return (
     <>
+      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Análise" }]} onNavigate={onNavigate} />
       <div className="result-heading">
         <div>
           <span className="eyebrow">RESULTADOS DA ANÁLISE</span>

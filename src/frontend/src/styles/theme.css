@@ -38,6 +38,18 @@
 .app-shell .account > span, .app-shell .page-heading p {
   color: var(--text-soft);
 }
+.app-shell .breadcrumb ol {
+  color: var(--text-muted);
+}
+.app-shell .breadcrumb li + li::before {
+  color: var(--text-muted);
+}
+.app-shell .breadcrumb a {
+  color: var(--accent);
+}
+.app-shell .breadcrumb [aria-current="page"] {
+  color: var(--text-soft);
+}
 .app-shell .topnav a {
   color: var(--text-muted);
 }
