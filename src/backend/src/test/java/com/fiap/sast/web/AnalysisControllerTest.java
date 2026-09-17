@@ -106,7 +106,7 @@ class AnalysisControllerTest {
         var user = new com.fiap.sast.auth.AppUser();
         user.email = "test@example.com";
         when(users.findByEmail(user.email)).thenReturn(java.util.Optional.of(user));
-        var controller = new AnalysisController(github, engine, repository, users);
+        var controller = new AnalysisController(github, engine, repository, users, new com.fasterxml.jackson.databind.ObjectMapper());
         return MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();

@@ -4,6 +4,7 @@ import com.fiap.sast.parsing.JavaParserSourceParser;
 import com.fiap.sast.rules.DeserializationRule;
 import com.fiap.sast.rules.HardcodedCredentialRule;
 import com.fiap.sast.rules.RuntimeExecRule;
+import com.fiap.sast.taint.TaintAnalysisEngine;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
@@ -18,7 +19,8 @@ class SastEngineTest {
         var sample = findSample();
         var source = Files.readString(sample);
         var engine = new SastEngine(new JavaParserSourceParser(), List.of(
-                new HardcodedCredentialRule(), new RuntimeExecRule(), new DeserializationRule()));
+                new HardcodedCredentialRule(), new RuntimeExecRule(), new DeserializationRule(),
+                new TaintAnalysisEngine()));
 
         var findings = engine.analyze(source, "samples/VulnerableExample.java");
 
@@ -34,6 +36,27 @@ class SastEngineTest {
             assertTrue(finding.column() > 0);
             assertFalse(finding.snippet().isBlank());
         });
+    }
+
+    @Test
+    void taintAnalysisEngineParticipaDoPipelineJuntoComAsRegrasDeterministicas() {
+        var source = "class Controller {\n"
+                + "  void run(@org.springframework.web.bind.annotation.RequestParam String cmd) throws Exception {\n"
+                + "    String password = \"123456\";\n"
+                + "    Runtime.getRuntime().exec(cmd);\n"
+                + "  }\n"
+                + "}";
+        var engine = new SastEngine(new JavaParserSourceParser(), List.of(
+                new HardcodedCredentialRule(), new RuntimeExecRule(), new DeserializationRule(),
+                new TaintAnalysisEngine()));
+
+        var findings = engine.analyze(source, "Controller.java");
+
+        assertEquals(List.of("SAST-JAVA-001", "SAST-JAVA-002", "TAINT-CMDI-001"),
+                findings.stream().map(SecurityFinding::ruleId).toList());
+        var taintFinding = findings.stream().filter(f -> f.ruleId().equals("TAINT-CMDI-001")).findFirst().orElseThrow();
+        assertNotNull(taintFinding.taintTrace());
+        assertEquals("http_param", taintFinding.taintTrace().source().kind());
     }
 
     @Test

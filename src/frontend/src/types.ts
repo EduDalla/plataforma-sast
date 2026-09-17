@@ -1,3 +1,14 @@
+export interface TraceStep {
+  kind: string;
+  line: number;
+  column: number;
+}
+export interface TaintTrace {
+  engineVersion: string;
+  source: TraceStep;
+  steps: TraceStep[];
+  sink: TraceStep;
+}
 export interface Finding {
   ruleId: string;
   title: string;
@@ -8,6 +19,7 @@ export interface Finding {
   line: number;
   column: number;
   snippet: string;
+  taintTrace?: TaintTrace | null;
 }
 export interface Analysis {
   analysisId: string;

@@ -260,6 +260,37 @@ describe("fluxo autenticado da análise", () => {
     expect(api.logout).toHaveBeenCalledOnce();
     expect(location.pathname).toBe("/login");
   });
+  it("exibe o rastro de taint analysis quando o finding possui taintTrace", async () => {
+    history.replaceState(null, "", "/analyses/analysis-1");
+    vi.mocked(api.analysis).mockResolvedValue({
+      ...sample,
+      findings: [
+        {
+          ruleId: "TAINT-CMDI-001",
+          title: "Command injection confirmado por Taint Analysis",
+          severity: "Critical",
+          cwe: "CWE-78",
+          description: "Entrada HTTP não sanitizada alcança execução de comando.",
+          fileName: "Controller.java",
+          line: 4,
+          column: 5,
+          snippet: "Runtime.getRuntime().exec(full);",
+          taintTrace: {
+            engineVersion: "1.0.0",
+            source: { kind: "http_param", line: 2, column: 20 },
+            steps: [{ kind: "concatenation", line: 3, column: 20 }],
+            sink: { kind: "sink", line: 4, column: 5 },
+          },
+        },
+      ],
+    });
+    render(<App />);
+    await screen.findByRole("heading", { name: /Análise concluída/ });
+    fireEvent.click(screen.getByText(/Ver detalhes/));
+    expect(await screen.findByText("Rastro de Taint Analysis")).toBeInTheDocument();
+    expect(screen.getByText("Entrada HTTP")).toBeInTheDocument();
+    expect(screen.getByText("Execução de comando")).toBeInTheDocument();
+  });
   it("remove resultados e retorna ao login quando a sessão expira", async () => {
     vi.mocked(api.create).mockRejectedValue(
       new ApiError(401, "Sessão ausente ou expirada"),

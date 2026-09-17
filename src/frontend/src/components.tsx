@@ -472,6 +472,33 @@ const severityNames = {
   Medium: "Média",
   Low: "Baixa",
 };
+const traceStepLabels: Record<string, string> = {
+  http_param: "Entrada HTTP",
+  assignment: "Atribuição",
+  concatenation: "Concatenação de string",
+  conditional: "Expressão condicional",
+  sink: "Execução de comando",
+};
+function traceStepLabel(kind: string) {
+  return traceStepLabels[kind] || kind;
+}
+function TaintTraceView({ trace }: { trace: NonNullable<Analysis["findings"][number]["taintTrace"]> }) {
+  const steps = [trace.source, ...trace.steps, trace.sink];
+  return (
+    <div className="taint-trace">
+      <h5>Rastro de Taint Analysis</h5>
+      <ol>
+        {steps.map((step, index) => (
+          <li key={index} className={step === trace.source ? "taint-source" : step === trace.sink ? "taint-sink" : undefined}>
+            <span className="taint-kind">{traceStepLabel(step.kind)}</span>
+            <span className="taint-position">Linha {step.line}, coluna {step.column}</span>
+          </li>
+        ))}
+      </ol>
+      <span className="muted">Engine de taint versão {trace.engineVersion}</span>
+    </div>
+  );
+}
 export function Results({
   data,
   onNavigate,
@@ -582,6 +609,7 @@ export function Results({
                         {f.snippet}
                       </code>
                     </pre>
+                    {f.taintTrace && <TaintTraceView trace={f.taintTrace} />}
                     <span className="muted">
                       Regra {f.ruleId} · {f.fileName}
                     </span>

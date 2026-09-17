@@ -1,5 +1,6 @@
 package com.fiap.sast.web;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fiap.sast.analysis.*;
 import com.fiap.sast.auth.UserRepository;
 import com.fiap.sast.github.GitHubClient;
@@ -26,19 +27,36 @@ public class AnalysisController {
     private final SastEngine engine;
     private final AnalysisRepository repo;
     private final UserRepository users;
-    public AnalysisController(GitHubClient git, SastEngine engine, AnalysisRepository repo, UserRepository users) {
-        this.git = git; this.engine = engine; this.repo = repo; this.users = users;
+    private final ObjectMapper mapper;
+    public AnalysisController(GitHubClient git, SastEngine engine, AnalysisRepository repo, UserRepository users,
+            ObjectMapper mapper) {
+        this.git = git; this.engine = engine; this.repo = repo; this.users = users; this.mapper = mapper;
     }
     public record Request(@NotBlank String repositoryUrl, String reference) {}
     public record Result(UUID analysisId, String status, String repositoryUrl, String reference,
-            String language, int filesAnalyzed, Instant createdAt, List<SecurityFinding> findings) {
-        static Result from(Analysis analysis) {
-            var findings = analysis.findings.stream().map(f -> new SecurityFinding(f.ruleId, f.title,
-                    f.severity, f.cwe, f.description, f.fileName, f.line, f.column, f.snippet))
-                    .sorted(Comparator.comparing(SecurityFinding::fileName).thenComparingInt(SecurityFinding::line)
-                            .thenComparingInt(SecurityFinding::column).thenComparing(SecurityFinding::ruleId)).toList();
-            return new Result(analysis.id, analysis.status, analysis.repositoryUrl, analysis.reference,
-                    analysis.language, analysis.filesAnalyzed, analysis.createdAt, findings);
+            String language, int filesAnalyzed, Instant createdAt, List<SecurityFinding> findings) {}
+    private Result toResult(Analysis analysis) {
+        var findings = analysis.findings.stream().map(f -> new SecurityFinding(f.ruleId, f.title,
+                f.severity, f.cwe, f.description, f.fileName, f.line, f.column, f.snippet, readTaintTrace(f.taintTrace)))
+                .sorted(Comparator.comparing(SecurityFinding::fileName).thenComparingInt(SecurityFinding::line)
+                        .thenComparingInt(SecurityFinding::column).thenComparing(SecurityFinding::ruleId)).toList();
+        return new Result(analysis.id, analysis.status, analysis.repositoryUrl, analysis.reference,
+                analysis.language, analysis.filesAnalyzed, analysis.createdAt, findings);
+    }
+    private TaintTrace readTaintTrace(String json) {
+        if (json == null) return null;
+        try {
+            return mapper.readValue(json, TaintTrace.class);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("taintTrace persistido é inválido", e);
+        }
+    }
+    private String writeTaintTrace(TaintTrace trace) {
+        if (trace == null) return null;
+        try {
+            return mapper.writeValueAsString(trace);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("Não foi possível serializar o taintTrace", e);
         }
     }
     public record HistoryEntry(UUID analysisId, String reference, Instant createdAt, int filesAnalyzed, int findings) {}
@@ -56,7 +74,7 @@ public class AnalysisController {
     private static String findingsFingerprint(Analysis analysis) {
         return analysis.findings.stream()
                 .map(f -> String.join("\u001f", f.ruleId, f.title, f.severity, f.cwe, f.description,
-                        f.fileName, Integer.toString(f.line), Integer.toString(f.column), f.snippet))
+                        f.fileName, Integer.toString(f.line), Integer.toString(f.column), f.snippet, java.util.Objects.requireNonNullElse(f.taintTrace, "")))
                 .sorted().collect(Collectors.joining("\u001e"));
     }
 
@@ -118,6 +136,7 @@ public class AnalysisController {
             finding.ruleId = f.ruleId(); finding.title = f.title(); finding.severity = f.severity();
             finding.cwe = f.cwe(); finding.description = f.description(); finding.fileName = f.fileName();
             finding.line = f.line(); finding.column = f.column(); finding.snippet = f.snippet();
+            finding.taintTrace = writeTaintTrace(f.taintTrace());
             analysis.findings.add(finding);
         }));
         var previous = repo.findFirstByUserIdAndRepositoryOwnerAndRepositoryNameAndReferenceOrderByCreatedAtDescIdDesc(
@@ -130,7 +149,7 @@ public class AnalysisController {
                     .addKeyValue("event", "analysis_reused")
                     .addKeyValue("analysisId", reused.id.toString())
                     .addKeyValue("userId", owner.id.toString()).log();
-            return ResponseEntity.ok(Result.from(reused));
+            return ResponseEntity.ok(toResult(reused));
         }
         repo.save(analysis);
         var findingCount = analysis.findings.size();
@@ -146,12 +165,12 @@ public class AnalysisController {
                 }
             });
         }
-        return ResponseEntity.created(URI.create("/api/analyses/" + analysis.id)).body(Result.from(analysis));
+        return ResponseEntity.created(URI.create("/api/analyses/" + analysis.id)).body(toResult(analysis));
     }
     @GetMapping("/{id}") @Transactional(readOnly = true)
     public Result get(@PathVariable UUID id, Principal principal) {
         var owner = users.findByEmail(principal.getName()).orElseThrow();
-        return Result.from(repo.findByIdAndUserId(id, owner.id).orElseThrow(NoSuchElementException::new));
+        return toResult(repo.findByIdAndUserId(id, owner.id).orElseThrow(NoSuchElementException::new));
     }
     public static class Unprocessable extends RuntimeException {
         public Unprocessable() { super("O repositório não contém arquivos Java elegíveis"); }

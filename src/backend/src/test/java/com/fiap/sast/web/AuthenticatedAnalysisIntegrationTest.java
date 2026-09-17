@@ -150,6 +150,32 @@ class AuthenticatedAnalysisIntegrationTest {
         assertEquals(before, analyses.count());
     }
 
+    @Test void taintTraceRoundTripsThroughJsonAndDatabase() throws Exception {
+        var session = login("first@example.com", "integration-test-password");
+        when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot("acme", "taint",
+                "https://github.com/acme/taint", "main", List.of(new GitHubClient.File("Controller.java",
+                "class Controller {\n"
+                        + "  void run(@org.springframework.web.bind.annotation.RequestParam String cmd) throws Exception {\n"
+                        + "    Runtime.getRuntime().exec(cmd);\n"
+                        + "  }\n"
+                        + "}"))));
+
+        var created = mvc.perform(post("/api/analyses").session(session).with(csrf()).contentType("application/json")
+                        .content("{\"repositoryUrl\":\"https://github.com/acme/taint\",\"reference\":\"main\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.findings[0].ruleId").value("TAINT-CMDI-001"))
+                .andExpect(jsonPath("$.findings[0].taintTrace.source.kind").value("http_param"))
+                .andExpect(jsonPath("$.findings[0].taintTrace.sink.kind").value("sink"))
+                .andReturn();
+        String id = JsonPath.read(created.getResponse().getContentAsString(), "$.analysisId");
+
+        assertNotNull(jdbc.queryForObject("SELECT taint_trace FROM findings WHERE analysis_id = ?",
+                String.class, UUID.fromString(id)));
+        mvc.perform(get("/api/analyses/" + id).session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.findings[0].taintTrace.source.kind").value("http_param"));
+    }
+
     @Test void reusesAnalysisWhenSecurityFindingsDoNotChange() throws Exception {
         var session = login("first@example.com", "integration-test-password");
         when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot("acme", "dedupe",
