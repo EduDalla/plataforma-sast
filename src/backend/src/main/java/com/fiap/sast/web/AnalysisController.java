@@ -1,6 +1,6 @@
 package com.fiap.sast.web;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.fiap.sast.analysis.*;
 import com.fiap.sast.auth.UserRepository;
 import com.fiap.sast.github.GitHubClient;
@@ -47,7 +47,7 @@ public class AnalysisController {
         if (json == null) return null;
         try {
             return mapper.readValue(json, TaintTrace.class);
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+        } catch (tools.jackson.core.JacksonException e) {
             throw new IllegalStateException("taintTrace persistido é inválido", e);
         }
     }
@@ -55,7 +55,7 @@ public class AnalysisController {
         if (trace == null) return null;
         try {
             return mapper.writeValueAsString(trace);
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+        } catch (tools.jackson.core.JacksonException e) {
             throw new IllegalStateException("Não foi possível serializar o taintTrace", e);
         }
     }
