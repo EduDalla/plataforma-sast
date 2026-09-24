@@ -536,6 +536,11 @@ export function Results({
           </p>
         </div>
       </div>
+      {data.semanticStatus && <p className="semantic-status" role="status">
+        {data.semanticStatus === "COMPLETED" ? "Avaliação da IA concluída para todos os achados." :
+          data.semanticStatus === "DEGRADED" ? "Avaliação da IA parcial ou indisponível. Os achados das regras permanecem completos." :
+          "Nenhum achado para avaliar com IA."}
+      </p>}
       <div className="stats">
         <div>
           <span>Vulnerabilidades</span>
@@ -610,6 +615,16 @@ export function Results({
                       </code>
                     </pre>
                     {f.taintTrace && <TaintTraceView trace={f.taintTrace} />}
+                    {f.aiAssessment && <section className="ai-assessment" aria-label="Sugestão da IA">
+                      <h5>Sugestão da IA</h5>
+                      <p>Severidade sugerida: <strong>{severityNames[f.aiAssessment.suggestedSeverity]}</strong></p>
+                      <p>Provável falso positivo: <strong>{f.aiAssessment.likelyFalsePositive ? "Sim" : "Não"}</strong></p>
+                      <p>Confiança informada pelo modelo: {Math.round(f.aiAssessment.confidence * 100)}%</p>
+                      <p>{f.aiAssessment.rationale}</p>
+                      <h5>Remediação sugerida</h5>
+                      <p>{f.aiAssessment.remediation}</p>
+                      <small>Modelo {f.aiAssessment.model} · Avaliação consultiva; confirme antes de agir.</small>
+                    </section>}
                     <span className="muted">
                       Regra {f.ruleId} · {f.fileName}
                     </span>

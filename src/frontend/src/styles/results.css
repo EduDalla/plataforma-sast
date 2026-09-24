@@ -5,6 +5,19 @@
   gap: 20px;
   margin-bottom: 30px;
 }
+.semantic-status, .ai-assessment {
+  border: 1px solid #c8d6e8;
+  background: #f3f7fd;
+  border-radius: 8px;
+  padding: 14px 18px;
+  color: #283d57;
+}
+.semantic-status { margin: 0 0 22px; }
+.ai-assessment { margin: 16px 0; overflow-wrap: anywhere; }
+.ai-assessment h5 { margin: 0 0 8px; }
+.ai-assessment h5:not(:first-child) { margin-top: 14px; }
+.ai-assessment p { margin: 7px 0; white-space: pre-wrap; }
+.ai-assessment small { display: block; margin-top: 12px; }
 .result-heading h1 {
   display: flex;
   align-items: center;

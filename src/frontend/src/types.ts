@@ -9,6 +9,15 @@ export interface TaintTrace {
   steps: TraceStep[];
   sink: TraceStep;
 }
+export interface AiAssessment {
+  model: string;
+  promptVersion: string;
+  confidence: number;
+  suggestedSeverity: "Critical" | "High" | "Medium" | "Low";
+  likelyFalsePositive: boolean;
+  rationale: string;
+  remediation: string;
+}
 export interface Finding {
   ruleId: string;
   title: string;
@@ -20,6 +29,7 @@ export interface Finding {
   column: number;
   snippet: string;
   taintTrace?: TaintTrace | null;
+  aiAssessment?: AiAssessment | null;
 }
 export interface Analysis {
   analysisId: string;
@@ -29,6 +39,7 @@ export interface Analysis {
   language: "java";
   filesAnalyzed: number;
   createdAt: string;
+  semanticStatus?: "COMPLETED" | "DEGRADED" | "NOT_APPLICABLE";
   findings: Finding[];
 }
 export interface HistoryEntry {
