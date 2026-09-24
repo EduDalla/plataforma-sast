@@ -8,6 +8,8 @@ import com.fiap.sast.persistence.AnalysisRepository;
 import com.fiap.sast.rules.DeserializationRule;
 import com.fiap.sast.rules.HardcodedCredentialRule;
 import com.fiap.sast.rules.RuntimeExecRule;
+import com.fiap.sast.semantic.AiAssessment;
+import com.fiap.sast.semantic.SemanticAnalysisService;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -106,7 +108,17 @@ class AnalysisControllerTest {
         var user = new com.fiap.sast.auth.AppUser();
         user.email = "test@example.com";
         when(users.findByEmail(user.email)).thenReturn(java.util.Optional.of(user));
-        var controller = new AnalysisController(github, engine, repository, users, new tools.jackson.databind.ObjectMapper());
+        var semantic = mock(SemanticAnalysisService.class);
+        when(semantic.model()).thenReturn("llama3.2:3b");
+        when(semantic.enrich(any())).thenAnswer(invocation -> {
+            List<SemanticAnalysisService.Candidate> candidates = invocation.getArgument(0);
+            var values = new java.util.HashMap<java.util.UUID, AiAssessment>();
+            for (var candidate : candidates) values.put(candidate.findingId(),
+                    new AiAssessment("llama3.2:3b", "1", 0.8, "High", false, "Risco", "Corrigir"));
+            return new SemanticAnalysisService.Result(candidates.isEmpty() ? "NOT_APPLICABLE" : "COMPLETED", values);
+        });
+        var controller = new AnalysisController(github, engine, repository, users,
+                new tools.jackson.databind.ObjectMapper(), semantic);
         return MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
