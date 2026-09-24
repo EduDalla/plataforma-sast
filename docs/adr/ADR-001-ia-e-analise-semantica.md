@@ -1,9 +1,10 @@
 # ADR-001 — IA local e análise semântica da CP2
 
-- **Status:** Proposta
+- **Status:** Aceita
 - **Data:** 2026-09-14
 - **Responsáveis:** Equipe da Plataforma SAST
 - **Checkpoint:** CP2 — IA e Análise Semântica
+- **Aceite:** 2026-09-24 — implementação e testes descritos em [CP2 — IA local](../CP2-IA-Local.md). A prova com `llama3.2:3b` avaliou os três findings da amostra oficial e um finding de taint com trace; o `mvn verify` e os testes do frontend passaram.
 
 ## Contexto
 

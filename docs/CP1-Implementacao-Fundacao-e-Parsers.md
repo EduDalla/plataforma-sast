@@ -44,6 +44,8 @@ A extensão autorizada inclui autenticação real com usuários no PostgreSQL, b
 
 Ficam para entregas posteriores: dashboard, histórico visual, relatórios, Taint Analysis, IA, sugestões de correção, filas, CI/CD e Security Gates.
 
+> Evolução posterior: a CP2 acrescentou taint analysis e classificação consultiva com Ollama. O contrato aditivo (`semanticStatus` e `aiAssessment`) e a operação estão em [CP2 — IA local](CP2-IA-Local.md); a severidade da CP1 permanece determinística.
+
 ## 2. Tecnologias
 
 | Camada | Tecnologia | Responsabilidade |

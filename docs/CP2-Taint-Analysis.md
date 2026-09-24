@@ -50,6 +50,6 @@ A migration `V3__finding_taint_trace.sql` adiciona a coluna anulável `findings.
 - `SastEngineTest`: confirma que a amostra oficial (`samples/VulnerableExample.java`) continua produzindo exatamente 3 findings — o parâmetro dessa amostra não tem anotação HTTP, então o taint engine não adiciona um quarto finding — e que o taint engine participa do pipeline junto às regras estruturais.
 - `AuthenticatedAnalysisIntegrationTest`: confirma que o `taintTrace` sobrevive ao ciclo completo (POST cria, coluna no banco, GET retorna o mesmo trace).
 
-## Pendências da CP2
+## Segundo incremento da CP2
 
-Fora desta entrega, ainda conforme a ADR-001: integração com Ollama/Llama 3 (`SemanticAnalysisService`), campo `semanticStatus` e `aiAssessment` no contrato, sugestões de remediação e a demonstração de varredura semântica. O frontend também não foi alterado nesta etapa — a exibição do `taintTrace` fica para um incremento futuro.
+O enriquecimento local por Ollama, a sugestão de remediação e a exibição do `taintTrace` no frontend são descritos em [CP2 — IA local](CP2-IA-Local.md). O trace e o finding determinístico permanecem independentes da avaliação consultiva.
