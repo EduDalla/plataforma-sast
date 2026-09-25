@@ -16,7 +16,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.postgresql.PostgreSQLContainer;
-import java.nio.file.*;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -26,6 +25,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {"sast.bootstrap.email=first@example.com", "sast.bootstrap.password=integration-test-password"})
 @AutoConfigureMockMvc
 class AuthenticatedAnalysisIntegrationTest {
+    private static final String VULNERABLE_SOURCE = "import java.io.InputStream;\n"
+            + "import java.io.ObjectInputStream;\n"
+            + "public final class InMemoryVulnerable {\n"
+            + "  private static final String password = \"123456\";\n"
+            + "  public Object execute(String userInput, InputStream stream) throws Exception {\n"
+            + "    Runtime.getRuntime().exec(userInput);\n"
+            + "    ObjectInputStream input = new ObjectInputStream(stream);\n"
+            + "    return input.readObject();\n"
+            + "  }\n"
+            + "}";
+
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18-alpine");
     @DynamicPropertySource static void database(DynamicPropertyRegistry registry) {
         postgres.start();
@@ -44,11 +54,9 @@ class AuthenticatedAnalysisIntegrationTest {
 
     @BeforeEach void snapshot() throws Exception {
         when(ollama.generate(any(), any())).thenReturn("{\"confidence\":0.8,\"suggestedSeverity\":\"High\",\"likelyFalsePositive\":false,\"rationale\":\"Risco contextual\",\"remediation\":\"Use entrada validada.\"}");
-        var sample = Path.of("../../samples/VulnerableExample.java");
-        if (!Files.exists(sample)) sample = Path.of("samples/VulnerableExample.java");
         when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot(
                 "acme", "demo", "https://github.com/acme/demo", "main",
-                List.of(new GitHubClient.File("samples/VulnerableExample.java", Files.readString(sample)))));
+                List.of(new GitHubClient.File("InMemoryVulnerable.java", VULNERABLE_SOURCE))));
     }
 
     String login(String email, String password) throws Exception {

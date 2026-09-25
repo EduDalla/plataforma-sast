@@ -47,7 +47,7 @@ A migration `V3__finding_taint_trace.sql` adiciona a coluna anulável `findings.
 ## Testes
 
 - `TaintAnalysisEngineTest`: cenário positivo (parâmetro HTTP → concatenação → sink, com trace completo), valor constante não contaminado, sanitização por `replaceAll`, limite intraprocedural (chamada a outro método não é seguida) e propagação em múltiplas reatribuições.
-- `SastEngineTest`: confirma que a amostra oficial (`samples/VulnerableExample.java`) continua produzindo exatamente 3 findings — o parâmetro dessa amostra não tem anotação HTTP, então o taint engine não adiciona um quarto finding — e que o taint engine participa do pipeline junto às regras estruturais.
+- `SastEngineTest`: confirma que um fixture Java vulnerável mantido em memória produz exatamente 3 findings — o parâmetro desse fixture não tem anotação HTTP, então o taint engine não adiciona um quarto finding — e que o taint engine participa do pipeline junto às regras estruturais.
 - `AuthenticatedAnalysisIntegrationTest`: confirma que o `taintTrace` sobrevive ao ciclo completo (POST cria, coluna no banco, GET retorna o mesmo trace).
 
 ## Segundo incremento da CP2

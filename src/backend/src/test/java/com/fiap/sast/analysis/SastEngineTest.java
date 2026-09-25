@@ -14,15 +14,24 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class SastEngineTest {
+    private static final String VULNERABLE_SOURCE = "import java.io.InputStream;\n"
+            + "import java.io.ObjectInputStream;\n"
+            + "public final class InMemoryVulnerable {\n"
+            + "  private static final String password = \"123456\";\n"
+            + "  public Object execute(String userInput, InputStream stream) throws Exception {\n"
+            + "    Runtime.getRuntime().exec(userInput);\n"
+            + "    ObjectInputStream input = new ObjectInputStream(stream);\n"
+            + "    return input.readObject();\n"
+            + "  }\n"
+            + "}";
+
     @Test
-    void exemploOficialProduzTresFindingsComTodosOsCampos() throws Exception {
-        var sample = findSample();
-        var source = Files.readString(sample);
+    void fixtureVulneravelProduzTresFindingsComTodosOsCampos() {
         var engine = new SastEngine(new JavaParserSourceParser(), List.of(
                 new HardcodedCredentialRule(), new RuntimeExecRule(), new DeserializationRule(),
                 new TaintAnalysisEngine()));
 
-        var findings = engine.analyze(source, "samples/VulnerableExample.java");
+        var findings = engine.analyze(VULNERABLE_SOURCE, "InMemoryVulnerable.java");
 
         assertEquals(3, findings.size());
         assertEquals(List.of("SAST-JAVA-001", "SAST-JAVA-002", "SAST-JAVA-003"),
@@ -31,7 +40,7 @@ class SastEngineTest {
             assertFalse(finding.ruleId().isBlank());
             assertFalse(finding.severity().isBlank());
             assertFalse(finding.cwe().isBlank());
-            assertEquals("samples/VulnerableExample.java", finding.fileName());
+            assertEquals("InMemoryVulnerable.java", finding.fileName());
             assertTrue(finding.line() > 0);
             assertTrue(finding.column() > 0);
             assertFalse(finding.snippet().isBlank());
@@ -70,13 +79,5 @@ class SastEngineTest {
         engine.analyze(source, "Untrusted.java");
 
         assertFalse(Files.exists(marker));
-    }
-
-    private static Path findSample() {
-        var candidates = List.of(
-                Path.of("samples/VulnerableExample.java"),
-                Path.of("../../samples/VulnerableExample.java"));
-        return candidates.stream().map(Path::toAbsolutePath).filter(Files::exists).findFirst()
-                .orElseThrow(() -> new AssertionError("A amostra oficial não foi encontrada"));
     }
 }

@@ -22,7 +22,7 @@ As avaliações ficam em `ai_assessments`, vinculadas aos findings; a análise g
 
 ## Demonstração
 
-1. Com o modelo pronto, analise pelo frontend a URL pública e referência do monorepo. `samples/VulnerableExample.java` deve continuar com exatamente três findings; cada um apresenta a seção “Sugestão da IA”.
+1. Com o modelo pronto, analise pelo frontend uma URL pública e referência de um repositório Java vulnerável. Os três findings determinísticos devem continuar preservados; cada um apresenta a seção “Sugestão da IA”.
 2. Para ver um trace, use um repositório Java público com parâmetro HTTP alcançando `Runtime.exec()`, ou execute o cenário determinístico em `TaintAnalysisEngineTest`. O finding `TAINT-CMDI-001` apresenta o trace e a avaliação consultiva. Não execute nem compile o repositório analisado.
 3. Com o Ollama indisponível, repita a análise: o estado fica `DEGRADED`, mas os findings e as contagens não mudam.
 

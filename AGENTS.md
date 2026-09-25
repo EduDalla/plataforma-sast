@@ -51,7 +51,7 @@ npm --prefix src/frontend run test -- --run
 docker compose config
 ```
 
-Confirme também que o exemplo em `samples/VulnerableExample.java` produz exatamente três findings e que nenhum código é executado durante o teste.
+Confirme também que o fixture Java vulnerável mantido em memória produz exatamente três findings e que nenhum código é executado durante o teste.
 
 ## Higiene do repositório
 

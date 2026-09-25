@@ -17,7 +17,6 @@ Nesta etapa, a aplicação recebe a URL de um repositório público do GitHub, b
 - `src/frontend`: aplicação React;
 - `src/backend`: API Spring Boot, JavaParser e Rules Engine;
 - `tests`: testes automatizados;
-- `samples`: arquivo vulnerável para demonstração;
 - `docker` e `compose.yaml`: ambiente local;
 - `docs`: documentação técnica.
 

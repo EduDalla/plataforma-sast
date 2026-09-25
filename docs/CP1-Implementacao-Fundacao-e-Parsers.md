@@ -238,8 +238,6 @@ O `AGENTS.md` da raiz deverá ser lido por qualquer agente Codex antes de altera
 │       ├── src/test/java/com/fiap/sast/
 │       ├── Dockerfile
 │       └── pom.xml
-├── samples/
-│   └── VulnerableExample.java
 ├── .dockerignore
 ├── .env.example
 ├── .gitignore
@@ -254,7 +252,6 @@ Responsabilidades:
 - `backend`: API HTTP, integração de leitura com GitHub, parsing, regras, persistência e orquestração;
 - `frontend`: formulário e visualização dos resultados;
 - `tests`: testes separados por unidade arquitetural;
-- `samples`: código propositalmente vulnerável usado somente na demonstração;
 - `docker`: configuração compartilhada do proxy web;
 - `docs`: documentação acadêmica e técnica.
 
@@ -682,7 +679,7 @@ Resposta compartilhada por `POST /api/analyses` e `GET /api/analyses/{id}`:
       "severity": "Critical",
       "cwe": "CWE-798",
       "description": "Credencial armazenada diretamente no código-fonte.",
-      "fileName": "samples/VulnerableExample.java",
+      "fileName": "InMemoryVulnerable.java",
       "line": 6,
       "column": 5,
       "snippet": "private static final String password = \"123456\";"
@@ -916,22 +913,9 @@ Resultados esperados:
 - health check: `http://localhost:8080/health`;
 - serviços `db`, `api` e `web` em estado saudável.
 
-### 12.2 Repositório vulnerável oficial da CP1
+### 12.2 Repositório Java vulnerável para demonstração
 
-Criar `samples/VulnerableExample.java` no próprio monorepo com exatamente este conteúdo e publicar o repositório como público no GitHub:
-
-```java
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-public final class VulnerableExample {
-    private static final String password = "123456";
-    public Object execute(String userInput, InputStream stream) throws Exception {
-        Runtime.getRuntime().exec(userInput);
-        ObjectInputStream input = new ObjectInputStream(stream);
-        return input.readObject();
-    }
-}
-```
+Publique um repositório Java de demonstração como público no GitHub e informe sua URL no frontend com a conta bootstrap. O repositório deve conter ocorrências das três regras da CP1.
 
 Depois da publicação, entrar no frontend com a conta bootstrap e informar a URL pública do monorepo e a referência publicada (neste repositório, `master`). Para chamadas pelo terminal, autenticar primeiro, manter o cookie JSESSIONID e enviar o header CSRF atual. O corpo da análise continua:
 
@@ -950,16 +934,16 @@ curl --request POST http://localhost:8080/api/analyses \
 
 | Ordem | Arquivo | Regra | Severidade | CWE | Linha |
 |---:|---|---|---|---|---:|
-| 1 | `samples/VulnerableExample.java` | Hardcoded credential | Critical | CWE-798 | 4 |
-| 2 | `samples/VulnerableExample.java` | Uso potencialmente inseguro de Runtime.exec | High | CWE-78 | 6 |
-| 3 | `samples/VulnerableExample.java` | Desserialização potencialmente insegura | High | CWE-502 | 8 |
+| 1 | `InMemoryVulnerable.java` | Hardcoded credential | Critical | CWE-798 | 4 |
+| 2 | `InMemoryVulnerable.java` | Uso potencialmente inseguro de Runtime.exec | High | CWE-78 | 6 |
+| 3 | `InMemoryVulnerable.java` | Desserialização potencialmente insegura | High | CWE-502 | 8 |
 
 A demonstração deve mostrar:
 
 1. a URL e a referência no formulário;
 2. o download do snapshot sem clonar ou executar o repositório;
 3. o estado de processamento;
-4. os três cards agrupados em `samples/VulnerableExample.java`;
+4. os três cards agrupados no arquivo vulnerável analisado;
 5. linha e trecho corretos;
 6. a análise persistida no PostgreSQL;
 7. a aplicação continuando saudável após analisar o snapshot.
@@ -1013,7 +997,7 @@ O repositório contém código Java perigoso de propósito, porém seus arquivos
 
 ## 14. Critério de conclusão da CP1
 
-A CP1 estará concluída quando um clone limpo do monorepo puder ser iniciado com Docker Compose, receber pelo frontend a URL pública do repositório de demonstração, baixar seu snapshot, analisar `samples/VulnerableExample.java`, aplicar as três regras, persistir os achados e apresentar exatamente três vulnerabilidades sem executar qualquer código do repositório.
+A CP1 estará concluída quando um clone limpo do monorepo puder ser iniciado com Docker Compose, receber pelo frontend a URL pública de um repositório de demonstração, baixar seu snapshot, aplicar as três regras, persistir os achados e apresentar exatamente três vulnerabilidades sem executar qualquer código do repositório.
 
 ## Referências técnicas
 
