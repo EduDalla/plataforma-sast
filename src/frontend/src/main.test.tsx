@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -224,6 +225,43 @@ describe("fluxo autenticado da análise", () => {
     expect(location.pathname).toBe("/dashboard");
     expect(screen.getByRole("button", { name: "Abrir dashboard de demo" })).toBeInTheDocument();
   });
+  it("mantém dicas no modal durante a análise e limpa a rotação ao concluir", async () => {
+    const setIntervalSpy = vi.spyOn(window, "setInterval");
+    const clearIntervalSpy = vi.spyOn(window, "clearInterval");
+    let resolve!: (value: Analysis) => void;
+    vi.mocked(api.create).mockReturnValue(new Promise((promiseResolve) => {
+      resolve = promiseResolve;
+    }));
+
+    try {
+      render(<App />);
+      await submit();
+
+      const modal = screen.getByRole("dialog", { name: "Análise em andamento" });
+      expect(modal).toHaveAttribute("aria-modal", "true");
+      expect(document.activeElement).toBe(modal);
+      const firstTip = screen.getByText(/Use variáveis|Uma análise|Validação de entrada|Atualizar dependências|O princípio|Logs ajudam|Revisões pequenas/).textContent;
+      expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 7000);
+
+      fireEvent.click(screen.getByRole("button", { name: /Próxima dica/ }));
+      const secondTip = screen.getByText(/Use variáveis|Uma análise|Validação de entrada|Atualizar dependências|O princípio|Logs ajudam|Revisões pequenas/).textContent;
+      expect(secondTip).not.toBe(firstTip);
+
+      const lastIntervalCall = setIntervalSpy.mock.calls[setIntervalSpy.mock.calls.length - 1];
+      const rotate = lastIntervalCall?.[0] as () => void;
+      act(() => rotate());
+      const thirdTip = screen.getByText(/Use variáveis|Uma análise|Validação de entrada|Atualizar dependências|O princípio|Logs ajudam|Revisões pequenas/).textContent;
+      expect(thirdTip).not.toBe(secondTip);
+
+      resolve(sample);
+      expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: "Análise em andamento" })).not.toBeInTheDocument();
+      expect(clearIntervalSpy).toHaveBeenCalled();
+    } finally {
+      setIntervalSpy.mockRestore();
+      clearIntervalSpy.mockRestore();
+    }
+  });
   it("trata sucesso sem achados", async () => {
     vi.mocked(api.systems).mockResolvedValue({ systems: [{ owner: "acme", repositoryName: "demo", repositoryUrl: sample.repositoryUrl, latestCreatedAt: sample.createdAt, totalAnalyses: 1, latest: { analysisId: sample.analysisId, reference: sample.reference, createdAt: sample.createdAt, filesAnalyzed: 1, findings: 0 } }], page: 0, size: 20, totalSystems: 1, totalAnalyses: 1, totalFindings: 0, totalCritical: 0, totalFiles: 1 });
     vi.mocked(api.create).mockResolvedValue({ ...sample, findings: [] });
@@ -242,6 +280,7 @@ describe("fluxo autenticado da análise", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Java inválido na linha 3",
     );
+    expect(screen.queryByRole("dialog", { name: "Análise em andamento" })).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Iniciar análise/ }),
     ).toBeEnabled();

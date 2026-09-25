@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "./api";
 import {
   AnalysisForm,
+  AnalysisProgressModal,
   Dashboard,
   DashboardPrompt,
   ErrorMessage,
@@ -317,7 +318,7 @@ export function App() {
   }
   if (!ready)
     return (
-      <main className="startup">
+      <main className="app-shell startup" data-theme={theme}>
         <Processing restoring />
       </main>
     );
@@ -396,6 +397,7 @@ export function App() {
           </section>
         )}
       </main>
+      {submitting && <AnalysisProgressModal />}
       {dashboardPromptOpen && (
         <DashboardPrompt
           onClose={() => {

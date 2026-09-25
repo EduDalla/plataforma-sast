@@ -71,22 +71,21 @@ export function Breadcrumb({
   );
 }
 export function Processing({ restoring = false }: { restoring?: boolean }) {
+  if (restoring) {
+    return (
+      <section className="panel processing startup-processing" role="status" aria-label="Carregando aplicação" aria-live="polite">
+        <div className="spinner" aria-hidden="true" />
+      </section>
+    );
+  }
   return (
     <section className="panel processing" role="status" aria-live="polite">
       <span className="eyebrow">PLATAFORMA SAST</span>
       <div className="spinner" aria-hidden="true" />
-      <h1>{restoring ? "Carregando seu espaço" : "Análise em andamento"}</h1>
-      <p>
-        {restoring
-          ? "Só um instante…"
-          : "Analisando os arquivos Java do repositório."}
-      </p>
-      {!restoring && (
-        <>
-          <span className="muted">Isso pode levar alguns segundos.</span>
-          <button disabled>Analisando…</button>
-        </>
-      )}
+      <h1>Análise em andamento</h1>
+      <p>Analisando os arquivos Java do repositório.</p>
+      <span className="muted">Isso pode levar alguns segundos.</span>
+      <button disabled>Analisando…</button>
     </section>
   );
 }
@@ -277,6 +276,82 @@ export function AnalysisForm({
         </aside>
       </div>
     </>
+  );
+}
+
+const analysisTips = [
+  "Use variáveis de ambiente para manter senhas e tokens fora do código-fonte.",
+  "Uma análise estática examina o código sem precisar executá-lo.",
+  "Validação de entrada deve acontecer antes de montar comandos, consultas ou caminhos de arquivo.",
+  "Atualizar dependências reduz a exposição a vulnerabilidades já conhecidas.",
+  "O princípio do menor privilégio limita o impacto de uma credencial comprometida.",
+  "Logs ajudam na investigação, mas nunca devem registrar senhas, tokens ou código-fonte completo.",
+  "Revisões pequenas e frequentes tornam problemas de segurança mais fáceis de identificar.",
+];
+
+/**
+ * Seleciona um índice de dica diferente da dica atualmente exibida.
+ *
+ * @param currentIndex índice da dica atualmente exibida
+ * @returns índice da próxima dica
+ */
+function nextAnalysisTip(currentIndex: number) {
+  let nextIndex = Math.floor(Math.random() * analysisTips.length);
+  while (nextIndex === currentIndex) {
+    nextIndex = Math.floor(Math.random() * analysisTips.length);
+  }
+  return nextIndex;
+}
+
+/**
+ * Exibe o andamento da análise enquanto a API processa o repositório.
+ *
+ * @returns modal bloqueante com uma dica de segurança ou curiosidade
+ */
+export function AnalysisProgressModal() {
+  const [tipIndex, setTipIndex] = useState(() => Math.floor(Math.random() * analysisTips.length));
+  const modalRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    modalRef.current?.focus();
+    const interval = window.setInterval(() => {
+      setTipIndex((currentIndex) => nextAnalysisTip(currentIndex));
+    }, 7000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  function showNextTip() {
+    setTipIndex((currentIndex) => nextAnalysisTip(currentIndex));
+  }
+
+  return (
+    <div className="analysis-progress-backdrop" role="presentation">
+      <section
+        ref={modalRef}
+        className="analysis-progress-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="analysis-progress-title"
+        aria-describedby="analysis-progress-description"
+        tabIndex={-1}
+      >
+        <div className="analysis-progress-icon" aria-hidden="true">
+          <span className="spinner" />
+        </div>
+        <span className="eyebrow">PLATAFORMA SAST</span>
+        <h2 id="analysis-progress-title">Análise em andamento</h2>
+        <p id="analysis-progress-description">
+          Estamos examinando o repositório com segurança. Aguarde a conclusão para ver os resultados.
+        </p>
+        <div className="analysis-tip" aria-live="polite">
+          <span className="analysis-tip-label">Dica enquanto você espera</span>
+          <p>{analysisTips[tipIndex]}</p>
+        </div>
+        <button type="button" className="secondary analysis-tip-button" onClick={showNextTip}>
+          Próxima dica <span aria-hidden="true">→</span>
+        </button>
+      </section>
+    </div>
   );
 }
 

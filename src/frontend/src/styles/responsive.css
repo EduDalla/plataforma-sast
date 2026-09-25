@@ -136,6 +136,18 @@
   .processing h1 {
     font-size: 24px;
   }
+  .analysis-progress-backdrop {
+    padding: 16px;
+  }
+  .analysis-progress-modal {
+    padding: 30px 22px 24px;
+  }
+  .analysis-progress-modal h2 {
+    font-size: 22px;
+  }
+  .analysis-tip-button {
+    width: 100%;
+  }
   .repository .ref {
     margin: 8px 0 0;
     display: table;

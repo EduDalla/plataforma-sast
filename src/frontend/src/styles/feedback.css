@@ -33,6 +33,98 @@
 .startup .panel {
   width: min(90vw, 630px);
 }
+.startup .startup-processing {
+  width: min(90vw, 180px);
+  min-height: 130px;
+  padding: 36px 20px;
+}
+.startup-processing .spinner {
+  margin: 0 auto;
+  border-color: var(--border-muted);
+  border-top-color: var(--accent);
+}
+.analysis-progress-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #142018cc;
+}
+.analysis-progress-modal {
+  width: min(100%, 540px);
+  padding: 38px 42px 34px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 22px 70px #0b120d55;
+  text-align: center;
+}
+.analysis-progress-modal:focus {
+  outline: none;
+}
+.analysis-progress-modal .eyebrow {
+  margin: 0 0 11px;
+  color: var(--accent);
+}
+.analysis-progress-modal h2 {
+  margin: 0 0 10px;
+  font-size: 25px;
+}
+.analysis-progress-modal > p {
+  max-width: 410px;
+  margin: 0 auto;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.analysis-progress-icon {
+  display: grid;
+  place-items: center;
+  min-height: 52px;
+  margin-bottom: 20px;
+}
+.analysis-progress-icon .spinner {
+  margin: 0;
+  border-color: var(--border-muted);
+  border-top-color: var(--accent);
+}
+.analysis-tip {
+  margin: 27px 0 22px;
+  padding: 17px 19px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-muted);
+  text-align: left;
+}
+.analysis-tip-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+.analysis-tip p {
+  min-height: 42px;
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.analysis-tip-button {
+  margin: 0 auto;
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+  font-size: 12px;
+}
+.analysis-tip-button:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
 @keyframes spin {
   to {
     transform: rotate(360deg);
