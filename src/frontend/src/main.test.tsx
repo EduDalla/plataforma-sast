@@ -19,6 +19,7 @@ vi.mock("./api", async (importOriginal) => {
     api: {
       session: vi.fn(),
       login: vi.fn(),
+      register: vi.fn(),
       logout: vi.fn(),
       create: vi.fn(),
       analysis: vi.fn(),
@@ -178,6 +179,36 @@ describe("fluxo autenticado da análise", () => {
     expect(api.login).toHaveBeenCalledWith("test@example.com", "test-password");
     expect(location.pathname).toBe("/analyses/new");
     expect(localStorage.length).toBe(0);
+  });
+  it("permite cadastrar uma conta e entra automaticamente", async () => {
+    vi.mocked(api.session).mockRejectedValue(new ApiError(401, "Sessão expirada"));
+    vi.mocked(api.register).mockResolvedValue({ email: "new@example.com" });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("link", { name: "Criar cadastro" }));
+    fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "new@example.com" } });
+    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "strong-password" } });
+    fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "strong-password" } });
+    fireEvent.click(screen.getByRole("button", { name: "Mostrar senha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mostrar confirmação de senha" }));
+    expect(screen.getByLabelText("Senha")).toHaveAttribute("type", "text");
+    expect(screen.getByLabelText("Confirmar senha")).toHaveAttribute("type", "text");
+    fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
+    expect(await screen.findByRole("heading", { name: "Bem-vindo de volta" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Cadastro realizado com sucesso. Faça login para continuar.");
+    expect(api.register).toHaveBeenCalledWith("new@example.com", "strong-password");
+    expect(api.login).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("E-mail")).toHaveValue("");
+    expect(screen.getByLabelText("Senha")).toHaveValue("");
+  });
+  it("abre diretamente a página de cadastro pela rota", async () => {
+    history.replaceState(null, "", "/cadastro");
+    vi.mocked(api.session).mockRejectedValue(new ApiError(401, "Sessão expirada"));
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Crie sua conta" })).toBeInTheDocument();
+    expect(location.pathname).toBe("/cadastro");
+    fireEvent.click(screen.getByRole("link", { name: "Entrar" }));
+    expect(location.pathname).toBe("/login");
+    expect(await screen.findByRole("heading", { name: "Bem-vindo de volta" })).toBeInTheDocument();
   });
   it("apresenta falha de login genérica", async () => {
     vi.mocked(api.session).mockRejectedValue(new ApiError(401, ""));

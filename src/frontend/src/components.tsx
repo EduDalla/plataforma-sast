@@ -21,6 +21,24 @@ export function Shield() {
     </svg>
   );
 }
+function PasswordVisibilityIcon({ visible }: { visible: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      {visible ? (
+        <>
+          <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+          <circle cx="12" cy="12" r="2.5" />
+        </>
+      ) : (
+        <>
+          <path d="m3 3 18 18" />
+          <path d="M10.6 6.2A10.4 10.4 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-3.1 3.7M6.2 6.7C3.8 8.3 2.5 12 2.5 12S6 18 12 18c1.1 0 2.1-.2 3-.5" />
+          <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+        </>
+      )}
+    </svg>
+  );
+}
 export function ErrorMessage({ message }: { message: string }) {
   return message ? (
     <div className="error" role="alert">
@@ -91,18 +109,42 @@ export function Processing({ restoring = false }: { restoring?: boolean }) {
 }
 export function Login({
   onLogin,
+  onRegister,
+  initialRegistering = false,
+  onToggleMode,
+  success,
   error,
 }: {
   onLogin: (email: string, password: string) => Promise<void>;
+  onRegister: (email: string, password: string) => Promise<void>;
+  initialRegistering?: boolean;
+  onToggleMode?: () => void;
+  success?: string;
   error: string;
 }) {
   const [busy, setBusy] = useState(false);
+  const [registering, setRegistering] = useState(initialRegistering);
+  const [formError, setFormError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
+  useEffect(() => {
+    setRegistering(initialRegistering);
+    setShowPassword(false);
+    setShowPasswordConfirmation(false);
+  }, [initialRegistering]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     setBusy(true);
     try {
-      await onLogin(String(form.get("email")), String(form.get("password")));
+      const email = String(form.get("email"));
+      const password = String(form.get("password"));
+      if (registering && password !== String(form.get("passwordConfirmation"))) {
+        setFormError("As senhas não conferem");
+        return;
+      }
+      setFormError("");
+      await (registering ? onRegister : onLogin)(email, password);
     } finally {
       setBusy(false);
     }
@@ -133,10 +175,11 @@ export function Login({
             <Shield />
             <strong>SAST</strong>
           </div>
-          <h2>Bem-vindo de volta</h2>
-          <p className="muted">Entre para analisar seus repositórios.</p>
-          <ErrorMessage message={error} />
-          <form onSubmit={submit}>
+          <h2>{registering ? "Crie sua conta" : "Bem-vindo de volta"}</h2>
+          <p className="muted">{registering ? "Cadastre-se para analisar seus repositórios." : "Entre para analisar seus repositórios."}</p>
+          {!registering && success && <div className="success" role="status">{success}</div>}
+          <ErrorMessage message={error || formError} />
+          <form key={registering ? "register" : "login"} onSubmit={submit}>
             <label>
               E-mail
               <input
@@ -150,21 +193,69 @@ export function Login({
             </label>
             <label>
               Senha
-              <input
-                autoComplete="current-password"
-                name="password"
-                type="password"
-                required
-                placeholder="Sua senha"
-                disabled={busy}
-              />
+              <span className="password-field">
+                <input
+                  autoComplete={registering ? "new-password" : "current-password"}
+                  name="password"
+                  type={registering && showPassword ? "text" : "password"}
+                  required
+                  placeholder="Sua senha"
+                  disabled={busy}
+                />
+                {registering && <button
+                  className="password-toggle"
+                  type="button"
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  disabled={busy}
+                >
+                  <PasswordVisibilityIcon visible={showPassword} />
+                </button>}
+              </span>
             </label>
+            {registering && <label>
+              Confirmar senha
+              <span className="password-field">
+                <input
+                  autoComplete="new-password"
+                  name="passwordConfirmation"
+                  type={showPasswordConfirmation ? "text" : "password"}
+                  required
+                  minLength={12}
+                  placeholder="Repita sua senha"
+                  disabled={busy}
+                />
+                <button
+                  className="password-toggle"
+                  type="button"
+                  aria-label={showPasswordConfirmation ? "Ocultar confirmação de senha" : "Mostrar confirmação de senha"}
+                  onClick={() => setShowPasswordConfirmation((visible) => !visible)}
+                  disabled={busy}
+                >
+                  <PasswordVisibilityIcon visible={showPasswordConfirmation} />
+                </button>
+              </span>
+            </label>}
             <button disabled={busy}>
-              {busy ? "Entrando…" : "Entrar"}
+              {busy ? (registering ? "Cadastrando…" : "Entrando…") : (registering ? "Criar conta" : "Entrar")}
               <span aria-hidden="true"> →</span>
             </button>
           </form>
-          <p className="login-note">Seu espaço para um código mais seguro.</p>
+          <p className="login-note">
+            {registering ? "Já possui uma conta? " : "Ainda não possui uma conta? "}
+            <a
+              className="auth-switch"
+              href={registering ? "/login" : "/cadastro"}
+              onClick={(event) => {
+                if (!onToggleMode) return;
+                event.preventDefault();
+                setFormError("");
+                onToggleMode();
+              }}
+            >
+              {registering ? "Entrar" : "Criar cadastro"}
+            </a>
+          </p>
         </div>
         <span className="login-bottom">PLATAFORMA DE ANÁLISE ESTÁTICA</span>
       </section>

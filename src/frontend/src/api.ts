@@ -83,6 +83,12 @@ export const api = {
     storeToken(accessToken);
     return response;
   },
+  register: (email: string, password: string) =>
+    request<Session>("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    }),
   logout: async () => {
     accessToken = null;
     storeToken(null);

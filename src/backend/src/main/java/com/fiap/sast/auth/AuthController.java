@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
 import org.slf4j.Logger;
@@ -26,15 +28,25 @@ public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final UserRepository users;
+    private final PasswordEncoder passwordEncoder;
 
-    public AuthController(AuthenticationManager authenticationManager, JwtService jwtService) {
+    public AuthController(AuthenticationManager authenticationManager, JwtService jwtService,
+            UserRepository users, PasswordEncoder passwordEncoder) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.users = users;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public record Login(
             @NotBlank @Email @Size(max = 254) String email,
             @NotBlank @Size(max = 72) String password) {
+    }
+
+    public record Register(
+            @NotBlank @Email @Size(max = 254) String email,
+            @NotBlank @Size(min = 12, max = 72) String password) {
     }
 
     public record Session(String email, String accessToken, String tokenType, long expiresIn) {
@@ -46,6 +58,26 @@ public class AuthController {
     @org.springframework.web.bind.annotation.GetMapping("/session")
     public CurrentSession session(Authentication authentication) {
         return new CurrentSession(authentication.getName());
+    }
+
+    @PostMapping("/register")
+    @Transactional
+    public ResponseEntity<?> register(@Valid @RequestBody Register input) {
+        var email = input.email().trim().toLowerCase(Locale.ROOT);
+        if (input.password().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
+            return ResponseEntity.badRequest().body(ProblemDetail.forStatusAndDetail(
+                    HttpStatus.BAD_REQUEST, "A senha deve ter no máximo 72 bytes UTF-8"));
+        }
+        if (users.findByEmail(email).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ProblemDetail.forStatusAndDetail(
+                    HttpStatus.CONFLICT, "Este e-mail já está cadastrado"));
+        }
+        var user = new AppUser();
+        user.email = email;
+        user.passwordHash = passwordEncoder.encode(input.password());
+        users.save(user);
+        log.atInfo().setMessage("user_registered").addKeyValue("event", "user_registered").log();
+        return ResponseEntity.status(HttpStatus.CREATED).body(new CurrentSession(email));
     }
 
     @PostMapping("/login")

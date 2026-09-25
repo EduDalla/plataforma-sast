@@ -48,6 +48,7 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [path, setPath] = useState(location.pathname);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [result, setResult] = useState<Analysis>();
   const [systems, setSystems] = useState<SystemsPage>();
   const [systemHistory, setSystemHistory] = useState<HistoryEntry[]>([]);
@@ -109,7 +110,7 @@ export function App() {
       .catch((e) => {
         if (!active) return;
         if (!(e instanceof ApiError && e.status === 401)) setError(e.message);
-        navigate("/login", true);
+        navigate(location.pathname === "/cadastro" ? "/cadastro" : "/login", true);
       })
       .finally(() => {
         if (active) setReady(true);
@@ -225,6 +226,7 @@ export function App() {
   }, [path, session, systems, result?.analysisId, navigate, failure, loadSystems]);
   async function login(email: string, password: string) {
     setError("");
+    setSuccess("");
     try {
       const value = await api.login(email, password);
       setSession(value);
@@ -233,6 +235,16 @@ export function App() {
         const page = await loadSystems();
         navigate(page?.totalSystems ? "/dashboard" : "/analyses/new", true);
       }
+    } catch (e) {
+      failure(e);
+    }
+  }
+  async function register(email: string, password: string) {
+    setError("");
+    try {
+      await api.register(email, password);
+      setSuccess("Cadastro realizado com sucesso. Faça login para continuar.");
+      navigate("/login", true);
     } catch (e) {
       failure(e);
     }
@@ -325,7 +337,14 @@ export function App() {
   if (!session)
     return (
       <main>
-        <Login onLogin={login} error={error} />
+        <Login
+          onLogin={login}
+          onRegister={register}
+          initialRegistering={path === "/cadastro"}
+          onToggleMode={() => navigate(path === "/cadastro" ? "/login" : "/cadastro", true)}
+          success={success}
+          error={error}
+        />
       </main>
     );
   return (

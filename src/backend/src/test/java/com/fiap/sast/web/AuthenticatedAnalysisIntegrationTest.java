@@ -92,6 +92,22 @@ class AuthenticatedAnalysisIntegrationTest {
         mvc.perform(get("/health")).andExpect(status().isOk());
     }
 
+    @Test void registersUserWithBcryptAndRejectsDuplicateEmail() throws Exception {
+        mvc.perform(post("/api/auth/register").contentType("application/json")
+                .content("{\"email\":\"New@Example.com\",\"password\":\"strong-password\"}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.email").value("new@example.com"))
+                .andExpect(jsonPath("$.accessToken").doesNotExist());
+        var account = users.findByEmail("new@example.com").orElseThrow();
+        assertNotEquals("strong-password", account.passwordHash);
+        assertTrue(passwords.matches("strong-password", account.passwordHash));
+        mvc.perform(post("/api/auth/register").contentType("application/json")
+                .content("{\"email\":\"new@example.com\",\"password\":\"another-password\"}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.detail").value("Este e-mail já está cadastrado"));
+        mvc.perform(post("/api/auth/register").contentType("application/json")
+                .content("{\"email\":\"short@example.com\",\"password\":\"short\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
     @Test void createsPersistsRetrievesThreeFindingsAndIsolatesOwners() throws Exception {
         var token = login("first@example.com", "integration-test-password");
         var created = mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token).contentType("application/json")

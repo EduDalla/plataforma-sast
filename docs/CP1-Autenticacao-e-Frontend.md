@@ -1,6 +1,6 @@
 # Extensão autorizada — autenticação e frontend
 
-A CP1 foi ampliada por solicitação explícita para incluir login, persistência de usuários, isolamento de análises e dashboard com histórico por sistema. O mockup orienta login, nova análise, processamento, resultados e detalhes. A entrada continua sendo URL pública do GitHub e referência opcional, exclusivamente para Java. Relatórios, configurações, cadastro e recuperação de senha não fazem parte desta extensão.
+A CP1 foi ampliada por solicitação explícita para incluir cadastro e login, persistência de usuários, isolamento de análises e dashboard com histórico por sistema. O mockup orienta cadastro, login, nova análise, processamento, resultados e detalhes. A entrada continua sendo URL pública do GitHub e referência opcional, exclusivamente para Java. Relatórios, configurações e recuperação de senha não fazem parte desta extensão.
 
 ## Acesso e implantação
 
@@ -15,6 +15,7 @@ A autenticação usa JWT Bearer assinado com HMAC-SHA256. `SAST_JWT_SECRET` deve
 | Método e rota | Entrada | Resultado |
 |---|---|---|
 | POST /api/auth/login | JSON `{email, password}` | 200 com `{email, accessToken, tokenType, expiresIn}`; 401 genérico para credencial inválida |
+| POST /api/auth/register | JSON `{email, password}` | 201 com `{email}`; 409 quando o e-mail já está cadastrado |
 | GET /api/auth/session | Header `Authorization: Bearer ...` | 200 com `{email}` ou 401 |
 | POST /api/auth/logout | Nenhuma (logout local) | 204 |
 | POST /api/analyses | Header Bearer e JSON `{repositoryUrl, reference?}` | 201 e Location para uma execução nova; 200 e o mesmo `analysisId` quando os findings da mesma referência não mudaram |

@@ -107,6 +107,49 @@
   display: grid;
   gap: 20px;
 }
+.login-card .success {
+  margin-top: 18px;
+}
+.password-field {
+  display: block;
+  position: relative;
+  margin-top: 9px;
+}
+.password-field input {
+  margin-top: 0;
+  padding-right: 46px;
+}
+.login-card .password-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 44px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent !important;
+  color: #66736a;
+  font-size: 18px;
+  line-height: 1;
+  gap: 0;
+  z-index: 1;
+  transform: none;
+}
+.login-card .password-toggle:hover:not(:disabled) {
+  background: transparent !important;
+  color: #314d3c;
+}
+.password-toggle svg {
+  width: 19px;
+  height: 19px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .login-card button {
   width: 100%;
   margin-top: 5px;
@@ -117,6 +160,15 @@
   color: #939994;
   font-size: 11px;
   margin-top: 23px;
+}
+.auth-switch {
+  display: inline;
+  color: #425d49;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .login-bottom {
   position: absolute;

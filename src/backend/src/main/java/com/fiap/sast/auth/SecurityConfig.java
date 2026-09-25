@@ -86,7 +86,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/health", "/api/auth/login")
+                        .requestMatchers("/health", "/api/auth/login", "/api/auth/register")
                         .permitAll()
                         .anyRequest()
                         .authenticated())

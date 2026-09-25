@@ -13,6 +13,13 @@ it("envia o login e mantém o token na sessão", async () => {
   expect(fetch.mock.calls[0][1].headers.get("Content-Type")).toBe("application/json");
   await api.logout();
 });
+it("envia o cadastro sem persistir a senha", async () => {
+  const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ email: "new@example.com" }), { status: 201 }));
+  vi.stubGlobal("fetch", fetch);
+  await api.register("new@example.com", "strong-password");
+  expect(fetch).toHaveBeenCalledWith("/api/auth/register", expect.objectContaining({ method: "POST" }));
+  expect(fetch.mock.calls[0][1].body).toBe(JSON.stringify({ email: "new@example.com", password: "strong-password" }));
+});
 it("trata respostas não JSON e falhas de rede", async () => {
   vi.stubGlobal(
     "fetch",
