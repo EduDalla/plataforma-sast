@@ -126,6 +126,43 @@
   border-color: var(--border);
   color: var(--text);
 }
+.app-shell .ai-assessment {
+  border-color: #43634b;
+  border-left-color: #9ac7a2;
+  background: #202d24;
+  color: #edf4ed;
+}
+.app-shell .ai-assessment-heading {
+  border-color: #354b3b;
+}
+.app-shell .ai-kicker {
+  color: #9ac7a2;
+}
+.app-shell .ai-assessment h5 {
+  color: #edf4ed;
+}
+.app-shell .ai-consultive {
+  border-color: #52765b;
+  color: #b8d9bd;
+}
+.app-shell .ai-assessment-summary > div {
+  border-color: #3d5443;
+  background: #29382d;
+}
+.app-shell .ai-assessment-summary span,
+.app-shell .ai-assessment-copy p {
+  color: #b5c3b6;
+}
+.app-shell .ai-assessment-summary strong {
+  color: #edf4ed;
+}
+.app-shell .ai-assessment-copy h6 {
+  color: #c8dfcb;
+}
+.app-shell .ai-assessment-meta {
+  border-color: #354b3b;
+  color: #a7b9a9;
+}
 .app-shell .result-footer, .app-shell .findings-heading > span {
   color: var(--text-muted);
 }

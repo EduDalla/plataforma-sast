@@ -616,14 +616,46 @@ export function Results({
                     </pre>
                     {f.taintTrace && <TaintTraceView trace={f.taintTrace} />}
                     {f.aiAssessment && <section className="ai-assessment" aria-label="Sugestão da IA">
-                      <h5>Sugestão da IA</h5>
-                      <p>Severidade sugerida: <strong>{severityNames[f.aiAssessment.suggestedSeverity]}</strong></p>
-                      <p>Provável falso positivo: <strong>{f.aiAssessment.likelyFalsePositive ? "Sim" : "Não"}</strong></p>
-                      <p>Confiança informada pelo modelo: {Math.round(f.aiAssessment.confidence * 100)}%</p>
-                      <p>{f.aiAssessment.rationale}</p>
-                      <h5>Remediação sugerida</h5>
-                      <p>{f.aiAssessment.remediation}</p>
-                      <small>Modelo {f.aiAssessment.model} · Avaliação consultiva; confirme antes de agir.</small>
+                      <div className="ai-assessment-heading">
+                        <div>
+                          <span className="ai-kicker">ANÁLISE SEMÂNTICA</span>
+                          <h5>Sugestão da IA</h5>
+                        </div>
+                        <span className="ai-consultive">Consultiva</span>
+                      </div>
+                      <div className="ai-assessment-summary">
+                        <div>
+                          <span>
+                            Severidade sugerida:
+                            <strong className={`ai-severity ai-severity-${f.aiAssessment.suggestedSeverity.toLowerCase()}`}>
+                              {severityNames[f.aiAssessment.suggestedSeverity]}
+                            </strong>
+                          </span>
+                        </div>
+                        <div>
+                          <span>
+                            Provável falso positivo:
+                            <strong>{f.aiAssessment.likelyFalsePositive ? "Sim" : "Não"}</strong>
+                          </span>
+                        </div>
+                        <div>
+                          <span>
+                            Confiança do modelo:
+                            <strong>{Math.round(f.aiAssessment.confidence * 100)}%</strong>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="ai-assessment-copy">
+                        <div>
+                          <h6>Justificativa</h6>
+                          <p>{f.aiAssessment.rationale}</p>
+                        </div>
+                        <div>
+                          <h6>Remediação sugerida</h6>
+                          <p>{f.aiAssessment.remediation}</p>
+                        </div>
+                      </div>
+                      <small className="ai-assessment-meta">Modelo {f.aiAssessment.model} · Confirme a sugestão antes de agir.</small>
                     </section>}
                     <span className="muted">
                       Regra {f.ruleId} · {f.fileName}

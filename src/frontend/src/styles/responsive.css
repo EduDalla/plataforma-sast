@@ -119,6 +119,13 @@
   .finding-detail {
     padding: 19px 17px;
   }
+  .ai-assessment {
+    padding: 16px;
+  }
+  .ai-assessment-summary,
+  .ai-assessment-copy {
+    grid-template-columns: 1fr;
+  }
   .app-footer {
     font-size: 9px;
   }
@@ -140,4 +147,3 @@
     transition: none !important;
   }
 }
-
