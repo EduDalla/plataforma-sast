@@ -10,15 +10,15 @@ Configure o `.env` conforme `.env.example` e inicie os serviços com `docker com
 docker compose exec ollama ollama pull llama3.2:3b
 ```
 
-O Ollama não publica porta no host. A API usa `http://ollama:11434` no Compose; fora dele, `SAST_OLLAMA_BASE_URL` pode apontar para um Ollama local. `SAST_OLLAMA_MODEL` define o modelo; `SAST_OLLAMA_MAX_CANDIDATES` (10) e `SAST_OLLAMA_TOTAL_BUDGET_SECONDS` (45) limitam a etapa semântica. Cada chamada tem timeout máximo de 20 segundos e uma repetição apenas para falha transitória. O proxy Nginx aguarda até 180 segundos por resposta da API, incluindo o download do GitHub.
+O Ollama não publica porta no host. A API usa `http://ollama:11434` no Compose; fora dele, `SAST_OLLAMA_BASE_URL` pode apontar para um Ollama local. `SAST_OLLAMA_MODEL` define o modelo. `SAST_OLLAMA_MAX_CANDIDATES=0` e `SAST_OLLAMA_TOTAL_BUDGET_SECONDS=0` significam analisar todos os candidatos sem orçamento agregado. Cada chamada individual tem timeout máximo de 20 segundos e uma repetição apenas para falha transitória. O proxy Nginx aguarda até 180 segundos por resposta da API, incluindo o download do GitHub.
 
 Se o modelo ainda não tiver sido baixado, a API continua funcionando: `semanticStatus` será `DEGRADED` e todos os findings determinísticos permanecerão disponíveis. Uma nova análise com o modelo pronto tenta enriquecer novamente o resultado degradado.
 
 ## Contrato e dados
 
-`POST /api/analyses` e `GET /api/analyses/{id}` retornam `semanticStatus`: `NOT_APPLICABLE` se não houver findings, `COMPLETED` se todos forem avaliados, `DEGRADED` se algum ficar sem avaliação. O campo opcional `aiAssessment` de cada finding contém `model`, `promptVersion`, `confidence`, `suggestedSeverity`, `likelyFalsePositive`, `rationale` e `remediation`. O campo `severity` original e todas as contagens continuam derivados apenas das regras.
+`POST /api/analyses` e `GET /api/analyses/{id}` retornam `semanticStatus`: `NOT_APPLICABLE` se não houver findings, `COMPLETED` se todos forem avaliados, `DEGRADED` se algum ficar sem avaliação. O campo opcional `aiAssessment` de cada finding contém `model`, `promptVersion`, `confidence`, `suggestedSeverity`, `likelyFalsePositive`, `rationale`, `remediation`, `risk`, `evidence`, `falsePositiveReason`, `limitations` e `recommendations`. O campo `severity` original e todas as contagens continuam derivados apenas das regras.
 
-As avaliações ficam em `ai_assessments`, vinculadas aos findings; a análise guarda estado, modelo e versão do prompt. Resultados completos só são reutilizados quando findings e traces, modelo e versão do prompt coincidirem. O contexto transitório enviado ao modelo contém somente metadados, trace e até 2.000 caracteres de linhas do método ao redor do finding. Respostas JSON são validadas; código, prompts e respostas brutas não entram em logs nem no banco.
+As avaliações ficam em `ai_assessments`, vinculadas aos findings; a análise guarda estado, modelo e versão do prompt. Resultados completos só são reutilizados quando findings e traces, modelo e versão do prompt coincidirem. O contexto transitório enviado ao modelo contém somente metadados, trace e até 6.000 caracteres do método do finding e de até dois métodos chamados diretamente no mesmo arquivo quando a chamada é inequívoca. Respostas JSON são validadas; código, prompts e respostas brutas não entram em logs nem no banco.
 
 ## Demonstração
 

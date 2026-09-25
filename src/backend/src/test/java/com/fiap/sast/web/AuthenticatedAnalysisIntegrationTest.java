@@ -53,7 +53,7 @@ class AuthenticatedAnalysisIntegrationTest {
     @MockitoBean OllamaGateway ollama;
 
     @BeforeEach void snapshot() throws Exception {
-        when(ollama.generate(any(), any())).thenReturn("{\"confidence\":0.8,\"suggestedSeverity\":\"High\",\"likelyFalsePositive\":false,\"rationale\":\"Risco contextual\",\"remediation\":\"Use entrada validada.\"}");
+        when(ollama.generate(any(), any())).thenReturn("{\"confidence\":0.8,\"suggestedSeverity\":\"High\",\"likelyFalsePositive\":false,\"rationale\":\"Risco contextual\",\"remediation\":\"Use entrada validada.\",\"risk\":\"Risco real\",\"evidence\":[\"linha 2\"],\"falsePositiveReason\":\"Nenhum\",\"limitations\":\"Sem resolução externa\",\"recommendations\":[\"Valide\"]}");
         when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot(
                 "acme", "demo", "https://github.com/acme/demo", "main",
                 List.of(new GitHubClient.File("InMemoryVulnerable.java", VULNERABLE_SOURCE))));
@@ -226,7 +226,7 @@ class AuthenticatedAnalysisIntegrationTest {
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.semanticStatus").value("DEGRADED"))
                 .andExpect(jsonPath("$.findings.length()").value(1))
                 .andExpect(jsonPath("$.findings[0].aiAssessment").isEmpty()).andReturn();
-        doReturn("{\"confidence\":0.8,\"suggestedSeverity\":\"High\",\"likelyFalsePositive\":false,\"rationale\":\"Risco\",\"remediation\":\"Corrija\"}")
+        doReturn("{\"confidence\":0.8,\"suggestedSeverity\":\"High\",\"likelyFalsePositive\":false,\"rationale\":\"Risco\",\"remediation\":\"Corrija\",\"risk\":\"Risco real\",\"evidence\":[\"linha 2\"],\"falsePositiveReason\":\"Nenhum\",\"limitations\":\"Limitado\",\"recommendations\":[\"Corrija\"]}")
                 .when(ollama).generate(any(), any());
         var completed = mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token)
                         .contentType("application/json")

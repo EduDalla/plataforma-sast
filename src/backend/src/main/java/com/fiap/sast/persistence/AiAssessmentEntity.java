@@ -9,6 +9,8 @@ import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.util.UUID;
+import java.util.Arrays;
+import java.util.List;
 
 @Entity
 @Table(name = "ai_assessments")
@@ -33,6 +35,21 @@ public class AiAssessmentEntity {
     @Column(length = 1000)
     public String remediation;
 
+    @Column(length = 1200)
+    public String risk;
+
+    @Column(length = 1600)
+    public String evidence;
+
+    @Column(length = 800)
+    public String falsePositiveReason;
+
+    @Column(length = 800)
+    public String limitations;
+
+    @Column(length = 1600)
+    public String recommendations;
+
     /**
      * Converte a avaliação de domínio em uma entidade associada ao finding.
      *
@@ -50,6 +67,11 @@ public class AiAssessmentEntity {
         entity.likelyFalsePositive = value.likelyFalsePositive();
         entity.rationale = value.rationale();
         entity.remediation = value.remediation();
+        entity.risk = value.risk();
+        entity.evidence = String.join("\u001f", value.evidence());
+        entity.falsePositiveReason = value.falsePositiveReason();
+        entity.limitations = value.limitations();
+        entity.recommendations = String.join("\u001f", value.recommendations());
         return entity;
     }
 
@@ -60,6 +82,11 @@ public class AiAssessmentEntity {
      */
     public AiAssessment toValue() {
         return new AiAssessment(model, promptVersion, confidence, suggestedSeverity,
-                likelyFalsePositive, rationale, remediation);
+                likelyFalsePositive, rationale, remediation, risk,
+                split(evidence), falsePositiveReason, limitations, split(recommendations));
+    }
+
+    private static List<String> split(String value) {
+        return value == null || value.isBlank() ? List.of() : Arrays.asList(value.split("\\u001f", -1));
     }
 }

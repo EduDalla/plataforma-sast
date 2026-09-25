@@ -10,7 +10,7 @@ import tools.jackson.databind.ObjectMapper;
 import static org.junit.jupiter.api.Assertions.*;
 
 class SemanticAnalysisServiceTest {
-    private static final String VALID = "{\"confidence\":0.9,\"suggestedSeverity\":\"High\",\"likelyFalsePositive\":false,\"rationale\":\"Entrada alcança comando\",\"remediation\":\"Valide a entrada\"}";
+    private static final String VALID = "{\"confidence\":0.9,\"suggestedSeverity\":\"High\",\"likelyFalsePositive\":false,\"rationale\":\"Entrada alcança comando\",\"remediation\":\"Valide a entrada\",\"risk\":\"Comando controlado por entrada\",\"evidence\":[\"linha 1: entrada chega ao sink\"],\"falsePositiveReason\":\"Nenhum indício\",\"limitations\":\"Análise intraprocedural\",\"recommendations\":[\"Use allowlist\"]}";
     private static final String SOURCE = "class Example { void run(String input) { Runtime.getRuntime().exec(input); } }";
 
     /**
@@ -108,8 +108,32 @@ class SemanticAnalysisServiceTest {
         assertEquals("DEGRADED", result.status());
         assertEquals(1, calls.get());
         assertEquals(1, result.assessments().size());
-        assertEquals("DEGRADED", service(gateway, 10, 0).enrich(List.of(candidate())).status());
-        assertEquals(1, calls.get());
+        assertEquals("COMPLETED", service(gateway, 0, 0).enrich(List.of(candidate())).status());
+        assertEquals(2, calls.get());
         assertEquals("NOT_APPLICABLE", service(gateway, 10, 45).enrich(List.of()).status());
+    }
+
+    @Test
+    void includesUniqueDirectHelpersAndKeepsContextBounded() {
+        var source = "class Example {\n"
+                + "  void run(String input) {\n"
+                + "    sanitize(input);\n"
+                + "    Runtime.getRuntime().exec(input);\n"
+                + "  }\n"
+                + "  String sanitize(String value) { return value.trim(); }\n"
+                + "  String helper(String value) { return value.trim(); }\n"
+                + "  String helper(int value) { return Integer.toString(value); }\n"
+                + "}";
+        var finding = new SemanticAnalysisService.Candidate(UUID.randomUUID(), new SecurityFinding(
+                "SAST-JAVA-002", "Runtime.exec", "High", "CWE-78", "Comando", "Example.java", 4, 5,
+                "Runtime.getRuntime().exec(input);"), source);
+        var result = service((prompt, timeout) -> {
+            assertTrue(prompt.contains("método do achado"));
+            assertTrue(prompt.contains("método chamado sanitize"));
+            assertFalse(prompt.contains("método chamado helper"), "sobrecargas ambíguas não devem ser incluídas");
+            assertTrue(prompt.length() <= 9000, "prompt e contexto devem permanecer limitados");
+            return VALID;
+        }, 10, 45).enrich(List.of(finding));
+        assertEquals("COMPLETED", result.status());
     }
 }

@@ -17,6 +17,11 @@ export interface AiAssessment {
   likelyFalsePositive: boolean;
   rationale: string;
   remediation: string;
+  risk?: string | null;
+  evidence?: string[];
+  falsePositiveReason?: string | null;
+  limitations?: string | null;
+  recommendations?: string[];
 }
 export interface Finding {
   ruleId: string;

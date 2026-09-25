@@ -14,7 +14,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @Component
 public class OllamaClient implements OllamaGateway {
-    private static final int MAX_RESPONSE_BYTES = 8192;
+    private static final int MAX_RESPONSE_BYTES = 16384;
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
 
     private final HttpClient http = HttpClient.newBuilder()
@@ -53,14 +53,20 @@ public class OllamaClient implements OllamaGateway {
                     "type", "object",
                     "additionalProperties", false,
                     "required", new String[]{
-                            "confidence", "suggestedSeverity", "likelyFalsePositive", "rationale", "remediation"},
+                            "confidence", "suggestedSeverity", "likelyFalsePositive", "rationale", "remediation",
+                            "risk", "evidence", "falsePositiveReason", "limitations", "recommendations"},
                     "properties", Map.of(
                             "confidence", Map.of("type", "number", "minimum", 0, "maximum", 1),
                             "suggestedSeverity", Map.of("type", "string",
                                     "enum", new String[]{"Low", "Medium", "High", "Critical"}),
                             "likelyFalsePositive", Map.of("type", "boolean"),
                             "rationale", Map.of("type", "string"),
-                            "remediation", Map.of("type", "string")));
+                            "remediation", Map.of("type", "string"),
+                            "risk", Map.of("type", "string"),
+                            "evidence", Map.of("type", "array", "items", Map.of("type", "string")),
+                            "falsePositiveReason", Map.of("type", "string"),
+                            "limitations", Map.of("type", "string"),
+                            "recommendations", Map.of("type", "array", "items", Map.of("type", "string"))));
             var body = mapper.writeValueAsString(Map.of(
                     "model", model,
                     "prompt", prompt,

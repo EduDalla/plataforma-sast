@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: sast-api
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/sast}
     username: ${SPRING_DATASOURCE_USERNAME:sast}
@@ -21,10 +23,15 @@ sast:
     password: ${SAST_BOOTSTRAP_PASSWORD:}
   github:
     token: ${SAST_GITHUB_TOKEN:}
-    max-archive-bytes: ${SAST_GITHUB_MAX_ARCHIVE_BYTES:10485760}
-    max-java-files: ${SAST_GITHUB_MAX_JAVA_FILES:200}
-    max-file-bytes: ${SAST_GITHUB_MAX_FILE_BYTES:1048576}
-    max-extracted-bytes: ${SAST_GITHUB_MAX_EXTRACTED_BYTES:52428800}
+    max-archive-bytes: ${SAST_GITHUB_MAX_ARCHIVE_BYTES:104857600}
+    max-java-files: ${SAST_GITHUB_MAX_JAVA_FILES:1000}
+    max-file-bytes: ${SAST_GITHUB_MAX_FILE_BYTES:2097152}
+    max-extracted-bytes: ${SAST_GITHUB_MAX_EXTRACTED_BYTES:524288000}
+  ollama:
+    base-url: ${SAST_OLLAMA_BASE_URL:http://localhost:11434}
+    model: ${SAST_OLLAMA_MODEL:llama3.2:3b}
+    max-candidates: ${SAST_OLLAMA_MAX_CANDIDATES:0}
+    total-budget-seconds: ${SAST_OLLAMA_TOTAL_BUDGET_SECONDS:0}
 server:
   servlet:
     session:
@@ -33,3 +40,10 @@ server:
         http-only: true
         same-site: lax
         secure: ${SAST_COOKIE_SECURE:false}
+logging:
+  structured:
+    format:
+      console: logstash
+  level:
+    root: INFO
+    com.fiap.sast: INFO

@@ -812,14 +812,34 @@ export function Results({
                         </div>
                       </div>
                       <div className="ai-assessment-copy">
+                        {f.aiAssessment.risk && <div>
+                          <h6>Risco contextual</h6>
+                          <p>{f.aiAssessment.risk}</p>
+                        </div>}
                         <div>
                           <h6>Justificativa</h6>
                           <p>{f.aiAssessment.rationale}</p>
                         </div>
+                        {f.aiAssessment.evidence && f.aiAssessment.evidence.length > 0 && <div>
+                          <h6>Evidências</h6>
+                          <ul>{f.aiAssessment.evidence.map((item, index) => <li key={index}>{item}</li>)}</ul>
+                        </div>}
+                        {f.aiAssessment.falsePositiveReason && <div>
+                          <h6>Motivo da avaliação de falso positivo</h6>
+                          <p>{f.aiAssessment.falsePositiveReason}</p>
+                        </div>}
                         <div>
                           <h6>Remediação sugerida</h6>
                           <p>{f.aiAssessment.remediation}</p>
                         </div>
+                        {f.aiAssessment.recommendations && f.aiAssessment.recommendations.length > 0 && <div>
+                          <h6>Ações recomendadas</h6>
+                          <ul>{f.aiAssessment.recommendations.map((item, index) => <li key={index}>{item}</li>)}</ul>
+                        </div>}
+                        {f.aiAssessment.limitations && <div>
+                          <h6>Limitações</h6>
+                          <p>{f.aiAssessment.limitations}</p>
+                        </div>}
                       </div>
                       <small className="ai-assessment-meta">Modelo {f.aiAssessment.model} · Confirme a sugestão antes de agir.</small>
                     </section>}

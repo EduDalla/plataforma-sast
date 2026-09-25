@@ -31,6 +31,11 @@ const base: Analysis = {
       likelyFalsePositive: true,
       rationale: "Há validação anterior.",
       remediation: "Valide a entrada antes da execução.",
+      risk: "A entrada ainda pode alcançar o processo.",
+      evidence: ["Linha 4: argumento chega ao sink."],
+      falsePositiveReason: "A validação não cobre todos os caminhos.",
+      limitations: "Chamadas externas não foram resolvidas.",
+      recommendations: ["Use uma allowlist.", "Evite shell interpretado."],
     },
   }],
 };
@@ -45,6 +50,8 @@ describe("resultado da análise semântica", () => {
     expect(within(suggestion).getByText(/Provável falso positivo:/)).toHaveTextContent("Sim");
     expect(screen.getByText("Runtime.exec").closest("details")).toHaveTextContent("Crítica");
     expect(screen.getByText("Críticas").parentElement).toHaveTextContent("1");
+    expect(within(suggestion).getByText("A entrada ainda pode alcançar o processo.")).toBeInTheDocument();
+    expect(within(suggestion).getByText("Linha 4: argumento chega ao sink.")).toBeInTheDocument();
   });
 
   it("mantém achado sem avaliação visível quando o Ollama falha", () => {
