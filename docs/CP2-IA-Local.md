@@ -52,3 +52,11 @@ docker run --rm --network cp1-cyber_ollama_net \
 ```
 
 O teste lê as amostras como texto, nunca as executa, e exige três avaliações válidas, uma avaliação com trace e uma hipótese consultiva de N+1 sem finding determinístico. Se o nome de projeto do Compose for alterado, ajuste o nome da rede no comando.
+
+## Visão geral no dashboard do sistema
+
+O dashboard da execução selecionada separa achados determinísticos de sugestões consultivas de segurança e performance. Os contadores de vulnerabilidades, críticas e arquivos Java pertencem à execução selecionada; o contador de análises usa o total do histórico do sistema, inclusive quando o histórico está paginado. Arquivos com pontos de atenção contam caminhos distintos presentes nos achados ou nas sugestões.
+
+As prioridades de revisão apresentam achados críticos/altos e oportunidades consultivas separadamente. O estado da varredura informa cobertura parcial, ausência de candidatos, processamento ou cobertura desconhecida mesmo quando não existem sugestões. Zero achados não atesta segurança nem ausência de oportunidades de desempenho. O gráfico com tendência ilustrativa foi removido para evitar apresentar uma evolução sem dados históricos reais. Os detalhes consultivos (evidência, recomendação e limitações) aparecem exclusivamente na página `/analyses/{id}`. A página `/systems/{owner}/{repository}` mantém apenas o resumo; o botão “Ver mais detalhes” abre a análise completa.
+
+A mudança usa o contrato existente, sem ampliar as regras ou a seleção de métodos enviados ao modelo. `Dashboard.test.tsx` cobre sugestões de performance sem findings, separação dos contadores, deduplicação dos arquivos, total do histórico e estados de cobertura.

@@ -10,6 +10,7 @@ import {
   Login,
   Processing,
   Results,
+  AiSuggestions,
   Shield,
   SystemDashboard,
 } from "./components";
@@ -438,6 +439,7 @@ export function App() {
           <>
             <ErrorMessage message={error} />
             <Results data={result} onNavigate={(href) => navigate(href)} />
+            <AiSuggestions data={result} />
           </>
         ) : (
           <section className="panel">

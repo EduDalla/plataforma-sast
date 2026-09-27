@@ -564,8 +564,8 @@ export function Dashboard({
   data,
   onOpen,
   systems,
-  onOpenAnalysis,
   central = false,
+  totalHistory = 1,
   onOpenSystem,
   onPage,
 }: {
@@ -574,6 +574,7 @@ export function Dashboard({
   systems?: SystemsPage;
   onOpenAnalysis?: (id: string) => void;
   central?: boolean;
+  totalHistory?: number;
   onOpenSystem?: (owner: string, repository: string) => void;
   onPage?: (page: number) => void;
 }) {
@@ -598,7 +599,18 @@ export function Dashboard({
     }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
-  const chartPoints = findings.length ? "8,100 72,112 136,74 200,88 264,35" : "8,100 72,100 136,100 200,100 264,100";
+  const suggestions = data?.suggestions ?? [];
+  const securitySuggestions = suggestions.filter((item) => item.category === "SECURITY").length;
+  const performanceSuggestions = suggestions.filter((item) => item.category === "PERFORMANCE").length;
+  const suggestionCoverage = data?.suggestionStatus === "COMPLETED"
+    ? "Métodos candidatos avaliados. A varredura consultiva não cobre todo o repositório."
+    : data?.suggestionStatus === "DEGRADED"
+    ? "Cobertura parcial ou IA indisponível. Pode haver melhorias ainda não identificadas."
+    : data?.suggestionStatus === "NOT_APPLICABLE"
+    ? "Nenhum método candidato às sugestões foi selecionado. Isso não significa ausência de melhorias."
+    : data?.suggestionStatus === "PENDING" || data?.suggestionStatus === "RUNNING"
+    ? "Sugestões consultivas em processamento. Os números ainda são parciais."
+    : "Cobertura consultiva não informada nesta execução.";
 
   return (
     <section className="dashboard-page">
@@ -610,22 +622,34 @@ export function Dashboard({
         </div>
       </div>
       <div className="dashboard-stats">
-        <div><span>Análises</span><strong>{systems?.totalAnalyses ?? (data ? 1 : 0)}</strong><small>no histórico</small></div>
-        <div><span>Vulnerabilidades</span><strong>{systems?.totalFindings ?? findings.length}</strong><small>encontradas</small></div>
+        <div><span>Análises</span><strong>{systems?.totalAnalyses ?? (data ? totalHistory : 0)}</strong><small>no histórico</small></div>
+        <div><span>Vulnerabilidades</span><strong>{systems?.totalFindings ?? findings.length}</strong><small>detectadas pelas regras</small></div>
         <div><span>Críticas</span><strong className="dashboard-red">{systems?.totalCritical ?? severity.Critical}</strong><small>atenção imediata</small></div>
         <div><span>Arquivos analisados</span><strong>{systems?.totalFiles ?? data?.filesAnalyzed ?? 0}</strong><small>arquivos Java</small></div>
       </div>
+      <p className="dashboard-scope">Vulnerabilidades e arquivos correspondem à execução selecionada. Zero achados não garante ausência de problemas.</p>
+      <div className="dashboard-stats" aria-label="Resumo das melhorias consultivas">
+        <div><span>Sugestões de segurança</span><strong>{securitySuggestions}</strong><small>hipóteses para revisão</small></div>
+        <div><span>Melhorias de performance</span><strong>{performanceSuggestions}</strong><small>oportunidades para validar</small></div>
+        <div><span>Sugestões críticas ou altas</span><strong>{suggestions.filter((item) => item.severity === "Critical" || item.severity === "High").length}</strong><small>prioridade de revisão consultiva</small></div>
+        <div><span>Arquivos com pontos de atenção</span><strong>{new Set([...findings, ...suggestions].map((item) => item.fileName)).size}</strong><small>regras e sugestões, sem duplicação</small></div>
+      </div>
+      <p className="dashboard-scope" role="status">{suggestionCoverage} As sugestões não entram na contagem de vulnerabilidades.</p>
       <div className="dashboard-grid">
         <article className="dashboard-card severity-card">
           <h2><span className="chart-icon">◔</span> Severidade</h2>
-          {findings.length ? <div className="severity-chart-row"><div className="severity-donut" style={{ background: `conic-gradient(#f04444 0 ${severity.Critical / findings.length * 100}%, #ff761c ${severity.Critical / findings.length * 100}% ${(severity.Critical + severity.High) / findings.length * 100}%, #ffcc19 ${(severity.Critical + severity.High) / findings.length * 100}% ${(severity.Critical + severity.High + severity.Medium) / findings.length * 100}%, #3d82f4 ${(severity.Critical + severity.High + severity.Medium) / findings.length * 100}% 100%)` }}><span>{findings.length}</span></div><div className="severity-legend"><span><i className="legend-critical"/>Crítico <b>{severity.Critical}</b></span><span><i className="legend-high"/>Alto <b>{severity.High}</b></span><span><i className="legend-medium"/>Médio <b>{severity.Medium}</b></span><span><i className="legend-low"/>Baixo <b>{severity.Low}</b></span></div></div> : <div className="dashboard-empty"><span>✓</span><p>Nenhuma vulnerabilidade<br/>nesta sessão.</p></div>}
+          {findings.length ? <div className="severity-chart-row"><div className="severity-donut" style={{ background: `conic-gradient(#f04444 0 ${severity.Critical / findings.length * 100}%, #ff761c ${severity.Critical / findings.length * 100}% ${(severity.Critical + severity.High) / findings.length * 100}%, #ffcc19 ${(severity.Critical + severity.High) / findings.length * 100}% ${(severity.Critical + severity.High + severity.Medium) / findings.length * 100}%, #3d82f4 ${(severity.Critical + severity.High + severity.Medium) / findings.length * 100}% 100%)` }}><span>{findings.length}</span></div><div className="severity-legend"><span><i className="legend-critical"/>Crítico <b>{severity.Critical}</b></span><span><i className="legend-high"/>Alto <b>{severity.High}</b></span><span><i className="legend-medium"/>Médio <b>{severity.Medium}</b></span><span><i className="legend-low"/>Baixo <b>{severity.Low}</b></span></div></div> : <div className="dashboard-empty"><span>✓</span><p>Nenhuma vulnerabilidade detectada pelas regras nesta execução.</p></div>}
         </article>
-        <article className="dashboard-card trend-card">
-          <h2><span className="chart-icon">⌁</span> Tendência de falhas</h2>
-          <div className="trend-chart"><svg viewBox="0 0 272 140" role="img" aria-label="Tendência de falhas"><path className="trend-area" d={`M${chartPoints.replace(/ /g, " L")} L264,130 L8,130 Z`} /><polyline points={chartPoints} /><circle cx="264" cy={findings.length ? "35" : "100"} r="3" /><line x1="8" y1="130" x2="264" y2="130" /></svg><div className="trend-labels"><span>Agora</span><span>Última análise</span></div></div>
+        <article className="dashboard-card detected-card">
+          <h2>Prioridades de revisão</h2>
+          <ul>
+            <li><div><strong>{severity.Critical + severity.High} achado(s) crítico(s) ou alto(s)</strong><p>Revise as evidências das regras e as recomendações disponíveis nos detalhes.</p></div></li>
+            <li><div><strong>{securitySuggestions} sugestão(ões) de segurança</strong><p>Valide as hipóteses consultivas antes de tratá-las como vulnerabilidades.</p></div></li>
+            <li><div><strong>{performanceSuggestions} melhoria(s) de performance</strong><p>Confira as recomendações nos detalhes da análise e meça o impacto antes e depois da alteração.</p></div></li>
+          </ul>
         </article>
-        <article className="dashboard-card files-card"><h2><span className="chart-icon">☷</span> Top arquivos críticos</h2>{files.length ? <ul>{files.map((file) => <li key={file.fileName}><span>{file.fileName}</span><b>{file.count} {file.count === 1 ? "falha" : "falhas"}</b></li>)}</ul> : <div className="dashboard-list-empty">Nenhuma vulnerabilidade encontrada.</div>}</article>
-        <article className="dashboard-card detected-card"><h2><span className="chart-icon">▣</span> Modificações detectadas</h2>{findings.length ? <ul>{findings.slice(0, 4).map((finding) => <li key={finding.ruleId + finding.line}><i className={finding.severity.toLowerCase()}/><div><strong>{finding.cwe} · {finding.title}</strong><p>{finding.description}</p></div></li>)}</ul> : <div className="dashboard-list-empty">Nenhuma falha detectada. Seu código está pronto para ser analisado.</div>}</article>
+        <article className="dashboard-card files-card"><h2><span className="chart-icon">☷</span> Arquivos com mais achados</h2>{files.length ? <ul>{files.map((file) => <li key={file.fileName}><span>{file.fileName}</span><b>{file.count} {file.count === 1 ? "falha" : "falhas"}</b></li>)}</ul> : <div className="dashboard-list-empty">Nenhum arquivo com achados das regras.</div>}</article>
+        <article className="dashboard-card detected-card"><h2><span className="chart-icon">▣</span> Achados das regras</h2>{findings.length ? <ul>{findings.slice(0, 4).map((finding) => <li key={`${finding.fileName}:${finding.ruleId}:${finding.line}:${finding.column}`}><i className={finding.severity.toLowerCase()}/><div><strong>{finding.cwe} · {finding.title}</strong><p>{finding.description}</p></div></li>)}</ul> : <div className="dashboard-list-empty">Nenhuma ocorrência das regras verificadas. Consulte também as sugestões e os limites de cobertura.</div>}</article>
       </div>
       {data && <button className="dashboard-last" onClick={onOpen}>Ver mais detalhes <span aria-hidden="true">↗</span></button>}
     </section>
@@ -703,8 +727,7 @@ export function SystemDashboard({
       </div>
       {loading && <p className="system-status" role="status" aria-live="polite">Atualizando os dados da análise selecionada…</p>}
     </div>
-    <Dashboard data={data} onOpen={onOpen} />
-    <AiSuggestions data={data} />
+    <Dashboard data={data} onOpen={onOpen} totalHistory={totalHistory} />
   </>;
 }
 

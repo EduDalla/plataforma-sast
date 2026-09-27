@@ -413,3 +413,10 @@
         width:100%
     }
 }
+
+.dashboard-scope {
+    color:#abb3ab;
+    font-size:12px;
+    line-height:1.7;
+    margin:0 0 20px;
+}
