@@ -27,24 +27,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class AnalysisControllerTest {
     @Test
-    void javaInvalidoRetorna422ComArquivoLinhaEColuna() throws Exception {
+    void criaJobMesmoAntesDoParser() throws Exception {
         var github = mock(GitHubClient.class);
-        when(github.download(eq("https://github.com/acme/demo"), eq("main")))
-                .thenReturn(new GitHubClient.Snapshot("acme", "demo", "https://github.com/acme/demo", "main",
-                        List.of(new GitHubClient.File("src/Broken.java", "class Broken {\n  void broken( {\n}"))));
         var repository = mock(AnalysisRepository.class);
+        when(repository.save(any(Analysis.class))).thenAnswer(invocation -> invocation.getArgument(0));
         var mvc = mvc(github, repository);
 
         mvc.perform(post("/api/analyses")
                         .principal(() -> "test@example.com")
                         .contentType("application/json")
                         .content("{\"repositoryUrl\":\"https://github.com/acme/demo\",\"reference\":\"main\"}"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.fileName").value("src/Broken.java"))
-                .andExpect(jsonPath("$.line").isNumber())
-                .andExpect(jsonPath("$.column").isNumber());
-
-        verify(repository, never()).save(any(Analysis.class));
+                .andExpect(status().isAccepted())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.matchesPattern("/api/analyses/.+")))
+                .andExpect(jsonPath("$.status").value("PROCESSING"))
+                .andExpect(jsonPath("$.stage").value("QUEUED"));
+        verify(repository).save(any(Analysis.class));
     }
 
     @Test
@@ -61,26 +58,20 @@ class AnalysisControllerTest {
                         .principal(() -> "test@example.com")
                         .contentType("application/json")
                         .content("{\"repositoryUrl\":\"https://github.com/acme/demo\",\"reference\":\"main\"}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.findings[0].ruleId").value("SAST-JAVA-001"))
-                .andExpect(jsonPath("$.findings[0].severity").value("Critical"))
-                .andExpect(jsonPath("$.findings[0].cwe").value("CWE-798"))
-                .andExpect(jsonPath("$.findings[0].fileName").value("Example.java"))
-                .andExpect(jsonPath("$.findings[0].line").isNumber())
-                .andExpect(jsonPath("$.findings[0].column").isNumber())
-                .andExpect(jsonPath("$.findings[0].snippet").isString());
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.findings").isArray())
+                .andExpect(jsonPath("$.findings").isEmpty())
+                .andExpect(jsonPath("$.status").value("PROCESSING"));
     }
 
     @Test
-    void reusesExistingAnalysisWhenFindingsAreUnchanged() throws Exception {
+    void cadaSolicitacaoCriaJobProprio() throws Exception {
         var github = mock(GitHubClient.class);
         when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot(
                 "acme", "demo", "https://github.com/acme/demo", "main",
                 List.of(new GitHubClient.File("Example.java", "class Example { String password = \"x\"; }"))));
         var repository = mock(AnalysisRepository.class);
         var saved = new AtomicReference<Analysis>();
-        when(repository.findFirstByUserIdAndRepositoryOwnerAndRepositoryNameAndReferenceOrderByCreatedAtDescIdDesc(
-                any(), eq("acme"), eq("demo"), eq("main"))).thenAnswer(invocation -> Optional.ofNullable(saved.get()));
         when(repository.save(any(Analysis.class))).thenAnswer(invocation -> {
             saved.set(invocation.getArgument(0));
             return saved.get();
@@ -90,14 +81,14 @@ class AnalysisControllerTest {
         var first = mvc.perform(post("/api/analyses").principal(() -> "test@example.com")
                         .contentType("application/json")
                         .content("{\"repositoryUrl\":\"https://github.com/acme/demo\",\"reference\":\"main\"}"))
-                .andExpect(status().isCreated()).andReturn();
+                .andExpect(status().isAccepted()).andReturn();
         var second = mvc.perform(post("/api/analyses").principal(() -> "test@example.com")
                         .contentType("application/json")
                         .content("{\"repositoryUrl\":\"https://github.com/acme/demo\",\"reference\":\"main\"}"))
-                .andExpect(status().isOk()).andReturn();
+                .andExpect(status().isAccepted()).andReturn();
 
         var idPattern = ".*\\\"analysisId\\\":\\\"([^\\\"]+).*";
-        assertEquals(first.getResponse().getContentAsString().replaceAll(idPattern, "$1"),
+        org.junit.jupiter.api.Assertions.assertNotEquals(first.getResponse().getContentAsString().replaceAll(idPattern, "$1"),
                 second.getResponse().getContentAsString().replaceAll(idPattern, "$1"));
     }
 
@@ -117,8 +108,12 @@ class AnalysisControllerTest {
                     new AiAssessment("llama3.2:3b", "1", 0.8, "High", false, "Risco", "Corrigir"));
             return new SemanticAnalysisService.Result(candidates.isEmpty() ? "NOT_APPLICABLE" : "COMPLETED", values);
         });
+        var suggestionService = mock(com.fiap.sast.semantic.SemanticSuggestionService.class);
+        when(suggestionService.scan(any())).thenReturn(
+                new com.fiap.sast.semantic.SemanticSuggestionService.Result("NOT_APPLICABLE", List.of()));
+        var jobs = mock(com.fiap.sast.analysis.AnalysisJobService.class);
         var controller = new AnalysisController(github, engine, repository, users,
-                new tools.jackson.databind.ObjectMapper(), semantic);
+                new tools.jackson.databind.ObjectMapper(), semantic, suggestionService, jobs);
         return MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();

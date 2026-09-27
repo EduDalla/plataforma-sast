@@ -70,4 +70,22 @@ class LiveOllamaDemoTest {
         assertEquals("COMPLETED", result.status());
         assertEquals(1, result.assessments().size());
     }
+
+    /** Demonstra uma hipótese de N+1 sem criar finding determinístico. */
+    @Test
+    void loopedRepositoryLookupProducesConsultiveSuggestion() {
+        var source = "class Orders {\n"
+                + "  void load(java.util.List<Long> ids) {\n"
+                + "    for (Long id : ids) { repository.findById(id); }\n"
+                + "  }\n"
+                + "}";
+        assertTrue(engine.analyze(source, "Orders.java").isEmpty());
+        var scan = new SemanticSuggestionService(
+                new OllamaClient(mapper, System.getenv().getOrDefault("SAST_OLLAMA_BASE_URL", "http://ollama:11434"), model),
+                parser, mapper, model, 4, 60);
+        var result = scan.scan(List.of(new SemanticSuggestionService.SourceFile("Orders.java", source)));
+        assertEquals("COMPLETED", result.status());
+        assertTrue(result.suggestions().stream().anyMatch(item -> "PERFORMANCE".equals(item.category())
+                && item.line() == 3));
+    }
 }

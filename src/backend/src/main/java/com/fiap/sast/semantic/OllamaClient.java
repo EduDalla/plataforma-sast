@@ -48,31 +48,62 @@ public class OllamaClient implements OllamaGateway {
      */
     @Override
     public String generate(String prompt, Duration timeout) throws OllamaFailure {
+        return generateWithSchema(prompt, timeout, assessmentSchema());
+    }
+
+    @Override
+    public String generateSuggestions(String prompt, Duration timeout) throws OllamaFailure {
+        return generateWithSchema(prompt, timeout, suggestionSchema(), true);
+    }
+
+    private static Map<String, Object> assessmentSchema() {
+        return Map.of(
+                "type", "object", "additionalProperties", false,
+                "required", new String[]{"confidence", "suggestedSeverity", "likelyFalsePositive",
+                        "rationale", "remediation", "risk", "evidence", "falsePositiveReason",
+                        "limitations", "recommendations"},
+                "properties", Map.of(
+                        "confidence", Map.of("type", "number", "minimum", 0, "maximum", 1),
+                        "suggestedSeverity", Map.of("type", "string", "enum", new String[]{"Low", "Medium", "High", "Critical"}),
+                        "likelyFalsePositive", Map.of("type", "boolean"),
+                        "rationale", Map.of("type", "string"), "remediation", Map.of("type", "string"),
+                        "risk", Map.of("type", "string"),
+                        "evidence", Map.of("type", "array", "items", Map.of("type", "string")),
+                        "falsePositiveReason", Map.of("type", "string"),
+                        "limitations", Map.of("type", "string"),
+                        "recommendations", Map.of("type", "array", "items", Map.of("type", "string"))));
+    }
+
+    private static Map<String, Object> suggestionSchema() {
+        var item = Map.of("type", "object", "additionalProperties", false,
+                "required", new String[]{"category", "severity", "title", "rationale", "confidence", "recommendation", "limitations"},
+                "properties", Map.of(
+                        "category", Map.of("type", "string", "enum", new String[]{"SECURITY", "PERFORMANCE"}),
+                        "severity", Map.of("type", "string", "enum", new String[]{"Low", "Medium", "High", "Critical"}),
+                        "title", Map.of("type", "string", "maxLength", 100),
+                        "rationale", Map.of("type", "string", "maxLength", 280),
+                        "confidence", Map.of("type", "number", "minimum", 0, "maximum", 1),
+                        "recommendation", Map.of("type", "string", "maxLength", 280),
+                        "limitations", Map.of("type", "string", "maxLength", 180)));
+        return Map.of("type", "object", "additionalProperties", false,
+                "required", new String[]{"suggestions"},
+                "properties", Map.of("suggestions", Map.of("type", "array", "maxItems", 1, "items", item)));
+    }
+
+    private String generateWithSchema(String prompt, Duration timeout, Map<String, Object> schema) throws OllamaFailure {
+        return generateWithSchema(prompt, timeout, schema, false);
+    }
+
+    private String generateWithSchema(String prompt, Duration timeout, Map<String, Object> schema,
+            boolean compact) throws OllamaFailure {
         try {
-            var schema = Map.of(
-                    "type", "object",
-                    "additionalProperties", false,
-                    "required", new String[]{
-                            "confidence", "suggestedSeverity", "likelyFalsePositive", "rationale", "remediation",
-                            "risk", "evidence", "falsePositiveReason", "limitations", "recommendations"},
-                    "properties", Map.of(
-                            "confidence", Map.of("type", "number", "minimum", 0, "maximum", 1),
-                            "suggestedSeverity", Map.of("type", "string",
-                                    "enum", new String[]{"Low", "Medium", "High", "Critical"}),
-                            "likelyFalsePositive", Map.of("type", "boolean"),
-                            "rationale", Map.of("type", "string"),
-                            "remediation", Map.of("type", "string"),
-                            "risk", Map.of("type", "string"),
-                            "evidence", Map.of("type", "array", "items", Map.of("type", "string")),
-                            "falsePositiveReason", Map.of("type", "string"),
-                            "limitations", Map.of("type", "string"),
-                            "recommendations", Map.of("type", "array", "items", Map.of("type", "string"))));
             var body = mapper.writeValueAsString(Map.of(
                     "model", model,
                     "prompt", prompt,
                     "stream", false,
                     "format", schema,
-                    "options", Map.of("temperature", 0)));
+                    "options", compact ? Map.of("temperature", 0, "num_predict", 192)
+                            : Map.of("temperature", 0)));
             var request = HttpRequest.newBuilder(endpoint)
                     .timeout(timeout)
                     .header("Content-Type", "application/json")

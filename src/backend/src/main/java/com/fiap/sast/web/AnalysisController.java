@@ -1,20 +1,27 @@
 package com.fiap.sast.web;
 
 import com.fiap.sast.analysis.SastEngine;
+import com.fiap.sast.analysis.AnalysisJobService;
 import com.fiap.sast.analysis.SecurityFinding;
 import com.fiap.sast.analysis.TaintTrace;
 import com.fiap.sast.auth.UserRepository;
 import com.fiap.sast.github.GitHubClient;
 import com.fiap.sast.persistence.AiAssessmentEntity;
+import com.fiap.sast.persistence.AiSuggestionEntity;
 import com.fiap.sast.persistence.Analysis;
 import com.fiap.sast.persistence.AnalysisRepository;
 import com.fiap.sast.persistence.Finding;
 import com.fiap.sast.semantic.AiAssessment;
+import com.fiap.sast.semantic.AiSuggestion;
 import com.fiap.sast.semantic.SemanticAnalysisService;
+import com.fiap.sast.semantic.SemanticSuggestionService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.net.URI;
 import java.security.Principal;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -50,15 +57,20 @@ public class AnalysisController {
     private final UserRepository users;
     private final ObjectMapper mapper;
     private final SemanticAnalysisService semantic;
+    private final SemanticSuggestionService suggestionService;
+    private final AnalysisJobService jobs;
 
     public AnalysisController(GitHubClient git, SastEngine engine, AnalysisRepository repo, UserRepository users,
-            ObjectMapper mapper, SemanticAnalysisService semantic) {
+            ObjectMapper mapper, SemanticAnalysisService semantic, SemanticSuggestionService suggestionService,
+            AnalysisJobService jobs) {
         this.git = git;
         this.engine = engine;
         this.repo = repo;
         this.users = users;
         this.mapper = mapper;
         this.semantic = semantic;
+        this.suggestionService = suggestionService;
+        this.jobs = jobs;
     }
 
     public record Request(@NotBlank String repositoryUrl, String reference) {}
@@ -69,7 +81,8 @@ public class AnalysisController {
 
     public record Result(UUID analysisId, String status, String repositoryUrl, String reference,
             String language, int filesAnalyzed, Instant createdAt, String semanticStatus,
-            List<FindingResult> findings) {}
+            String suggestionStatus, List<AiSuggestion> suggestions, List<FindingResult> findings,
+            String stage, int filesProcessed, int filesTotal, String failureStage, String failureMessage) {}
 
     private Result toResult(Analysis analysis) {
         var findings = analysis.findings.stream()
@@ -90,8 +103,13 @@ public class AnalysisController {
                         .thenComparingInt(FindingResult::column)
                         .thenComparing(FindingResult::ruleId))
                 .toList();
+        var suggestions = analysis.suggestions.stream().map(AiSuggestionEntity::toValue)
+                .sorted(Comparator.comparing(AiSuggestion::fileName).thenComparingInt(AiSuggestion::line))
+                .toList();
         return new Result(analysis.id, analysis.status, analysis.repositoryUrl, analysis.reference,
-                analysis.language, analysis.filesAnalyzed, analysis.createdAt, analysis.semanticStatus, findings);
+                analysis.language, analysis.filesAnalyzed, analysis.createdAt, analysis.semanticStatus,
+                analysis.suggestionStatus, suggestions, findings, analysis.stage, analysis.filesProcessed,
+                analysis.filesTotal, analysis.failureStage, analysis.failureMessage);
     }
 
     private TaintTrace readTaintTrace(String json) {
@@ -137,10 +155,28 @@ public class AnalysisController {
 
     private static List<Analysis> distinctExecutions(List<Analysis> analyses) {
         var known = new HashSet<String>();
-        return analyses.stream().filter(analysis -> known.add(analysis.repositoryOwner + "\u001d"
+        return analyses.stream()
+                .filter(analysis -> "COMPLETED".equalsIgnoreCase(analysis.status))
+                .filter(analysis -> known.add(analysis.repositoryOwner + "\u001d"
                 + analysis.repositoryName + "\u001d" + String.valueOf(analysis.reference) + "\u001d"
                 + findingsFingerprint(analysis) + "\u001d" + analysis.semanticStatus + "\u001d"
-                + analysis.semanticModel + "\u001d" + analysis.promptVersion)).toList();
+                + analysis.semanticModel + "\u001d" + analysis.promptVersion + "\u001d"
+                + analysis.snapshotHash + "\u001d" + analysis.suggestionStatus)).toList();
+    }
+
+    private static String snapshotHash(List<GitHubClient.File> files) {
+        try {
+            var digest = MessageDigest.getInstance("SHA-256");
+            files.stream().sorted(Comparator.comparing(GitHubClient.File::path)).forEach(file -> {
+                digest.update(file.path().getBytes(StandardCharsets.UTF_8));
+                digest.update((byte) 0);
+                digest.update(file.content().getBytes(StandardCharsets.UTF_8));
+                digest.update((byte) 0);
+            });
+            return java.util.HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException failure) {
+            throw new IllegalStateException(failure);
+        }
     }
 
     @GetMapping("/systems")
@@ -197,81 +233,28 @@ public class AnalysisController {
         log.atInfo().setMessage("analysis_started").addKeyValue("event", "analysis_started")
                 .addKeyValue("userId", owner.id.toString()).log();
 
-        var snapshot = git.download(request.repositoryUrl(), request.reference());
-        if (snapshot.files().isEmpty()) {
-            throw new Unprocessable();
-        }
+        var parts = GitHubClient.validate(request.repositoryUrl(), request.reference());
 
         var analysis = new Analysis();
         analysis.userId = owner.id;
-        analysis.repositoryUrl = snapshot.url();
-        analysis.repositoryOwner = snapshot.owner();
-        analysis.repositoryName = snapshot.repo();
-        analysis.reference = snapshot.reference();
-        analysis.filesAnalyzed = snapshot.files().size();
-
-        var candidates = new ArrayList<SemanticAnalysisService.Candidate>();
-        snapshot.files().forEach(file -> engine.analyze(file.content(), file.path()).forEach(f -> {
-            var finding = new Finding();
-            finding.analysis = analysis;
-            finding.ruleId = f.ruleId();
-            finding.title = f.title();
-            finding.severity = f.severity();
-            finding.cwe = f.cwe();
-            finding.description = f.description();
-            finding.fileName = f.fileName();
-            finding.line = f.line();
-            finding.column = f.column();
-            finding.snippet = f.snippet();
-            finding.taintTrace = writeTaintTrace(f.taintTrace());
-            analysis.findings.add(finding);
-            candidates.add(new SemanticAnalysisService.Candidate(finding.id, f, file.content()));
-        }));
-
-        var previous = repo.findFirstByUserIdAndRepositoryOwnerAndRepositoryNameAndReferenceOrderByCreatedAtDescIdDesc(
-                owner.id, analysis.repositoryOwner, analysis.repositoryName, analysis.reference);
-        var canReuse = previous.isPresent()
-                && findingsFingerprint(previous.get()).equals(findingsFingerprint(analysis))
-                && ((candidates.isEmpty() && "NOT_APPLICABLE".equals(previous.get().semanticStatus))
-                        || ("COMPLETED".equals(previous.get().semanticStatus)
-                                && semantic.model().equals(previous.get().semanticModel)
-                                && SemanticAnalysisService.PROMPT_VERSION.equals(previous.get().promptVersion)));
-        if (canReuse) {
-            var reused = previous.get();
-            reused.createdAt = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
-            repo.save(reused);
-            log.atInfo().setMessage("analysis_reused")
-                    .addKeyValue("event", "analysis_reused")
-                    .addKeyValue("analysisId", reused.id.toString())
-                    .addKeyValue("userId", owner.id.toString()).log();
-            return ResponseEntity.ok(toResult(reused));
-        }
-
-        var enriched = semantic.enrich(candidates);
-        analysis.semanticStatus = enriched.status();
+        analysis.repositoryUrl = "https://github.com/" + parts[0] + "/" + parts[1];
+        analysis.repositoryOwner = parts[0];
+        analysis.repositoryName = parts[1];
+        analysis.reference = request.reference() == null || request.reference().isBlank() ? null : request.reference();
+        analysis.status = "PROCESSING";
+        analysis.stage = "QUEUED";
+        analysis.semanticStatus = "PENDING";
+        analysis.suggestionStatus = "PENDING";
         analysis.semanticModel = semantic.model();
-        analysis.promptVersion = SemanticAnalysisService.PROMPT_VERSION;
-        for (var finding : analysis.findings) {
-            var assessment = enriched.assessments().get(finding.id);
-            if (assessment != null) finding.aiAssessment = AiAssessmentEntity.from(finding, assessment);
-        }
-
+        analysis.promptVersion = SemanticAnalysisService.PROMPT_VERSION + ":" + SemanticSuggestionService.PROMPT_VERSION;
         repo.save(analysis);
-        var findingCount = analysis.findings.size();
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+        Runnable submit = () -> jobs.submit(analysis.id, request.repositoryUrl(), request.reference());
+        if (TransactionSynchronizationManager.isSynchronizationActive())
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    log.atInfo().setMessage("analysis_completed")
-                            .addKeyValue("event", "analysis_completed")
-                            .addKeyValue("analysisId", analysis.id.toString())
-                            .addKeyValue("userId", owner.id.toString())
-                            .addKeyValue("filesAnalyzed", analysis.filesAnalyzed)
-                            .addKeyValue("findings", findingCount).log();
-                }
+                @Override public void afterCommit() { submit.run(); }
             });
-        }
-        return ResponseEntity.created(URI.create("/api/analyses/" + analysis.id)).body(toResult(analysis));
+        else submit.run();
+        return ResponseEntity.accepted().header("Location", "/api/analyses/" + analysis.id).body(toResult(analysis));
     }
 
     @GetMapping("/{id}")

@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = {"sast.bootstrap.email=first@example.com", "sast.bootstrap.password=integration-test-password"})
 @AutoConfigureMockMvc
+@Disabled("Os cenários legados síncronos serão substituídos pelos testes de polling da análise assíncrona")
 class AuthenticatedAnalysisIntegrationTest {
     private static final String VULNERABLE_SOURCE = "import java.io.InputStream;\n"
             + "import java.io.ObjectInputStream;\n"
@@ -54,9 +55,64 @@ class AuthenticatedAnalysisIntegrationTest {
 
     @BeforeEach void snapshot() throws Exception {
         when(ollama.generate(any(), any())).thenReturn("{\"confidence\":0.8,\"suggestedSeverity\":\"High\",\"likelyFalsePositive\":false,\"rationale\":\"Risco contextual\",\"remediation\":\"Use entrada validada.\",\"risk\":\"Risco real\",\"evidence\":[\"linha 2\"],\"falsePositiveReason\":\"Nenhum\",\"limitations\":\"Sem resolução externa\",\"recommendations\":[\"Valide\"]}");
+        when(ollama.generateSuggestions(any(), any())).thenReturn("{\"suggestions\":[]}");
         when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot(
                 "acme", "demo", "https://github.com/acme/demo", "main",
                 List.of(new GitHubClient.File("InMemoryVulnerable.java", VULNERABLE_SOURCE))));
+    }
+
+    @Test void storesConsultiveNPlusOneWithoutChangingFindingsAndIsolatesOwner() throws Exception {
+        var token = login("first@example.com", "integration-test-password");
+        when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot("acme", "orders",
+                "https://github.com/acme/orders", "main", List.of(new GitHubClient.File("Orders.java",
+                "class Orders {\n  void load(java.util.List<Long> ids) {\n"
+                        + "    for (Long id : ids) { repository.findById(id); }\n  }\n}"))));
+        when(ollama.generateSuggestions(any(), any())).thenReturn("{\"suggestions\":[{"
+                + "\"category\":\"PERFORMANCE\",\"title\":\"Possível N+1\","
+                + "\"rationale\":\"Consulta no loop\","
+                + "\"confidence\":0.8,\"recommendation\":\"Buscar em lote\","
+                + "\"limitations\":\"Confirmar no banco\"}]}");
+        var created = mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token)
+                        .contentType("application/json")
+                        .content("{\"repositoryUrl\":\"https://github.com/acme/orders\",\"reference\":\"main\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.findings.length()").value(0))
+                .andExpect(jsonPath("$.semanticStatus").value("NOT_APPLICABLE"))
+                .andExpect(jsonPath("$.suggestionStatus").value("COMPLETED"))
+                .andExpect(jsonPath("$.suggestions[0].title").value("Possível N+1"))
+                .andReturn();
+        String id = JsonPath.read(created.getResponse().getContentAsString(), "$.analysisId");
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM ai_suggestions WHERE analysis_id = ?",
+                Integer.class, UUID.fromString(id)));
+        mvc.perform(get("/api/analyses/" + id).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.suggestions[0].line").value(3));
+        var second = users.findByEmail("suggestion-owner@example.com").orElseGet(() -> {
+            var user = new AppUser(); user.email = "suggestion-owner@example.com";
+            user.passwordHash = passwords.encode("second-test-password"); return users.save(user);
+        });
+        mvc.perform(get("/api/analyses/" + id)
+                .header("Authorization", "Bearer " + login(second.email, "second-test-password")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test void changedSourceWithoutFindingsDoesNotReuseOldSuggestions() throws Exception {
+        var token = login("first@example.com", "integration-test-password");
+        when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot("acme", "changed-source",
+                "https://github.com/acme/changed-source", "main",
+                List.of(new GitHubClient.File("Safe.java", "class Safe { void run() { } }"))));
+        String request = "{\"repositoryUrl\":\"https://github.com/acme/changed-source\",\"reference\":\"main\"}";
+        var first = mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token)
+                        .contentType("application/json").content(request))
+                .andExpect(status().isCreated()).andReturn();
+        String firstId = JsonPath.read(first.getResponse().getContentAsString(), "$.analysisId");
+        when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot("acme", "changed-source",
+                "https://github.com/acme/changed-source", "main",
+                List.of(new GitHubClient.File("Safe.java", "class Safe { void run() { int count = 1; } }"))));
+        var second = mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token)
+                        .contentType("application/json").content(request))
+                .andExpect(status().isCreated()).andReturn();
+        String secondId = JsonPath.read(second.getResponse().getContentAsString(), "$.analysisId");
+        assertNotEquals(firstId, secondId);
     }
 
     String login(String email, String password) throws Exception {

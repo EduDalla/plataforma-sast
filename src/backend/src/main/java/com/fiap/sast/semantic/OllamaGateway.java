@@ -13,6 +13,11 @@ public interface OllamaGateway {
      */
     String generate(String prompt, Duration timeout) throws OllamaFailure;
 
+    /** Solicita hipóteses independentes dos findings, com esquema próprio. */
+    default String generateSuggestions(String prompt, Duration timeout) throws OllamaFailure {
+        return generate(prompt, timeout);
+    }
+
     class OllamaFailure extends RuntimeException {
         private final boolean retryable;
 

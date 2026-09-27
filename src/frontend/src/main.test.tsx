@@ -30,7 +30,12 @@ vi.mock("./api", async (importOriginal) => {
 });
 const sample: Analysis = {
   analysisId: "analysis-1",
-  status: "Completed",
+  status: "COMPLETED",
+  stage: "COMPLETED",
+  filesProcessed: 1,
+  filesTotal: 1,
+  semanticStatus: "NOT_APPLICABLE",
+  suggestionStatus: "NOT_APPLICABLE",
   repositoryUrl: "https://github.com/acme/demo",
   reference: "main",
   language: "java",
@@ -117,8 +122,8 @@ describe("fluxo autenticado da análise", () => {
     vi.mocked(api.create).mockResolvedValue(sample);
     render(<App />);
     await submit();
-    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
-    expect(location.pathname).toBe("/dashboard");
+    expect(await screen.findByRole("heading", { name: /Análise concluída/ })).toBeInTheDocument();
+    expect(location.pathname).toBe("/analyses/analysis-1");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
   it("abre o dashboard individual pelo card do sistema", async () => {
@@ -252,9 +257,8 @@ describe("fluxo autenticado da análise", () => {
       "main",
     );
     resolve(sample);
-    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
-    expect(location.pathname).toBe("/dashboard");
-    expect(screen.getByRole("button", { name: "Abrir dashboard de demo" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Análise concluída/ })).toBeInTheDocument();
+    expect(location.pathname).toBe("/analyses/analysis-1");
   });
   it("mantém dicas no modal durante a análise e limpa a rotação ao concluir", async () => {
     const setIntervalSpy = vi.spyOn(window, "setInterval");
@@ -285,7 +289,7 @@ describe("fluxo autenticado da análise", () => {
       expect(thirdTip).not.toBe(secondTip);
 
       resolve(sample);
-      expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: /Análise concluída/ })).toBeInTheDocument();
       expect(screen.queryByRole("dialog", { name: "Análise em andamento" })).not.toBeInTheDocument();
       expect(clearIntervalSpy).toHaveBeenCalled();
     } finally {
@@ -298,8 +302,8 @@ describe("fluxo autenticado da análise", () => {
     vi.mocked(api.create).mockResolvedValue({ ...sample, findings: [] });
     render(<App />);
     await submit();
-    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Abrir dashboard de demo" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Análise concluída/ })).toBeInTheDocument();
+    expect(location.pathname).toBe("/analyses/analysis-1");
     expect(api.create).toHaveBeenCalledWith("https://github.com/acme/demo", "");
   });
   it("mostra erro legível e permite nova tentativa", async () => {
@@ -315,6 +319,26 @@ describe("fluxo autenticado da análise", () => {
     expect(
       screen.getByRole("button", { name: /Iniciar análise/ }),
     ).toBeEnabled();
+  });
+  it("mostra um modal amigável quando a análise é interrompida", async () => {
+    history.replaceState(null, "", "/analyses/analysis-1");
+    vi.mocked(api.analysis).mockResolvedValue({
+      ...sample,
+      status: "FAILED",
+      stage: "DOWNLOADING",
+      failureStage: "DOWNLOADING",
+      failureMessage: "java.net.SocketTimeoutException: codeload indisponível",
+    });
+
+    render(<App />);
+
+    const modal = await screen.findByRole("dialog", { name: "Ocorreu um erro ao analisar" });
+    expect(modal).toHaveTextContent("Não foi possível acessar o repositório");
+    expect(modal).toHaveTextContent("Verifique se a URL está correta e se o repositório é público.");
+    expect(modal).not.toHaveTextContent("SocketTimeoutException");
+    fireEvent.click(screen.getByRole("button", { name: "Ver detalhes" }));
+    expect(screen.queryByRole("dialog", { name: "Ocorreu um erro ao analisar" })).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Não foi possível acessar o repositório");
   });
   it("restaura análise pela URL e encerra sessão", async () => {
     history.replaceState(null, "", "/analyses/analysis-1");

@@ -42,6 +42,22 @@ const base: Analysis = {
 afterEach(cleanup);
 
 describe("resultado da análise semântica", () => {
+  it("mostra o carregamento e mantém as áreas vazias durante o polling", () => {
+    render(<Results data={{ ...base, status: "PROCESSING", findings: [], suggestions: [], semanticStatus: "RUNNING", suggestionStatus: "RUNNING" }} />);
+    expect(screen.getByRole("status", { name: "Análise em andamento" })).toBeInTheDocument();
+    expect(screen.getByText("Aguardando resultados")).toBeInTheDocument();
+    expect(screen.getByText("Aguardando resultados das sugestões consultivas…")).toBeInTheDocument();
+  });
+
+  it("remove o indicador quando a análise termina ou falha", () => {
+    const { rerender } = render(<Results data={{ ...base, status: "PROCESSING" }} />);
+    expect(screen.getByRole("status", { name: "Análise em andamento" })).toBeInTheDocument();
+    rerender(<Results data={{ ...base, status: "COMPLETED" }} />);
+    expect(screen.queryByRole("status", { name: "Análise em andamento" })).not.toBeInTheDocument();
+    rerender(<Results data={{ ...base, status: "FAILED", failureStage: "SEMANTIC", failureMessage: "Falha controlada" }} />);
+    expect(screen.queryByRole("status", { name: "Análise em andamento" })).not.toBeInTheDocument();
+  });
+
   it("mostra a sugestão separada da severidade e das contagens determinísticas", () => {
     render(<Results data={base} />);
     expect(screen.getByText("Avaliação da IA concluída para todos os achados.")).toBeInTheDocument();
@@ -59,5 +75,20 @@ describe("resultado da análise semântica", () => {
     expect(screen.getByText(/Avaliação da IA parcial ou indisponível/)).toBeInTheDocument();
     expect(screen.getByText("Runtime.exec")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Sugestão da IA" })).not.toBeInTheDocument();
+  });
+
+  it("mostra hipótese N+1 mesmo sem findings e mantém a contagem de vulnerabilidades em zero", () => {
+    render(<Results data={{ ...base, findings: [], semanticStatus: "NOT_APPLICABLE",
+      suggestionStatus: "COMPLETED", suggestions: [{
+        category: "PERFORMANCE", severity: "Critical", title: "Possível N+1", fileName: "Orders.java", line: 3,
+        evidence: "repository.findById(id)", rationale: "Consulta dentro do loop.", confidence: 0.8,
+        recommendation: "Busque em lote.", limitations: "Confirme em execução.",
+        model: "llama3.2:3b", promptVersion: "1",
+      }] }} />);
+    const section = screen.getByRole("region", { name: "Possíveis problemas sugeridos pela IA" });
+    expect(within(section).getByText("Possível N+1")).toBeInTheDocument();
+    expect(within(section).getAllByRole("heading", { name: /Crítica/ })[0]).toHaveTextContent("1");
+    expect(screen.getByText("Vulnerabilidades").parentElement).toHaveTextContent("0");
+    expect(screen.getByText("Nenhuma vulnerabilidade encontrada")).toBeInTheDocument();
   });
 });

@@ -61,7 +61,7 @@ public class GitHubClient {
         return builder.GET().build();
     }
 
-    static String[] validate(String raw, String ref) {
+    public static String[] validate(String raw, String ref) {
         var uri = URI.create(raw);
         if (!"https".equals(uri.getScheme()) || !"github.com".equals(uri.getHost()) || uri.getUserInfo() != null
                 || uri.getPort() != -1 || uri.getQuery() != null || uri.getFragment() != null)

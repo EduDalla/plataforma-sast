@@ -1,4 +1,5 @@
 /workspace/src/backend/src/main/java/com/fiap/sast/SastApplication.java
+/workspace/src/backend/src/main/java/com/fiap/sast/analysis/AnalysisJobService.java
 /workspace/src/backend/src/main/java/com/fiap/sast/analysis/SastEngine.java
 /workspace/src/backend/src/main/java/com/fiap/sast/analysis/SecurityFinding.java
 /workspace/src/backend/src/main/java/com/fiap/sast/analysis/TaintTrace.java
@@ -14,6 +15,7 @@
 /workspace/src/backend/src/main/java/com/fiap/sast/parsing/JavaParserSourceParser.java
 /workspace/src/backend/src/main/java/com/fiap/sast/parsing/JavaSourceParser.java
 /workspace/src/backend/src/main/java/com/fiap/sast/persistence/AiAssessmentEntity.java
+/workspace/src/backend/src/main/java/com/fiap/sast/persistence/AiSuggestionEntity.java
 /workspace/src/backend/src/main/java/com/fiap/sast/persistence/Analysis.java
 /workspace/src/backend/src/main/java/com/fiap/sast/persistence/AnalysisRepository.java
 /workspace/src/backend/src/main/java/com/fiap/sast/persistence/Finding.java
@@ -23,9 +25,11 @@
 /workspace/src/backend/src/main/java/com/fiap/sast/rules/RuntimeExecRule.java
 /workspace/src/backend/src/main/java/com/fiap/sast/rules/SecurityRule.java
 /workspace/src/backend/src/main/java/com/fiap/sast/semantic/AiAssessment.java
+/workspace/src/backend/src/main/java/com/fiap/sast/semantic/AiSuggestion.java
 /workspace/src/backend/src/main/java/com/fiap/sast/semantic/OllamaClient.java
 /workspace/src/backend/src/main/java/com/fiap/sast/semantic/OllamaGateway.java
 /workspace/src/backend/src/main/java/com/fiap/sast/semantic/SemanticAnalysisService.java
+/workspace/src/backend/src/main/java/com/fiap/sast/semantic/SemanticSuggestionService.java
 /workspace/src/backend/src/main/java/com/fiap/sast/taint/TaintAnalysisEngine.java
 /workspace/src/backend/src/main/java/com/fiap/sast/taint/TaintSanitizerCatalog.java
 /workspace/src/backend/src/main/java/com/fiap/sast/taint/TaintSinkCatalog.java

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "./api";
 import {
   AnalysisForm,
+  AnalysisFailureModal,
   AnalysisProgressModal,
   Dashboard,
   DashboardPrompt,
@@ -60,6 +61,7 @@ export function App() {
   const [systemUpdating, setSystemUpdating] = useState(false);
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [dashboardPromptOpen, setDashboardPromptOpen] = useState(false);
+  const [analysisFailureOpen, setAnalysisFailureOpen] = useState(false);
   const dashboardLinkRef = useRef<HTMLAnchorElement>(null);
   const pending = useRef(false);
   const generation = useRef(0);
@@ -261,8 +263,7 @@ export function App() {
       if (generation.current === operation) {
         setResult(data);
         storeLastAnalysisId(data.analysisId);
-        if (typeof api.systems === "function") await loadSystems();
-        navigate("/dashboard");
+        navigate(`/analyses/${data.analysisId}`);
       }
     } catch (e) {
       if (generation.current === operation) failure(e);
@@ -271,6 +272,34 @@ export function App() {
       setSubmitting(false);
     }
   }
+
+  useEffect(() => {
+    const match = path.match(/^\/analyses\/([^/]+)$/);
+    if (!session || !match || match[1] === "new") return;
+    let active = true;
+    let timer: number | undefined;
+    const poll = async () => {
+      try {
+        const value = await api.analysis(match[1]);
+        if (!active) return;
+        setResult(value);
+        if (value.status === "PROCESSING") {
+          timer = window.setTimeout(poll, 2000);
+        }
+      } catch (e) {
+        if (active) failure(e);
+      }
+    };
+    if (result?.analysisId === match[1] && result.status === "PROCESSING")
+      timer = window.setTimeout(poll, 2000);
+    return () => {
+      active = false;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [path, session, result?.analysisId, result?.status, failure]);
+  useEffect(() => {
+    if (result?.status === "FAILED") setAnalysisFailureOpen(true);
+  }, [result?.analysisId, result?.status]);
   async function logout() {
     if (loading) return;
     try {
@@ -290,6 +319,7 @@ export function App() {
     setError("");
     setResult(undefined);
     setSubmitting(false);
+    setAnalysisFailureOpen(false);
     setDashboardPromptOpen(false);
     navigate("/analyses/new");
     requestAnimationFrame(() => document.getElementById("repository-url")?.focus());
@@ -417,6 +447,13 @@ export function App() {
         )}
       </main>
       {submitting && <AnalysisProgressModal />}
+      {result?.status === "FAILED" && analysisFailureOpen && (
+        <AnalysisFailureModal
+          data={result}
+          onClose={() => setAnalysisFailureOpen(false)}
+          onNew={newAnalysis}
+        />
+      )}
       {dashboardPromptOpen && (
         <DashboardPrompt
           onClose={() => {

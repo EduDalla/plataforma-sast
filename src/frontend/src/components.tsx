@@ -446,6 +446,81 @@ export function AnalysisProgressModal() {
   );
 }
 
+function failureStageLabel(stage?: Analysis["stage"] | string | null) {
+  switch (stage) {
+    case "DOWNLOADING":
+      return "acessar o repositório";
+    case "DETERMINISTIC":
+      return "analisar os arquivos Java";
+    case "SEMANTIC":
+    case "SUGGESTIONS":
+      return "preparar os resultados complementares";
+    default:
+      return "concluir a análise";
+  }
+}
+
+export function userFriendlyFailureMessage(data: Analysis) {
+  switch (data.failureStage || data.stage) {
+    case "DOWNLOADING":
+      return "Não foi possível acessar o repositório. Verifique se a URL está correta e se o repositório é público.";
+    case "DETERMINISTIC":
+      return "Não foi possível analisar os arquivos Java deste repositório. Tente novamente em instantes.";
+    case "SEMANTIC":
+    case "SUGGESTIONS":
+      return "A análise foi interrompida ao preparar as informações complementares. Tente novamente em instantes.";
+    default:
+      return "Ocorreu um erro inesperado durante a análise. Tente novamente em instantes.";
+  }
+}
+
+export function AnalysisFailureModal({
+  data,
+  onClose,
+  onNew,
+}: {
+  data: Analysis;
+  onClose: () => void;
+  onNew: () => void;
+}) {
+  const actionRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    actionRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    addEventListener("keydown", onKeyDown);
+    return () => removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section
+        className="analysis-failure-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="analysis-failure-title"
+        aria-describedby="analysis-failure-description"
+      >
+        <span className="analysis-failure-icon" aria-hidden="true">!</span>
+        <span className="eyebrow">ANÁLISE NÃO CONCLUÍDA</span>
+        <h2 id="analysis-failure-title">Ocorreu um erro ao analisar</h2>
+        <p id="analysis-failure-description">
+          Não foi possível {failureStageLabel(data.failureStage || data.stage)} neste momento.
+        </p>
+        <p className="analysis-failure-help">{userFriendlyFailureMessage(data)}</p>
+        <div className="modal-actions">
+          <button ref={actionRef} type="button" onClick={onNew}>Tentar nova análise</button>
+          <button className="secondary" type="button" onClick={onClose}>Ver detalhes</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function DashboardPrompt({
   onClose,
   onNew,
@@ -677,6 +752,10 @@ export function Results({
     groups.set(f.fileName, [...(groups.get(f.fileName) || []), f]),
   );
   const systemBreadcrumb = repositoryBreadcrumb(data.repositoryUrl);
+  const suggestionGroups = ["Critical", "High", "Medium", "Low", "Unclassified"].map((severity) => ({
+    severity,
+    items: (data.suggestions ?? []).filter((suggestion) => (suggestion.severity || "Unclassified") === severity),
+  })).filter((group) => group.items.length > 0);
   return (
     <>
       <Breadcrumb
@@ -691,10 +770,8 @@ export function Results({
         <div>
           <span className="eyebrow">RESULTADOS DA ANÁLISE</span>
           <h1>
-            Análise concluída{" "}
-            <span className="complete-mark" aria-label="Concluída">
-              ✓
-            </span>
+            {data.status === "PROCESSING" ? "Análise em andamento" : data.status === "FAILED" ? "Análise interrompida" : "Análise concluída"}{" "}
+            {data.status !== "PROCESSING" && <span className="complete-mark" aria-label={data.status === "FAILED" ? "Falhou" : "Concluída"}>{data.status === "FAILED" ? "!" : "✓"}</span>}
           </h1>
           <p className="repository">
             {data.repositoryUrl.replace("https://github.com/", "")}
@@ -702,10 +779,27 @@ export function Results({
           </p>
         </div>
       </div>
+      {data.status === "PROCESSING" && <div className="analysis-polling-loader" role="status" aria-live="polite" aria-label="Análise em andamento">
+        <div className="spinner" aria-hidden="true" />
+        <span>Atualizando resultados da análise…</span>
+      </div>}
+      {data.status === "PROCESSING" && <p className="semantic-status" role="status">
+        Etapa atual: {data.stage || "QUEUED"}. Arquivos processados: {data.filesProcessed || 0}/{data.filesTotal || "…"}. Os achados e contadores aparecem conforme a análise avança.
+      </p>}
+      {data.status === "FAILED" && <p className="semantic-status" role="alert">
+        {userFriendlyFailureMessage(data)}
+      </p>}
       {data.semanticStatus && <p className="semantic-status" role="status">
-        {data.semanticStatus === "COMPLETED" ? "Avaliação da IA concluída para todos os achados." :
+        {data.semanticStatus === "PENDING" || data.semanticStatus === "RUNNING" ? "Avaliação da IA em andamento. Os achados determinísticos já podem ser consultados." :
+          data.semanticStatus === "COMPLETED" ? "Avaliação da IA concluída para todos os achados." :
           data.semanticStatus === "DEGRADED" ? "Avaliação da IA parcial ou indisponível. Os achados das regras permanecem completos." :
           "Nenhum achado para avaliar com IA."}
+      </p>}
+      {data.suggestionStatus && data.suggestionStatus !== "NOT_APPLICABLE" && <p className="semantic-status" role="status">
+        {data.suggestionStatus === "PENDING" || data.suggestionStatus === "RUNNING" ? "Sugestões da IA sendo processadas; esta tela será atualizada automaticamente."
+          : data.suggestionStatus === "COMPLETED"
+          ? "Varredura consultiva da IA concluída para os métodos candidatos."
+          : "Varredura consultiva parcial ou indisponível; alguns métodos candidatos não foram avaliados."}
       </p>}
       <div className="stats">
         <div>
@@ -727,17 +821,39 @@ export function Results({
         <div>
           <span>Arquivos analisados</span>
           <strong>
-            {data.filesAnalyzed}
+            {data.status === "PROCESSING" ? `${data.filesProcessed ?? 0}/${data.filesTotal || "…"}` : data.filesAnalyzed}
             <small> Java</small>
           </strong>
         </div>
       </div>
+      {(data.status === "PROCESSING" || (data.suggestions?.length ?? 0) > 0) && <section className="findings" aria-label="Possíveis problemas sugeridos pela IA">
+        <div className="findings-heading">
+          <h2>Possíveis problemas sugeridos pela IA</h2>
+          <span>{data.suggestions?.length ?? 0} melhoria(s) consultiva(s) · Hipóteses para revisão humana</span>
+        </div>
+        {suggestionGroups.map((group) => <div className="suggestion-severity-group" key={group.severity}>
+          <h3>{group.severity === "Unclassified" ? "Sem classificação" : severityNames[group.severity as keyof typeof severityNames]} <small>({group.items.length})</small></h3>
+          {group.items.map((suggestion, index) => <article className="finding ai-assessment" key={`${suggestion.fileName}:${suggestion.line}:${index}`}>
+            <div className="finding-detail">
+              <h3><span className={suggestion.severity ? `badge ${suggestion.severity.toLowerCase()}` : "badge"}>{suggestion.severity ? severityNames[suggestion.severity] : "Sem classificação"}</span> {suggestion.title}</h3>
+              <p>{suggestion.category === "PERFORMANCE" ? "Desempenho" : "Segurança"} · {suggestion.fileName}:{suggestion.line} · Confiança {Math.round(suggestion.confidence * 100)}%</p>
+              <h4>Evidência no código</h4>
+              <pre><code>{suggestion.evidence}</code></pre>
+              <h4>Por que revisar</h4><p>{suggestion.rationale}</p>
+              <h4>Recomendação</h4><p>{suggestion.recommendation}</p>
+              <h4>Limitações</h4><p>{suggestion.limitations}</p>
+              <small>Modelo {suggestion.model} · Confirme a hipótese antes de agir. Em casos de N+1, a quantidade real de consultas depende da execução.</small>
+            </div>
+          </article>)}
+          </div>)}
+        {(data.suggestions?.length ?? 0) === 0 && <p className="results-awaiting" role="status">Aguardando resultados das sugestões consultivas…</p>}
+      </section>}
       {data.findings.length === 0 ? (
         <section className="panel empty">
           <span className="complete-mark">✓</span>
-          <h2>Nenhuma vulnerabilidade encontrada</h2>
+          <h2>{data.status === "PROCESSING" ? "Aguardando resultados" : "Nenhuma vulnerabilidade encontrada"}</h2>
           <p>
-            Não encontramos ocorrências das regras verificadas nesta análise.
+            {data.status === "PROCESSING" ? "Os findings determinísticos aparecerão aqui assim que forem processados." : "Não encontramos ocorrências das regras verificadas nesta análise."}
           </p>
         </section>
       ) : (

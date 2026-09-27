@@ -125,6 +125,50 @@
 .analysis-tip-button:hover:not(:disabled) {
   background: var(--surface-muted);
 }
+.analysis-failure-modal {
+  width: min(100%, 520px);
+  padding: 36px 42px 32px;
+  border: 1px solid #e6c4bd;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 22px 70px #0b120d55;
+  text-align: center;
+}
+.analysis-failure-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: #fff0ed;
+  color: #b44637;
+  font-size: 25px;
+  font-weight: 750;
+}
+.analysis-failure-modal .eyebrow {
+  margin-bottom: 11px;
+  color: #b44637;
+}
+.analysis-failure-modal h2 {
+  margin: 0 0 10px;
+  font-size: 24px;
+}
+.analysis-failure-modal p {
+  max-width: 410px;
+  margin: 0 auto;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.analysis-failure-modal .analysis-failure-help {
+  margin-top: 10px;
+}
+.analysis-failure-modal .modal-actions {
+  justify-content: center;
+  margin-top: 26px;
+}
 @keyframes spin {
   to {
     transform: rotate(360deg);

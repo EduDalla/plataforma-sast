@@ -36,16 +36,37 @@ export interface Finding {
   taintTrace?: TaintTrace | null;
   aiAssessment?: AiAssessment | null;
 }
+export interface AiSuggestion {
+  category: "SECURITY" | "PERFORMANCE";
+  severity?: "Critical" | "High" | "Medium" | "Low" | null;
+  title: string;
+  fileName: string;
+  line: number;
+  evidence: string;
+  rationale: string;
+  confidence: number;
+  recommendation: string;
+  limitations: string;
+  model: string;
+  promptVersion: string;
+}
 export interface Analysis {
   analysisId: string;
-  status: "Completed";
+  status: "PROCESSING" | "COMPLETED" | "FAILED" | "Completed";
   repositoryUrl: string;
   reference: string | null;
   language: "java";
   filesAnalyzed: number;
   createdAt: string;
-  semanticStatus?: "COMPLETED" | "DEGRADED" | "NOT_APPLICABLE";
+  semanticStatus?: "PENDING" | "RUNNING" | "COMPLETED" | "DEGRADED" | "NOT_APPLICABLE";
+  suggestionStatus?: "PENDING" | "RUNNING" | "COMPLETED" | "DEGRADED" | "NOT_APPLICABLE";
+  suggestions?: AiSuggestion[];
   findings: Finding[];
+  stage?: "QUEUED" | "DOWNLOADING" | "DETERMINISTIC" | "SEMANTIC" | "SUGGESTIONS" | "COMPLETED" | "FAILED";
+  filesProcessed?: number;
+  filesTotal?: number;
+  failureStage?: string | null;
+  failureMessage?: string | null;
 }
 export interface HistoryEntry {
   analysisId: string;

@@ -13,6 +13,32 @@
   color: #283d57;
 }
 .semantic-status { margin: 0 0 22px; }
+.analysis-polling-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: -8px 0 22px;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+.analysis-polling-loader .spinner {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border-width: 3px;
+  border-color: var(--border-muted);
+  border-top-color: var(--accent);
+}
+.results-awaiting {
+  margin: 18px 0 6px;
+  padding: 18px;
+  border: 1px dashed var(--border);
+  border-radius: 9px;
+  color: var(--text-soft);
+  text-align: center;
+  font-size: 13px;
+}
 .ai-assessment {
   margin: 24px 0 22px;
   overflow-wrap: anywhere;

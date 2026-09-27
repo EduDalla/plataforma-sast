@@ -30,6 +30,8 @@ services:
       SAST_OLLAMA_MODEL: ${SAST_OLLAMA_MODEL:-llama3.2:3b}
       SAST_OLLAMA_MAX_CANDIDATES: ${SAST_OLLAMA_MAX_CANDIDATES:-0}
       SAST_OLLAMA_TOTAL_BUDGET_SECONDS: ${SAST_OLLAMA_TOTAL_BUDGET_SECONDS:-0}
+      SAST_OLLAMA_SUGGESTION_MAX_METHODS: ${SAST_OLLAMA_SUGGESTION_MAX_METHODS:-4}
+      SAST_OLLAMA_SUGGESTION_BUDGET_SECONDS: ${SAST_OLLAMA_SUGGESTION_BUDGET_SECONDS:-60}
     ports: ["${API_PORT}:8080"]
     depends_on: { db: { condition: service_healthy } }
     healthcheck: { test: ["CMD","curl","--fail","http://localhost:8080/health"], interval: 5s, timeout: 5s, retries: 10 }

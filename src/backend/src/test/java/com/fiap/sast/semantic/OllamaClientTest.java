@@ -34,6 +34,15 @@ class OllamaClientTest {
             assertEquals("llama3.2:3b", body.get("model").asText());
             assertFalse(body.get("stream").booleanValue());
             assertEquals("object", body.get("format").get("type").asText());
+            client.generateSuggestions("method", Duration.ofSeconds(2));
+            var suggestionBody = new ObjectMapper().readTree(requestBody.get());
+            assertTrue(suggestionBody.get("format").get("properties").has("suggestions"));
+            var item = suggestionBody.get("format").get("properties").get("suggestions").get("items");
+            assertTrue(item.get("properties").has("severity"));
+            assertTrue(java.util.stream.StreamSupport.stream(item.get("properties").get("severity").get("enum").spliterator(), false)
+                    .anyMatch(value -> "Critical".equals(value.asText())));
+            assertFalse(item.get("properties").has("evidence"));
+            assertFalse(item.get("properties").has("line"));
         } finally {
             server.stop(0);
         }

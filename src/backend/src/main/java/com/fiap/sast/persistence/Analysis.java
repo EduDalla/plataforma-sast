@@ -29,12 +29,23 @@ public class Analysis {
     public String language = "java";
     public int filesAnalyzed;
     public String status = "Completed";
+    public String stage = "QUEUED";
+    public int filesProcessed;
+    public int filesTotal;
+    public String failureStage;
+    @Column(length = 500)
+    public String failureMessage;
     public String semanticStatus = "NOT_APPLICABLE";
     public String semanticModel;
     public String promptVersion;
+    public String suggestionStatus = "NOT_APPLICABLE";
+    public String snapshotHash;
 
     public Instant createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
 
     @OneToMany(mappedBy = "analysis", cascade = CascadeType.ALL, orphanRemoval = true)
     public List<Finding> findings = new ArrayList<>();
+
+    @OneToMany(mappedBy = "analysis", cascade = CascadeType.ALL, orphanRemoval = true)
+    public List<AiSuggestionEntity> suggestions = new ArrayList<>();
 }
