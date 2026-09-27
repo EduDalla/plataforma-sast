@@ -624,8 +624,8 @@ export function Dashboard({
           <h2><span className="chart-icon">⌁</span> Tendência de falhas</h2>
           <div className="trend-chart"><svg viewBox="0 0 272 140" role="img" aria-label="Tendência de falhas"><path className="trend-area" d={`M${chartPoints.replace(/ /g, " L")} L264,130 L8,130 Z`} /><polyline points={chartPoints} /><circle cx="264" cy={findings.length ? "35" : "100"} r="3" /><line x1="8" y1="130" x2="264" y2="130" /></svg><div className="trend-labels"><span>Agora</span><span>Última análise</span></div></div>
         </article>
-        <article className="dashboard-card files-card"><h2><span className="chart-icon">☷</span> Top arquivos críticos</h2>{files.length ? <ul>{files.map((file) => <li key={file.fileName}><span>{file.fileName}</span><b>{file.count} {file.count === 1 ? "falha" : "falhas"}</b></li>)}</ul> : <div className="dashboard-list-empty">Execute uma análise para identificar os arquivos críticos.</div>}</article>
-        <article className="dashboard-card detected-card"><h2><span className="chart-icon">▣</span> Falhas detectadas</h2>{findings.length ? <ul>{findings.slice(0, 4).map((finding) => <li key={finding.ruleId + finding.line}><i className={finding.severity.toLowerCase()}/><div><strong>{finding.cwe} · {finding.title}</strong><p>{finding.description}</p></div></li>)}</ul> : <div className="dashboard-list-empty">Nenhuma falha detectada. Seu código está pronto para ser analisado.</div>}</article>
+        <article className="dashboard-card files-card"><h2><span className="chart-icon">☷</span> Top arquivos críticos</h2>{files.length ? <ul>{files.map((file) => <li key={file.fileName}><span>{file.fileName}</span><b>{file.count} {file.count === 1 ? "falha" : "falhas"}</b></li>)}</ul> : <div className="dashboard-list-empty">Nenhuma vulnerabilidade encontrada.</div>}</article>
+        <article className="dashboard-card detected-card"><h2><span className="chart-icon">▣</span> Modificações detectadas</h2>{findings.length ? <ul>{findings.slice(0, 4).map((finding) => <li key={finding.ruleId + finding.line}><i className={finding.severity.toLowerCase()}/><div><strong>{finding.cwe} · {finding.title}</strong><p>{finding.description}</p></div></li>)}</ul> : <div className="dashboard-list-empty">Nenhuma falha detectada. Seu código está pronto para ser analisado.</div>}</article>
       </div>
       {data && <button className="dashboard-last" onClick={onOpen}>Ver mais detalhes <span aria-hidden="true">↗</span></button>}
     </section>
@@ -704,6 +704,7 @@ export function SystemDashboard({
       {loading && <p className="system-status" role="status" aria-live="polite">Atualizando os dados da análise selecionada…</p>}
     </div>
     <Dashboard data={data} onOpen={onOpen} />
+    <AiSuggestions data={data} />
   </>;
 }
 
@@ -720,6 +721,39 @@ const traceStepLabels: Record<string, string> = {
   conditional: "Expressão condicional",
   sink: "Execução de comando",
 };
+
+export function AiSuggestions({ data }: { data: Analysis }) {
+  const suggestionGroups = ["Critical", "High", "Medium", "Low", "Unclassified"].map((severity) => ({
+    severity,
+    items: (data.suggestions ?? []).filter((suggestion) => (suggestion.severity || "Unclassified") === severity),
+  })).filter((group) => group.items.length > 0);
+
+  if (data.status !== "PROCESSING" && (data.suggestions?.length ?? 0) === 0) return null;
+
+  return <section className="findings" aria-label="Possíveis problemas sugeridos pela IA">
+    <div className="findings-heading">
+      <h2>Possíveis problemas sugeridos pela IA</h2>
+      <span>{data.suggestions?.length ?? 0} melhoria(s) consultiva(s) · Hipóteses para revisão humana</span>
+    </div>
+    {suggestionGroups.map((group) => <div className="suggestion-severity-group" key={group.severity}>
+      <h3>{group.severity === "Unclassified" ? "Sem classificação" : severityNames[group.severity as keyof typeof severityNames]} <small>({group.items.length})</small></h3>
+      {group.items.map((suggestion, index) => <article className="finding ai-assessment" key={`${suggestion.fileName}:${suggestion.line}:${index}`}>
+        <div className="finding-detail">
+          <h3><span className={suggestion.severity ? `badge ${suggestion.severity.toLowerCase()}` : "badge"}>{suggestion.severity ? severityNames[suggestion.severity] : "Sem classificação"}</span> {suggestion.title}</h3>
+          <p>{suggestion.category === "PERFORMANCE" ? "Desempenho" : "Segurança"} · {suggestion.fileName}:{suggestion.line} · Confiança {Math.round(suggestion.confidence * 100)}%</p>
+          <h4>Evidência no código</h4>
+          <pre><code>{suggestion.evidence}</code></pre>
+          <h4>Por que revisar</h4><p>{suggestion.rationale}</p>
+          <h4>Recomendação</h4><p>{suggestion.recommendation}</p>
+          <h4>Limitações</h4><p>{suggestion.limitations}</p>
+          <small>Modelo {suggestion.model} · Confirme a hipótese antes de agir. Em casos de N+1, a quantidade real de consultas depende da execução.</small>
+        </div>
+      </article>)}
+    </div>)}
+    {(data.suggestions?.length ?? 0) === 0 && <p className="results-awaiting" role="status">Aguardando resultados das sugestões consultivas…</p>}
+  </section>;
+}
+
 function traceStepLabel(kind: string) {
   return traceStepLabels[kind] || kind;
 }
@@ -752,10 +786,6 @@ export function Results({
     groups.set(f.fileName, [...(groups.get(f.fileName) || []), f]),
   );
   const systemBreadcrumb = repositoryBreadcrumb(data.repositoryUrl);
-  const suggestionGroups = ["Critical", "High", "Medium", "Low", "Unclassified"].map((severity) => ({
-    severity,
-    items: (data.suggestions ?? []).filter((suggestion) => (suggestion.severity || "Unclassified") === severity),
-  })).filter((group) => group.items.length > 0);
   return (
     <>
       <Breadcrumb
@@ -789,7 +819,7 @@ export function Results({
       {data.status === "FAILED" && <p className="semantic-status" role="alert">
         {userFriendlyFailureMessage(data)}
       </p>}
-      {data.semanticStatus && <p className="semantic-status" role="status">
+      {data.semanticStatus && data.semanticStatus !== "NOT_APPLICABLE" && <p className="semantic-status" role="status">
         {data.semanticStatus === "PENDING" || data.semanticStatus === "RUNNING" ? "Avaliação da IA em andamento. Os achados determinísticos já podem ser consultados." :
           data.semanticStatus === "COMPLETED" ? "Avaliação da IA concluída para todos os achados." :
           data.semanticStatus === "DEGRADED" ? "Avaliação da IA parcial ou indisponível. Os achados das regras permanecem completos." :
@@ -826,28 +856,6 @@ export function Results({
           </strong>
         </div>
       </div>
-      {(data.status === "PROCESSING" || (data.suggestions?.length ?? 0) > 0) && <section className="findings" aria-label="Possíveis problemas sugeridos pela IA">
-        <div className="findings-heading">
-          <h2>Possíveis problemas sugeridos pela IA</h2>
-          <span>{data.suggestions?.length ?? 0} melhoria(s) consultiva(s) · Hipóteses para revisão humana</span>
-        </div>
-        {suggestionGroups.map((group) => <div className="suggestion-severity-group" key={group.severity}>
-          <h3>{group.severity === "Unclassified" ? "Sem classificação" : severityNames[group.severity as keyof typeof severityNames]} <small>({group.items.length})</small></h3>
-          {group.items.map((suggestion, index) => <article className="finding ai-assessment" key={`${suggestion.fileName}:${suggestion.line}:${index}`}>
-            <div className="finding-detail">
-              <h3><span className={suggestion.severity ? `badge ${suggestion.severity.toLowerCase()}` : "badge"}>{suggestion.severity ? severityNames[suggestion.severity] : "Sem classificação"}</span> {suggestion.title}</h3>
-              <p>{suggestion.category === "PERFORMANCE" ? "Desempenho" : "Segurança"} · {suggestion.fileName}:{suggestion.line} · Confiança {Math.round(suggestion.confidence * 100)}%</p>
-              <h4>Evidência no código</h4>
-              <pre><code>{suggestion.evidence}</code></pre>
-              <h4>Por que revisar</h4><p>{suggestion.rationale}</p>
-              <h4>Recomendação</h4><p>{suggestion.recommendation}</p>
-              <h4>Limitações</h4><p>{suggestion.limitations}</p>
-              <small>Modelo {suggestion.model} · Confirme a hipótese antes de agir. Em casos de N+1, a quantidade real de consultas depende da execução.</small>
-            </div>
-          </article>)}
-          </div>)}
-        {(data.suggestions?.length ?? 0) === 0 && <p className="results-awaiting" role="status">Aguardando resultados das sugestões consultivas…</p>}
-      </section>}
       {data.findings.length === 0 ? (
         <section className="panel empty">
           <span className="complete-mark">✓</span>

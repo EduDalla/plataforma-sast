@@ -1,7 +1,7 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it } from "vitest";
-import { Results } from "./components";
+import { AiSuggestions, Results } from "./components";
 import type { Analysis } from "./types";
 
 const base: Analysis = {
@@ -43,7 +43,8 @@ afterEach(cleanup);
 
 describe("resultado da análise semântica", () => {
   it("mostra o carregamento e mantém as áreas vazias durante o polling", () => {
-    render(<Results data={{ ...base, status: "PROCESSING", findings: [], suggestions: [], semanticStatus: "RUNNING", suggestionStatus: "RUNNING" }} />);
+    const data = { ...base, status: "PROCESSING" as const, findings: [], suggestions: [], semanticStatus: "RUNNING" as const, suggestionStatus: "RUNNING" as const };
+    render(<><Results data={data} /><AiSuggestions data={data} /></>);
     expect(screen.getByRole("status", { name: "Análise em andamento" })).toBeInTheDocument();
     expect(screen.getByText("Aguardando resultados")).toBeInTheDocument();
     expect(screen.getByText("Aguardando resultados das sugestões consultivas…")).toBeInTheDocument();
@@ -59,8 +60,7 @@ describe("resultado da análise semântica", () => {
   });
 
   it("mostra a sugestão separada da severidade e das contagens determinísticas", () => {
-    render(<Results data={base} />);
-    expect(screen.getByText("Avaliação da IA concluída para todos os achados.")).toBeInTheDocument();
+    render(<><Results data={base} /><AiSuggestions data={base} /></>);
     const suggestion = screen.getByRole("region", { name: "Sugestão da IA" });
     expect(within(suggestion).getByText(/Severidade sugerida:/)).toHaveTextContent("Média");
     expect(within(suggestion).getByText(/Provável falso positivo:/)).toHaveTextContent("Sim");
@@ -78,17 +78,19 @@ describe("resultado da análise semântica", () => {
   });
 
   it("mostra hipótese N+1 mesmo sem findings e mantém a contagem de vulnerabilidades em zero", () => {
-    render(<Results data={{ ...base, findings: [], semanticStatus: "NOT_APPLICABLE",
+    const data: Analysis = { ...base, findings: [], semanticStatus: "NOT_APPLICABLE",
       suggestionStatus: "COMPLETED", suggestions: [{
         category: "PERFORMANCE", severity: "Critical", title: "Possível N+1", fileName: "Orders.java", line: 3,
         evidence: "repository.findById(id)", rationale: "Consulta dentro do loop.", confidence: 0.8,
         recommendation: "Busque em lote.", limitations: "Confirme em execução.",
         model: "llama3.2:3b", promptVersion: "1",
-      }] }} />);
+      }] };
+    render(<><Results data={data} /><AiSuggestions data={data} /></>);
     const section = screen.getByRole("region", { name: "Possíveis problemas sugeridos pela IA" });
     expect(within(section).getByText("Possível N+1")).toBeInTheDocument();
     expect(within(section).getAllByRole("heading", { name: /Crítica/ })[0]).toHaveTextContent("1");
     expect(screen.getByText("Vulnerabilidades").parentElement).toHaveTextContent("0");
     expect(screen.getByText("Nenhuma vulnerabilidade encontrada")).toBeInTheDocument();
+    expect(screen.queryByText("Nenhum achado para avaliar com IA.")).not.toBeInTheDocument();
   });
 });
