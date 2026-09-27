@@ -126,6 +126,19 @@ describe("fluxo autenticado da análise", () => {
     expect(location.pathname).toBe("/analyses/analysis-1");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+  it("exibe os detalhes consultivos na página de análise", async () => {
+    vi.mocked(api.create).mockResolvedValue({ ...sample, suggestions: [{
+      category: "PERFORMANCE", severity: "Medium", title: "Consulta repetida",
+      fileName: "Service.java", line: 12, evidence: "repository.findById(id)",
+      rationale: "Consultas em laço", confidence: 0.8, recommendation: "Avaliar busca em lote",
+      limitations: "Confirmar com métricas", model: "local", promptVersion: "v1",
+    }] });
+    render(<App />);
+    await submit();
+    expect(await screen.findByRole("region", { name: "Possíveis problemas sugeridos pela IA" })).toBeInTheDocument();
+    expect(screen.getByText("Avaliar busca em lote")).toBeInTheDocument();
+    expect(location.pathname).toBe("/analyses/analysis-1");
+  });
   it("abre o dashboard individual pelo card do sistema", async () => {
     vi.mocked(api.systems).mockResolvedValue({
       systems: [{ owner: "acme", repositoryName: "demo", repositoryUrl: sample.repositoryUrl, latestCreatedAt: sample.createdAt, totalAnalyses: 2, latest: { analysisId: "analysis-1", reference: "main", createdAt: sample.createdAt, filesAnalyzed: 1, findings: 1 } }],
