@@ -44,12 +44,10 @@
   border-top-color: var(--accent);
 }
 .analysis-notification-center {
-  position: fixed;
-  z-index: 30;
-  top: 94px;
-  left: 50%;
+  position: relative;
   width: min(560px, calc(100vw - 32px));
-  transform: translateX(-50%);
+  margin: 12px auto 0;
+  flex: 0 0 auto;
   pointer-events: none;
 }
 .analysis-notification-center ol {
