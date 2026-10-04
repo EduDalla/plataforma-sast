@@ -43,12 +43,23 @@ describe("lista unificada de vulnerabilidades e melhorias", () => {
     expect(document.querySelector(".stats")!).toHaveTextContent("Vulnerabilidades/Melhorias2");
     expect(screen.getAllByLabelText("Código Java")).toHaveLength(2);
   });
+  it("usa a mesma estrutura expansível para findings e sugestões consultivas", () => {
+    const data: Analysis = { ...base, findings: [], suggestions: [{ category: "SECURITY", severity: "High", title: "Revisar validação",
+      fileName: "Example.java", line: 4, evidence: "validate(input)", rationale: "A entrada precisa ser validada.", confidence: 0.7,
+      recommendation: "Validar a entrada antes do uso.", limitations: "O fluxo externo não foi resolvido.", model: "llama3.2:3b", promptVersion: "1" }] };
+    render(<Results data={data} />);
+    const item = screen.getByText("Revisar validação").closest("details")!;
+    expect(item).toHaveTextContent("Descrição");
+    expect(item).toHaveTextContent("Trecho analisado");
+    expect(within(item).getByRole("region", { name: "Avaliação consultiva da IA" })).toHaveTextContent("Confiança do modelo:70%");
+    expect(item).toHaveTextContent("Sugestão consultiva · Example.java");
+  });
   it("marca sugestões antigas sem severidade como sem classificação", () => {
     const data: Analysis = { ...base, findings: [], suggestions: [{ category: "SECURITY", severity: null, title: "Revisar validação",
       fileName: "Example.java", line: 4, evidence: "entrada", rationale: "Revisar fluxo.", confidence: 0.6,
       recommendation: "Validar dados.", limitations: "Análise parcial.", model: "llama3.2:3b", promptVersion: "1" }] };
     render(<Results data={data} />);
-    expect(screen.getByText("Sem classificação")).toBeInTheDocument();
+    expect(screen.getByText("Revisar validação").closest("details")?.querySelector(".badge.unclassified")).toHaveTextContent("Sem classificação");
     expect(screen.queryByText("Nenhuma vulnerabilidade ou melhoria encontrada")).not.toBeInTheDocument();
   });
   it("diferencia execução parcial sem itens da ausência confirmada", () => {

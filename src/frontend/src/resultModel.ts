@@ -2,7 +2,7 @@ import type { AiSuggestion, Finding, ResultPriority, ResultSummary } from "./typ
 
 export interface UnifiedResultItem {
   key: string;
-  source: "Regra" | "IA · Segurança" | "IA · Desempenho";
+  source: "Regra" | "Segurança" | "Desempenho";
   priority: ResultPriority;
   fileName: string;
   line: number;
@@ -41,7 +41,7 @@ export function unifiedResults(findings: Finding[] = [], suggestions: AiSuggesti
   }));
   suggestions.forEach((suggestion, index) => items.push({
     key: `ai:${suggestion.fileName}:${suggestion.line}:${suggestion.category}:${suggestion.title}:${index}`,
-    source: suggestion.category === "PERFORMANCE" ? "IA · Desempenho" : "IA · Segurança",
+    source: suggestion.category === "PERFORMANCE" ? "Desempenho" : "Segurança",
     priority: suggestion.severity ?? "Unclassified",
     fileName: suggestion.fileName,
     line: suggestion.line,

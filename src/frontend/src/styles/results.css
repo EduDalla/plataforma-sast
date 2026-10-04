@@ -263,6 +263,9 @@
   border-radius: 3px;
   padding: 3px 7px;
 }
+.badge + .badge {
+  margin-left: 6px;
+}
 .critical {
   color: #ad3a30;
   background: #f9e8e4;
@@ -278,6 +281,18 @@
 .low {
   color: #4c7793;
   background: #e5f0f6;
+}
+.adjustment-performance {
+  color: #326b8c;
+  background: #e5f0f6;
+}
+.adjustment-security {
+  color: #6c4b8d;
+  background: #eee6f7;
+}
+.adjustment-vulnerability {
+  color: #9b4037;
+  background: #f9e8e4;
 }
 .finding h4 {
   font-size: 17px;

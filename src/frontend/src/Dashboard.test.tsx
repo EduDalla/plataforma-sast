@@ -30,7 +30,7 @@ describe("dashboard unificado do sistema", () => {
     count("Arquivos analisados", "46");
     expect(screen.getByText(/Prioridade dos itens/)).toBeInTheDocument();
     expect(screen.getByText(/Itens de maior prioridade/)).toBeInTheDocument();
-    expect(screen.getByText(/IA · Desempenho/)).toBeInTheDocument();
+    expect(screen.getByText(/Desempenho/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Possível consulta em laço/ })).toBeInTheDocument();
   });
   it("usa categoria sem classificação para sugestão antiga e mantém zero findings na compatibilidade", () => {

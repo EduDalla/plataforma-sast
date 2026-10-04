@@ -713,6 +713,31 @@ function TaintTraceView({ trace }: { trace: NonNullable<Analysis["findings"][num
     </div>
   );
 }
+
+function SuggestionAssessment({ suggestion }: { suggestion: NonNullable<ReturnType<typeof unifiedResults>[number]["suggestion"]> }) {
+  const category = suggestion.category === "PERFORMANCE" ? "Desempenho" : "Segurança";
+  const severity = suggestion.severity ? severityNames[suggestion.severity] : "Sem classificação";
+  return (
+    <section className="ai-assessment suggestion-assessment" aria-label="Avaliação consultiva da IA">
+      <div className="ai-assessment-heading">
+        <div><span className="ai-kicker">ANÁLISE SEMÂNTICA</span><h5>Avaliação consultiva</h5></div>
+        <span className="ai-consultive">Consultiva</span>
+      </div>
+      <div className="ai-assessment-summary">
+        <div><span>Severidade sugerida:<strong className={suggestion.severity ? `ai-severity ai-severity-${suggestion.severity.toLowerCase()}` : undefined}>{severity}</strong></span></div>
+        <div><span>Confiança do modelo:<strong>{Math.round(suggestion.confidence * 100)}%</strong></span></div>
+        <div><span>Categoria:<strong>{category}</strong></span></div>
+      </div>
+      <div className="ai-assessment-copy">
+        <div><h6>Justificativa</h6><p>{suggestion.rationale}</p></div>
+        <div><h6>Remediação sugerida</h6><p>{suggestion.recommendation}</p></div>
+        <div><h6>Limitações</h6><p>{suggestion.limitations}</p></div>
+      </div>
+      <small className="ai-assessment-meta">Modelo {suggestion.model} · Sugestão consultiva</small>
+    </section>
+  );
+}
+
 export function Results({
   data,
   onNavigate,
@@ -756,14 +781,19 @@ export function Results({
       {orderedGroups.map(([file, group]) => <div className="file-group" key={file}>
         <h3><span aria-hidden="true">⌘</span> {file}</h3>
         {group.map((item) => <details className="finding" key={item.key}>
-          <summary><div><span className={`badge ${item.priority.toLowerCase()}`}>{priorityLabels[item.priority]}</span><span className="ai-kicker">{item.source}</span><h4>{item.title}</h4><p>{item.finding?.cwe ? `${item.finding.cwe} · ` : ""}Linha {item.line}{item.column ? `, coluna ${item.column}` : ""}</p></div><span className="expand">Ver detalhes <span aria-hidden="true">⌄</span></span></summary>
+          <summary><div><span className={`badge ${item.priority.toLowerCase()}`}>{priorityLabels[item.priority]}</span>{item.suggestion ? <span className={`badge adjustment-${item.suggestion.category.toLowerCase()}`}>{item.source}</span> : item.finding && <span className="badge adjustment-vulnerability">Vulnerabilidade</span>}<h4>{item.title}</h4><p>{item.finding?.cwe ? `${item.finding.cwe} · ` : ""}Linha {item.line}{item.column ? `, coluna ${item.column}` : ""}</p></div><span className="expand">Ver detalhes <span aria-hidden="true">⌄</span></span></summary>
           <div className="finding-detail">
             {item.finding ? <>
               <h5>Descrição</h5><p>{item.finding.description}</p><JavaCodeBlock code={item.finding.snippet} line={item.finding.line} />
               {item.finding.taintTrace && <TaintTraceView trace={item.finding.taintTrace} />}
               {item.finding.aiAssessment && <section className="ai-assessment" aria-label="Avaliação consultiva da IA"><div className="ai-assessment-heading"><div><span className="ai-kicker">ANÁLISE SEMÂNTICA</span><h5>Avaliação da IA</h5></div><span className="ai-consultive">Consultiva</span></div><div className="ai-assessment-summary"><div><span>Severidade sugerida:<strong className={`ai-severity ai-severity-${item.finding.aiAssessment.suggestedSeverity.toLowerCase()}`}>{severityNames[item.finding.aiAssessment.suggestedSeverity]}</strong></span></div><div><span>Provável falso positivo:<strong>{item.finding.aiAssessment.likelyFalsePositive ? "Sim" : "Não"}</strong></span></div><div><span>Confiança do modelo:<strong>{Math.round(item.finding.aiAssessment.confidence * 100)}%</strong></span></div></div><div className="ai-assessment-copy">{item.finding.aiAssessment.risk && <div><h6>Risco contextual</h6><p>{item.finding.aiAssessment.risk}</p></div>}<div><h6>Justificativa</h6><p>{item.finding.aiAssessment.rationale}</p></div>{item.finding.aiAssessment.evidence?.length ? <div><h6>Evidências</h6><ul>{item.finding.aiAssessment.evidence.map((evidence, index) => <li key={index}>{evidence}</li>)}</ul></div> : null}{item.finding.aiAssessment.falsePositiveReason && <div><h6>Motivo da avaliação de falso positivo</h6><p>{item.finding.aiAssessment.falsePositiveReason}</p></div>}<div><h6>Remediação sugerida</h6><p>{item.finding.aiAssessment.remediation}</p></div>{item.finding.aiAssessment.recommendations?.length ? <div><h6>Ações recomendadas</h6><ul>{item.finding.aiAssessment.recommendations.map((recommendation, index) => <li key={index}>{recommendation}</li>)}</ul></div> : null}{item.finding.aiAssessment.limitations && <div><h6>Limitações</h6><p>{item.finding.aiAssessment.limitations}</p></div>}</div><small className="ai-assessment-meta">Modelo {item.finding.aiAssessment.model} · A severidade exibida permanece a da regra.</small></section>}
               <span className="muted">Regra {item.finding.ruleId} · {item.finding.fileName}</span>
-            </> : item.suggestion && <><JavaCodeBlock code={item.suggestion.evidence} line={item.suggestion.line} /><h5>Justificativa</h5><p>{item.suggestion.rationale}</p><h5>Recomendação</h5><p>{item.suggestion.recommendation}</p><h5>Confiança</h5><p>{Math.round(item.suggestion.confidence * 100)}%</p><h5>Limitações</h5><p>{item.suggestion.limitations}</p><small className="ai-assessment-meta">Modelo {item.suggestion.model} · Sugestão consultiva</small></>}
+            </> : item.suggestion && <>
+              <h5>Descrição</h5><p>Melhoria consultiva de {item.suggestion.category === "PERFORMANCE" ? "desempenho" : "segurança"} identificada durante a análise semântica.</p>
+              <JavaCodeBlock code={item.suggestion.evidence} line={item.suggestion.line} />
+              <SuggestionAssessment suggestion={item.suggestion} />
+              <span className="muted">Sugestão consultiva · {item.suggestion.fileName}</span>
+            </>}
           </div>
         </details>)}
       </div>)}
