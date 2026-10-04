@@ -17,7 +17,7 @@ Nesta etapa, a aplicação recebe a URL de um repositório público do GitHub, b
 - `src/frontend`: aplicação React;
 - `src/backend`: API Spring Boot, JavaParser e Rules Engine;
 - `tests`: testes automatizados;
-- `docker` e `compose.yaml`: ambiente local;
+- `docker` e `compose.yaml`: ambiente local com API, PostgreSQL, RabbitMQ, worker, frontend e Ollama;
 - `docs`: documentação técnica.
 
 ## Inicialização da CP1
@@ -50,7 +50,7 @@ Consulte o guia da CP1 para criar os projetos, configurar o GitHub, executar tes
 
 Configure `SAST_BOOTSTRAP_EMAIL` e `SAST_BOOTSTRAP_PASSWORD` no seu `.env` local. Use uma senha de pelo menos 12 caracteres e no máximo 72 bytes UTF-8. A primeira inicialização cria a conta e salva somente o hash BCrypt. Depois disso, as variáveis podem ser removidas: não atualizam contas já existentes. Não há cadastro público ou recuperação de senha nesta entrega.
 
-Abra o frontend e entre com essa conta. O access token JWT dura 15 minutos e fica na `sessionStorage` somente para preservar a sessão durante um F5 na mesma aba; ao sair, expirar ou fechar a aba, ele é removido. Cada usuário consulta apenas suas próprias análises; registros anteriores à autenticação são preservados, mas ficam inacessíveis. Configure `SAST_JWT_SECRET` com uma chave Base64 de pelo menos 32 bytes.
+Abra o frontend e entre com essa conta. O access token JWT dura 2 horas e fica na `sessionStorage` somente para preservar a sessão durante um F5 na mesma aba; ao sair, expirar ou fechar a aba, ele é removido. Cada usuário consulta apenas suas próprias análises; registros anteriores à autenticação são preservados, mas ficam inacessíveis. Configure `SAST_JWT_SECRET` com uma chave Base64 de pelo menos 32 bytes.
 
 O fluxo visual inclui login, nova análise de repositório público Java, processamento, uma central de sistemas e um dashboard individual por sistema. Cada dashboard individual permite selecionar uma execução do histórico por data e referência Git, com a mais recente à direita e rolagem para as anteriores. Repetir uma análise sem mudanças nos findings atualiza a data da execução existente, sem criar outro item. A URL de um resultado pode ser reaberta pelo mesmo usuário.
 

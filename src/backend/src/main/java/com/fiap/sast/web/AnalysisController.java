@@ -10,6 +10,8 @@ import com.fiap.sast.persistence.AiAssessmentEntity;
 import com.fiap.sast.persistence.AiSuggestionEntity;
 import com.fiap.sast.persistence.Analysis;
 import com.fiap.sast.persistence.AnalysisRepository;
+import com.fiap.sast.persistence.AnalysisOutboxEvent;
+import com.fiap.sast.persistence.AnalysisOutboxRepository;
 import com.fiap.sast.persistence.Finding;
 import com.fiap.sast.semantic.AiAssessment;
 import com.fiap.sast.semantic.AiSuggestion;
@@ -17,6 +19,7 @@ import com.fiap.sast.semantic.SemanticAnalysisService;
 import com.fiap.sast.semantic.SemanticSuggestionService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.net.URI;
 import java.security.Principal;
 import java.security.MessageDigest;
@@ -59,10 +62,18 @@ public class AnalysisController {
     private final SemanticAnalysisService semantic;
     private final SemanticSuggestionService suggestionService;
     private final AnalysisJobService jobs;
+    private final AnalysisOutboxRepository outbox;
 
     public AnalysisController(GitHubClient git, SastEngine engine, AnalysisRepository repo, UserRepository users,
             ObjectMapper mapper, SemanticAnalysisService semantic, SemanticSuggestionService suggestionService,
             AnalysisJobService jobs) {
+        this(git, engine, repo, users, mapper, semantic, suggestionService, jobs, null);
+    }
+
+    @Autowired
+    public AnalysisController(GitHubClient git, SastEngine engine, AnalysisRepository repo, UserRepository users,
+            ObjectMapper mapper, SemanticAnalysisService semantic, SemanticSuggestionService suggestionService,
+            AnalysisJobService jobs, AnalysisOutboxRepository outbox) {
         this.git = git;
         this.engine = engine;
         this.repo = repo;
@@ -71,6 +82,7 @@ public class AnalysisController {
         this.semantic = semantic;
         this.suggestionService = suggestionService;
         this.jobs = jobs;
+        this.outbox = outbox;
     }
 
     public record Request(@NotBlank String repositoryUrl, String reference) {}
@@ -148,6 +160,9 @@ public class AnalysisController {
             ResultSummary resultSummary) {}
     public record HistoryPage(String owner, String repositoryName, List<HistoryEntry> history,
             int page, int size, int total) {}
+    public record Task(UUID analysisId, String status, String stage, String repositoryUrl,
+            Instant createdAt, String semanticStatus, String suggestionStatus,
+            ResultSummary resultSummary, boolean acknowledged) {}
 
     private static HistoryEntry history(Analysis a) {
         return new HistoryEntry(a.id, a.reference, a.createdAt, a.filesAnalyzed, a.findings.size(),
@@ -307,6 +322,31 @@ public class AnalysisController {
                 page, size, all.size());
     }
 
+    @GetMapping("/tasks")
+    @Transactional(readOnly = true)
+    public List<Task> tasks(Principal principal) {
+        var owner = users.findByEmail(principal.getName()).orElseThrow();
+        return repo.findByUserIdOrderByCreatedAtDescIdDesc(owner.id).stream()
+                .filter(analysis -> "PROCESSING".equals(analysis.status)
+                        || (("COMPLETED".equalsIgnoreCase(analysis.status) || "FAILED".equalsIgnoreCase(analysis.status))
+                        && !analysis.taskAcknowledged))
+                .map(analysis -> new Task(analysis.id, analysis.status, analysis.stage, analysis.repositoryUrl,
+                        analysis.createdAt, analysis.semanticStatus, analysis.suggestionStatus,
+                        summarize(analysis), analysis.taskAcknowledged))
+                .toList();
+    }
+
+    @PostMapping("/tasks/{id}/ack")
+    @Transactional
+    public ResponseEntity<Void> acknowledgeTask(@PathVariable UUID id, Principal principal) {
+        var owner = users.findByEmail(principal.getName()).orElseThrow();
+        repo.findByIdAndUserId(id, owner.id).ifPresent(analysis -> {
+            analysis.taskAcknowledged = true;
+            repo.save(analysis);
+        });
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping
     @Transactional
     public ResponseEntity<Result> create(@Valid @RequestBody Request request, Principal principal) {
@@ -326,15 +366,22 @@ public class AnalysisController {
         analysis.stage = "QUEUED";
         analysis.semanticStatus = "PENDING";
         analysis.suggestionStatus = "PENDING";
+        analysis.taskAcknowledged = false;
         analysis.semanticModel = semantic.model();
         analysis.promptVersion = SemanticAnalysisService.PROMPT_VERSION + ":" + SemanticSuggestionService.PROMPT_VERSION;
         repo.save(analysis);
-        Runnable submit = () -> jobs.submit(analysis.id, request.repositoryUrl(), request.reference());
-        if (TransactionSynchronizationManager.isSynchronizationActive())
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override public void afterCommit() { submit.run(); }
-            });
-        else submit.run();
+        if (outbox != null) {
+            var event = new AnalysisOutboxEvent();
+            event.analysisId = analysis.id;
+            outbox.save(event);
+        } else {
+            Runnable submit = () -> jobs.submit(analysis.id, request.repositoryUrl(), request.reference());
+            if (TransactionSynchronizationManager.isSynchronizationActive())
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override public void afterCommit() { submit.run(); }
+                });
+            else submit.run();
+        }
         return ResponseEntity.accepted().header("Location", "/api/analyses/" + analysis.id).body(toResult(analysis));
     }
 

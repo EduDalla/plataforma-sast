@@ -79,6 +79,17 @@ export interface Analysis {
   failureStage?: string | null;
   failureMessage?: string | null;
 }
+export interface AnalysisTask {
+  analysisId: string;
+  status: "PROCESSING" | "COMPLETED" | "FAILED" | "Completed";
+  stage?: Analysis["stage"];
+  repositoryUrl: string;
+  createdAt: string;
+  semanticStatus?: Analysis["semanticStatus"];
+  suggestionStatus?: Analysis["suggestionStatus"];
+  resultSummary?: ResultSummary;
+  acknowledged: boolean;
+}
 export interface HistoryEntry {
   analysisId: string;
   reference: string | null;

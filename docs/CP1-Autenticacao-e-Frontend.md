@@ -8,7 +8,7 @@ A migration V2 cria `app_users` (UUID, e-mail único normalizado, hash BCrypt) e
 
 Se o banco estiver vazio, a API exige `SAST_BOOTSTRAP_EMAIL` válido e `SAST_BOOTSTRAP_PASSWORD` com 12 caracteres a 72 bytes UTF-8. O bootstrap só atua quando não existem usuários e nunca altera senhas existentes. Credenciais não devem ser versionadas, devolvidas pela API ou escritas em logs. Remova as variáveis bootstrap após a primeira inicialização.
 
-A autenticação usa JWT Bearer assinado com HMAC-SHA256. `SAST_JWT_SECRET` deve ser Base64 com pelo menos 256 bits, fica somente no backend e nunca é registrado. O token contém emissor, assunto, escopos, emissão e expiração de 15 minutos. O frontend mantém o access token na `sessionStorage` para sobreviver a um F5 na mesma aba; não usa `localStorage` nem cookies para o token. Fechar a aba, fazer logout ou receber 401 remove o token. Reiniciar a API invalida tokens emitidos com o segredo anterior; a expiração curta limita a janela de reutilização.
+A autenticação usa JWT Bearer assinado com HMAC-SHA256. `SAST_JWT_SECRET` deve ser Base64 com pelo menos 256 bits, fica somente no backend e nunca é registrado. O token contém emissor, assunto, escopos, emissão e expiração de 2 horas (7.200 segundos). O frontend mantém o access token na `sessionStorage` para sobreviver a um F5 na mesma aba; não usa `localStorage` nem cookies para o token. Fechar a aba, fazer logout ou receber 401 remove o token. Reiniciar a API invalida tokens emitidos com o segredo anterior; o prazo de expiração limita a janela de reutilização. A duração pode ser configurada por `SAST_JWT_ACCESS_TOKEN_MINUTES`; tokens já emitidos mantêm sua expiração original.
 
 ## Contratos
 
@@ -22,7 +22,7 @@ A autenticação usa JWT Bearer assinado com HMAC-SHA256. `SAST_JWT_SECRET` deve
 | GET /api/analyses/{id} | Header Bearer | 200 com o mesmo DTO; 404 para ID inexistente, legado ou de outro usuário |
 | GET /health | Nenhuma | Saúde da aplicação, sem detalhes internos |
 
-O frontend envia o Bearer em cada requisição protegida. A API não redireciona para páginas de login e usa erros JSON legíveis. Requisições sem token, com assinatura inválida, emissor incorreto ou token expirado recebem 401.
+O frontend envia o Bearer em cada requisição protegida. A API não redireciona para páginas de login e usa erros JSON legíveis. Requisições sem token, com assinatura inválida, emissor incorreto ou token expirado recebem 401. A criação grava uma task em `PROCESSING`/`QUEUED`; a execução é entregue ao worker por outbox e RabbitMQ, sem alterar o isolamento por usuário.
 
 Na área autenticada, a barra superior oferece um seletor de tema claro/escuro. O modo claro usa uma base branco-esverdeada; a escolha do usuário é persistida somente como preferência visual na chave `sast-theme` do `localStorage`. O padrão é o modo claro e a tela de login não participa dessa preferência.
 

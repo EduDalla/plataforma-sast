@@ -29,7 +29,7 @@ A plataforma será estendida com dois estágios independentes e ordenados depois
 
 Os findings determinísticos permanecem como fonte de verdade. O LLM não poderá criar, excluir ou alterar um finding, nem aplicar correções no repositório. Sua resposta será armazenada e apresentada como uma avaliação separada, identificada explicitamente como conteúdo gerado por IA.
 
-A requisição de análise permanecerá síncrona na CP2. Filas e processamento assíncrono continuam adiados.
+A requisição HTTP permanece curta, mas a execução completa é assíncrona: uma outbox transacional publica somente o ID no RabbitMQ e um serviço `worker` separado executa a tentativa inteira. A adoção da fila é limitada à execução já existente de análise semântica; não introduz IA adicional, dashboard ou alteração na fonte de verdade determinística.
 
 ## Arquitetura decidida
 
@@ -43,14 +43,19 @@ flowchart LR
         rules["Rules Engine<br/>findings determinísticos"]
         taint["TaintAnalysisEngine<br/>fluxos source-to-sink"]
         semantic["SemanticAnalysisService<br/>prompt mínimo e validação JSON"]
-        persistence["Persistência<br/>finding + enriquecimento"]
+    persistence["Persistência<br/>finding + enriquecimento"]
     end
 
     ollama["Ollama local<br/>Llama 3"]
     db[("PostgreSQL")]
+    outbox["Outbox transacional"]
+    rabbit["RabbitMQ<br/>fila + DLQ"]
+    worker["Worker separado<br/>2 consumidores"]
     frontend["Frontend React"]
 
     github --> snapshot --> parser
+    api --> outbox --> rabbit --> worker
+    worker --> snapshot
     parser --> rules
     parser --> taint
     rules --> semantic
@@ -60,6 +65,7 @@ flowchart LR
     taint --> persistence
     semantic --> persistence
     persistence --> db
+    outbox --> db
     db --> frontend
 ```
 
@@ -224,7 +230,7 @@ Adiada devido à necessidade de resolução de símbolos, modelagem de chamadas 
 
 ### Introduzir fila e processamento assíncrono
 
-Adiada para preservar o fluxo da CP1 e limitar a mudança arquitetural da CP2. A latência do LLM será controlada por timeout e degradação explícita.
+Adotada posteriormente para retirar a execução completa da API, preservar o snapshot somente em memória por tentativa e permitir retomada segura. A outbox e o lease no PostgreSQL tornam a entrega duplicada inofensiva; a latência do LLM continua controlada por timeout e degradação explícita.
 
 ## Critérios para aceitar esta ADR
 
@@ -241,4 +247,4 @@ A ADR poderá mudar de **Proposta** para **Aceita** quando a implementação dem
 
 ## Fora do escopo
 
-Permanecem adiados: Taint Analysis interprocedural, aplicação automática de patches, LLM externo, execução de código analisado, filas, CI/CD, Security Gates e bloqueio de pull requests.
+Permanecem adiados: Taint Analysis interprocedural, aplicação automática de patches, LLM externo, execução de código analisado, CI/CD, Security Gates e bloqueio de pull requests.

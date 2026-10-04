@@ -15,7 +15,7 @@ import {
   SystemDashboard,
 } from "./components";
 import type { Analysis, HistoryEntry, Session, SystemsPage } from "./types";
-import { priorityLabels, summarizeResults, unifiedResults } from "./resultModel";
+import { priorityLabels } from "./resultModel";
 
 type Theme = "light" | "dark";
 const THEME_STORAGE_KEY = "sast-theme";
@@ -44,26 +44,6 @@ function analysisStageMessage(data: Analysis) {
   if (data.stage === "SEMANTIC") return "As vulnerabilidades e melhorias das regras já estão disponíveis enquanto a IA avalia os achados.";
   if (data.stage === "SUGGESTIONS") return "A IA está verificando métodos candidatos para vulnerabilidades e melhorias adicionais.";
   return "A análise está avançando. Os resultados aparecem nesta página.";
-}
-
-function semanticNotification(status: Analysis["semanticStatus"]): Pick<AnalysisNotification, "title" | "message" | "tone" | "final"> | null {
-  if (status === "PENDING" || status === "RUNNING")
-    return { title: "Avaliação de vulnerabilidades/melhorias", message: "A avaliação está em andamento; os itens das regras já podem ser consultados.", tone: "progress" };
-  if (status === "COMPLETED")
-    return { title: "Avaliação concluída", message: "Todos os achados candidatos foram avaliados.", tone: "success", final: true };
-  if (status === "DEGRADED")
-    return { title: "Avaliação parcial", message: "Alguns achados não receberam avaliação; os resultados das regras estão disponíveis.", tone: "warning", final: true };
-  return null;
-}
-
-function suggestionNotification(status: Analysis["suggestionStatus"]): Pick<AnalysisNotification, "title" | "message" | "tone" | "final"> | null {
-  if (status === "PENDING" || status === "RUNNING")
-    return { title: "Verificação de vulnerabilidades/melhorias adicionais", message: "Verificando métodos candidatos. A lista será atualizada automaticamente.", tone: "progress" };
-  if (status === "COMPLETED")
-    return { title: "Verificação de vulnerabilidades/melhorias concluída", message: "A verificação dos métodos candidatos terminou.", tone: "success", final: true };
-  if (status === "DEGRADED")
-    return { title: "Verificação parcial de vulnerabilidades/melhorias", message: "Alguns métodos candidatos não foram avaliados.", tone: "warning", final: true };
-  return null;
 }
 
 function readTheme(): Theme {
@@ -114,8 +94,6 @@ export function App() {
   const dashboardLinkRef = useRef<HTMLAnchorElement>(null);
   const pending = useRef(false);
   const generation = useRef(0);
-  const observedAnalysis = useRef<{ analysisId: string; status: Analysis["status"]; stage?: Analysis["stage"]; semanticStatus?: Analysis["semanticStatus"]; suggestionStatus?: Analysis["suggestionStatus"] } | undefined>(undefined);
-  const previousPath = useRef(path);
   const upsertNotification = useCallback((notification: AnalysisNotification) => {
     setAnalysisNotifications((current) => {
       const index = current.findIndex((item) => item.id === notification.id);
@@ -132,15 +110,6 @@ export function App() {
     setAnalysisNotifications([]);
     setNotificationAnnouncement("");
   }, []);
-  useEffect(() => {
-    const wasAnalysis = /^\/analyses\/[^/]+$/.test(previousPath.current);
-    const isAnalysis = /^\/analyses\/[^/]+$/.test(path);
-    if (wasAnalysis && !isAnalysis) {
-      clearAnalysisNotifications();
-      observedAnalysis.current = undefined;
-    }
-    previousPath.current = path;
-  }, [path, clearAnalysisNotifications]);
   const loadSystems = useCallback(async (page = 0) => {
     if (typeof api.systems !== "function") return undefined;
     const value = await api.systems(page);
@@ -333,7 +302,6 @@ export function App() {
     setSubmitting(true);
     setError("");
     setResult(undefined);
-    observedAnalysis.current = undefined;
     setNotificationAnnouncement("Preparando análise. Solicitando a análise do repositório.");
     upsertNotification({ id: "analysis-submission", title: "Preparando análise", message: "Solicitando a análise do repositório…", tone: "progress" });
     const operation = ++generation.current;
@@ -343,13 +311,6 @@ export function App() {
         dismissNotification("analysis-submission");
         setResult(data);
         storeLastAnalysisId(data.analysisId);
-        if (data.status === "COMPLETED" || data.status === "Completed") {
-          upsertNotification({ id: `analysis:${data.analysisId}:result`, title: "Análise concluída", message: "Os resultados já estão disponíveis.", tone: "success", final: true });
-          setNotificationAnnouncement("Análise concluída. Os resultados já estão disponíveis.");
-        } else if (data.status === "FAILED") {
-          upsertNotification({ id: `analysis:${data.analysisId}:result`, title: "Análise interrompida", message: "Não foi possível concluir a análise. Consulte os detalhes na página.", tone: "error", final: true });
-          setNotificationAnnouncement("Análise interrompida. Consulte os detalhes na página.");
-        }
         navigate(`/analyses/${data.analysisId}`);
       }
     } catch (e) {
@@ -366,98 +327,49 @@ export function App() {
   }
 
   useEffect(() => {
-    if (!result) return;
-    const previous = observedAnalysis.current;
-    const sameAnalysis = previous?.analysisId === result.analysisId;
-    const announcements: string[] = [];
-    if (result.status === "PROCESSING") {
-      const stage = result.stage || "QUEUED";
-      if (!sameAnalysis || previous?.stage !== stage) {
-        if (sameAnalysis && previous?.stage) {
-          const previousId = `analysis:${result.analysisId}:stage:${previous.stage}`;
-          upsertNotification({ id: previousId, title: analysisStageTitle(previous.stage), message: "Etapa concluída.", tone: "success", final: true });
-        }
-        upsertNotification({
-          id: `analysis:${result.analysisId}:stage:${stage}`,
-          title: analysisStageTitle(stage),
-          message: analysisStageMessage(result),
-          tone: "progress",
-        });
-        announcements.push(`${analysisStageTitle(stage)}. ${analysisStageMessage(result)}`);
-      } else {
-        upsertNotification({
-          id: `analysis:${result.analysisId}:stage:${stage}`,
-          title: analysisStageTitle(stage),
-          message: analysisStageMessage(result),
-          tone: "progress",
-        });
-      }
-      const semantic = semanticNotification(result.semanticStatus);
-      if (semantic) {
-        upsertNotification({ id: `analysis:${result.analysisId}:semantic`, ...semantic });
-        if (!sameAnalysis || previous?.semanticStatus !== result.semanticStatus)
-          announcements.push(`${semantic.title}. ${semantic.message}`);
-      }
-      const suggestions = suggestionNotification(result.suggestionStatus);
-      if (suggestions) {
-        upsertNotification({ id: `analysis:${result.analysisId}:suggestions`, ...suggestions });
-        if (!sameAnalysis || previous?.suggestionStatus !== result.suggestionStatus)
-          announcements.push(`${suggestions.title}. ${suggestions.message}`);
-      }
-    } else if (sameAnalysis && previous.status === "PROCESSING") {
-      const stageId = `analysis:${result.analysisId}:stage:${previous.stage || "QUEUED"}`;
-      const unifiedSummary = result.resultSummary ?? summarizeResults(unifiedResults(result.findings, result.suggestions ?? []));
-      const highest = unifiedSummary.highestPriority ? priorityLabels[unifiedSummary.highestPriority] : "Sem classificação";
-      const completionMessage = unifiedSummary.total
-        ? `${unifiedSummary.total} vulnerabilidade(s)/melhoria(s) identificada(s). Maior prioridade: ${highest}.`
-        : "Nenhuma vulnerabilidade ou melhoria identificada nas verificações concluídas.";
-      upsertNotification({
-        id: stageId,
-        title: result.status === "FAILED" ? "Análise interrompida" : "Análise concluída",
-        message: result.status === "FAILED" ? "A análise foi interrompida. Consulte os detalhes e tente novamente." : completionMessage,
-        tone: result.status === "FAILED" ? "error" : "success",
-        final: true,
-      });
-      announcements.push(result.status === "FAILED" ? "Análise interrompida. Consulte os detalhes e tente novamente." : `Análise concluída. ${completionMessage}`);
-      const semantic = semanticNotification(result.semanticStatus);
-      if (result.status === "FAILED" && (result.semanticStatus === "PENDING" || result.semanticStatus === "RUNNING"))
-        upsertNotification({ id: `analysis:${result.analysisId}:semantic`, title: "Avaliação interrompida", message: "A avaliação complementar foi encerrada junto com a análise.", tone: "error", final: true });
-      else if (semantic && result.semanticStatus !== "PENDING" && result.semanticStatus !== "RUNNING")
-        upsertNotification({ id: `analysis:${result.analysisId}:semantic`, ...semantic });
-      const suggestions = suggestionNotification(result.suggestionStatus);
-      if (result.status === "FAILED" && (result.suggestionStatus === "PENDING" || result.suggestionStatus === "RUNNING"))
-        upsertNotification({ id: `analysis:${result.analysisId}:suggestions`, title: "Verificação de sugestões interrompida", message: "A etapa consultiva foi encerrada junto com a análise.", tone: "error", final: true });
-      else if (suggestions && result.suggestionStatus !== "PENDING" && result.suggestionStatus !== "RUNNING")
-        upsertNotification({ id: `analysis:${result.analysisId}:suggestions`, ...suggestions });
-    }
-    if (announcements.length > 0) setNotificationAnnouncement(announcements.join(" "));
-    observedAnalysis.current = { analysisId: result.analysisId, status: result.status, stage: result.stage, semanticStatus: result.semanticStatus, suggestionStatus: result.suggestionStatus };
-  }, [result, upsertNotification]);
-
-  useEffect(() => {
-    const match = path.match(/^\/analyses\/([^/]+)$/);
-    if (!session || !match || match[1] === "new") return;
+    if (!session) return;
     let active = true;
     let timer: number | undefined;
-    const poll = async () => {
+    const pollTasks = async () => {
       try {
-        const value = await api.analysis(match[1]);
+        const tasks = await api.tasks();
         if (!active) return;
-        setResult(value);
-        if (value.status === "PROCESSING") {
-          timer = window.setTimeout(poll, 2000);
+        for (const task of tasks) {
+          dismissNotification("analysis-submission");
+          if (task.status === "PROCESSING") {
+            upsertNotification({
+              id: `analysis:task:${task.analysisId}`,
+              title: analysisStageTitle(task.stage),
+              message: `Acompanhando análise de ${task.repositoryUrl.replace("https://github.com/", "")}…`,
+              tone: "progress",
+            });
+               if (window.location.pathname.endsWith(task.analysisId)) setResult(await api.analysis(task.analysisId));
+            continue;
+          }
+          const completed = await api.analysis(task.analysisId);
+          if (!active) return;
+             if (window.location.pathname.endsWith(task.analysisId)) setResult(completed);
+          const summary = completed.resultSummary ?? task.resultSummary;
+          const highest = summary?.highestPriority ? priorityLabels[summary.highestPriority] : "Sem classificação";
+          const message = task.status === "FAILED"
+            ? "A análise foi interrompida. Consulte os detalhes para ver o motivo."
+            : summary?.total
+            ? `${summary.total} vulnerabilidade(s)/melhoria(s) identificada(s). Maior prioridade: ${highest}.`
+            : "Nenhuma vulnerabilidade ou melhoria foi identificada.";
+          upsertNotification({ id: `analysis:task:${task.analysisId}`, title: task.status === "FAILED" ? "Análise interrompida" : "Análise concluída", message, tone: task.status === "FAILED" ? "error" : "success", final: true });
+          setNotificationAnnouncement(`${task.status === "FAILED" ? "Análise interrompida." : "Análise concluída."} ${message}`);
+          await api.acknowledgeTask(task.analysisId);
+          if (typeof api.systems === "function") loadSystems().catch(() => undefined);
         }
       } catch (e) {
-        if (active) failure(e);
+        if (active && e instanceof ApiError && e.status === 401) failure(e);
+      } finally {
+        if (active) timer = window.setTimeout(pollTasks, 2000);
       }
     };
-    if (result?.analysisId === match[1] && result.status === "PROCESSING")
-      timer = window.setTimeout(poll, 2000);
-    return () => {
-      active = false;
-      if (timer !== undefined) window.clearTimeout(timer);
-    };
-  }, [path, session, result?.analysisId, result?.status, failure]);
+    pollTasks();
+    return () => { active = false; if (timer !== undefined) window.clearTimeout(timer); };
+     }, [session, dismissNotification, upsertNotification, failure, loadSystems]);
   useEffect(() => {
     if (result?.status === "FAILED") setAnalysisFailureOpen(true);
   }, [result?.analysisId, result?.status]);
@@ -469,7 +381,6 @@ export function App() {
       setSession(null);
       setResult(undefined);
       clearAnalysisNotifications();
-      observedAnalysis.current = undefined;
       setSystems(undefined);
       storeLastAnalysisId(null);
       setError("");
@@ -482,7 +393,6 @@ export function App() {
     setError("");
     setResult(undefined);
     clearAnalysisNotifications();
-    observedAnalysis.current = undefined;
     setSubmitting(false);
     setAnalysisFailureOpen(false);
     setDashboardPromptOpen(false);
@@ -590,7 +500,9 @@ export function App() {
           </button>
         </div>
       </header>
-      <AnalysisNotificationCenter notifications={analysisNotifications} announcement={notificationAnnouncement} onDismiss={dismissNotification} />
+      {path.startsWith("/analyses") && (
+        <AnalysisNotificationCenter notifications={analysisNotifications} announcement={notificationAnnouncement} onDismiss={dismissNotification} />
+      )}
       <main className="workspace">
         {path === "/dashboard" ? (
           systems ? <Dashboard systems={systems} central onOpen={() => undefined} onOpenSystem={openSystem} onPage={changeSystemsPage} /> : <section className="panel system-page-loading" role="status">Carregando sistemas analisados…</section>

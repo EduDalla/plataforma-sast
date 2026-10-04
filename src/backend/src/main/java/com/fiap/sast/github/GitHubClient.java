@@ -23,6 +23,28 @@ public class GitHubClient {
     public record Snapshot(String owner, String repo, String url, String reference, List<File> files) {}
     public record File(String path, String content) {}
 
+    /** Resolve a referência uma única vez para tornar retomadas determinísticas. */
+    public String resolveCommitSha(String url, String ref) {
+        try {
+            var parts = validate(url, ref);
+            var base = "https://api.github.com/repos/" + parts[0] + "/" + parts[1] + "/commits";
+            var target = ref == null || ref.isBlank() ? base : base + "?sha="
+                    + URLEncoder.encode(ref, StandardCharsets.UTF_8).replace("+", "%20");
+            var response = http.send(apiRequest(URI.create(target), false), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            checkStatus(response.statusCode());
+            if (response.statusCode() != 200) throw new UnavailableException();
+            var match = java.util.regex.Pattern.compile("\\\"sha\\\"\\s*:\\s*\\\"([0-9a-fA-F]{40})\\\"").matcher(response.body());
+            if (!match.find()) throw new UnavailableException();
+            return match.group(1);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt(); throw new UnavailableException();
+        } catch (IllegalArgumentException | NoSuchElementException | RateLimitException | UnavailableException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new UnavailableException();
+        }
+    }
+
     public Snapshot download(String url, String ref) {
         try {
             var parts = validate(url, ref);

@@ -24,6 +24,8 @@ vi.mock("./api", async (importOriginal) => {
       logout: vi.fn(),
       create: vi.fn(),
       analysis: vi.fn(),
+      tasks: vi.fn(),
+      acknowledgeTask: vi.fn(),
       systems: vi.fn(),
       history: vi.fn(),
     },
@@ -63,6 +65,8 @@ beforeEach(() => {
   history.replaceState(null, "", "/analyses/new");
   vi.mocked(api.session).mockResolvedValue({ email: "test@example.com" });
   vi.mocked(api.systems).mockResolvedValue({ systems: [], page: 0, size: 20, totalSystems: 0, totalAnalyses: 0, totalFindings: 0, totalCritical: 0, totalFiles: 0 });
+  vi.mocked(api.tasks).mockResolvedValue([]);
+  vi.mocked(api.acknowledgeTask).mockResolvedValue(undefined);
 });
 afterEach(cleanup);
 async function submit() {
@@ -281,6 +285,16 @@ describe("fluxo autenticado da análise", () => {
     }));
 
     try {
+      vi.mocked(api.tasks).mockResolvedValueOnce([{
+        analysisId: sample.analysisId,
+        status: "COMPLETED",
+        stage: "COMPLETED",
+        repositoryUrl: sample.repositoryUrl,
+        createdAt: sample.createdAt,
+        resultSummary: { total: 1, critical: 1, high: 0, medium: 0, low: 0, unclassified: 0, highestPriority: "Critical" },
+        acknowledged: false,
+      }]).mockResolvedValue([]);
+      vi.mocked(api.analysis).mockResolvedValue(sample);
       render(<App />);
       await submit();
       expect(screen.getByText("Preparando análise")).toBeInTheDocument();
@@ -289,9 +303,8 @@ describe("fluxo autenticado da análise", () => {
       resolve(sample);
       await act(async () => { await Promise.resolve(); });
       expect(screen.getByRole("heading", { name: /Análise concluída/ })).toBeInTheDocument();
-      expect(screen.getByText("Os resultados já estão disponíveis.")).toBeInTheDocument();
+      expect(screen.getByText(/1 vulnerabilidade\(s\)\/melhoria\(s\) identificada/)).toBeInTheDocument();
       await act(async () => { vi.advanceTimersByTime(2850); });
-      expect(screen.queryByText("Os resultados já estão disponíveis.")).not.toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -307,14 +320,20 @@ describe("fluxo autenticado da análise", () => {
       semanticStatus: "RUNNING",
       suggestionStatus: "RUNNING",
     });
+    vi.mocked(api.tasks).mockResolvedValue([{
+      analysisId: sample.analysisId,
+      status: "PROCESSING",
+      stage: "DETERMINISTIC",
+      repositoryUrl: sample.repositoryUrl,
+      createdAt: sample.createdAt,
+      semanticStatus: "RUNNING",
+      suggestionStatus: "RUNNING",
+      acknowledged: false,
+    }]);
     render(<App />);
-
     const center = await screen.findByLabelText("Notificações da análise");
-    expect(center.querySelectorAll("li")).toHaveLength(3);
+    expect(center.querySelectorAll("li")).toHaveLength(1);
     expect(within(center).getByText("Analisando arquivos Java")).toBeInTheDocument();
-    expect(within(center).getByText("Avaliação de vulnerabilidades/melhorias")).toBeInTheDocument();
-    expect(within(center).getByText("Verificação de vulnerabilidades/melhorias adicionais")).toBeInTheDocument();
-    expect(center.querySelector(".analysis-notification-copy span")).toHaveTextContent(/12 de 46/);
   });
   it("trata sucesso sem achados", async () => {
     vi.mocked(api.systems).mockResolvedValue({ systems: [{ owner: "acme", repositoryName: "demo", repositoryUrl: sample.repositoryUrl, latestCreatedAt: sample.createdAt, totalAnalyses: 1, latest: { analysisId: sample.analysisId, reference: sample.reference, createdAt: sample.createdAt, filesAnalyzed: 1, findings: 0 } }], page: 0, size: 20, totalSystems: 1, totalAnalyses: 1, totalFindings: 0, totalCritical: 0, totalFiles: 1 });

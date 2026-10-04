@@ -5,6 +5,7 @@ import com.fiap.sast.github.GitHubClient;
 import com.fiap.sast.parsing.JavaParserSourceParser;
 import com.fiap.sast.persistence.Analysis;
 import com.fiap.sast.persistence.AnalysisRepository;
+import com.fiap.sast.persistence.AnalysisOutboxRepository;
 import com.fiap.sast.rules.DeserializationRule;
 import com.fiap.sast.rules.HardcodedCredentialRule;
 import com.fiap.sast.rules.RuntimeExecRule;
@@ -17,6 +18,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -42,6 +44,26 @@ class AnalysisControllerTest {
                 .andExpect(jsonPath("$.status").value("PROCESSING"))
                 .andExpect(jsonPath("$.stage").value("QUEUED"));
         verify(repository).save(any(Analysis.class));
+    }
+
+    @Test
+    void gravaEventoOutboxNaMesmaCriacaoEDeixaPublicacaoParaDepoisDoCommit() throws Exception {
+        var github = mock(GitHubClient.class);
+        var repository = mock(AnalysisRepository.class);
+        var outbox = mock(AnalysisOutboxRepository.class);
+        when(repository.save(any(Analysis.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        var users = mock(com.fiap.sast.auth.UserRepository.class);
+        var user = new com.fiap.sast.auth.AppUser(); user.id = UUID.randomUUID(); user.email = "test@example.com";
+        when(users.findByEmail(user.email)).thenReturn(Optional.of(user));
+        var jobs = mock(com.fiap.sast.analysis.AnalysisJobService.class);
+        var controller = new AnalysisController(github, mock(SastEngine.class), repository, users,
+                new tools.jackson.databind.ObjectMapper(), mock(SemanticAnalysisService.class),
+                mock(com.fiap.sast.semantic.SemanticSuggestionService.class), jobs, outbox);
+
+        controller.create(new AnalysisController.Request("https://github.com/acme/demo", "main"), () -> user.email);
+
+        verify(outbox).save(any(com.fiap.sast.persistence.AnalysisOutboxEvent.class));
+        verifyNoInteractions(jobs);
     }
 
     @Test
@@ -90,6 +112,33 @@ class AnalysisControllerTest {
         var idPattern = ".*\\\"analysisId\\\":\\\"([^\\\"]+).*";
         org.junit.jupiter.api.Assertions.assertNotEquals(first.getResponse().getContentAsString().replaceAll(idPattern, "$1"),
                 second.getResponse().getContentAsString().replaceAll(idPattern, "$1"));
+    }
+
+    @Test
+    void tasksFicamIsoladasEConfirmacaoMarcaApenasAExecucaoDoUsuario() {
+        var repository = mock(AnalysisRepository.class);
+        var github = mock(GitHubClient.class);
+        var userRepository = mock(com.fiap.sast.auth.UserRepository.class);
+        var user = new com.fiap.sast.auth.AppUser();
+        user.id = UUID.randomUUID();
+        user.email = "test@example.com";
+        when(userRepository.findByEmail(user.email)).thenReturn(Optional.of(user));
+        var analysis = new Analysis();
+        analysis.userId = user.id;
+        analysis.status = "COMPLETED";
+        analysis.taskAcknowledged = false;
+        when(repository.findByUserIdOrderByCreatedAtDescIdDesc(user.id)).thenReturn(List.of(analysis));
+        when(repository.findByIdAndUserId(analysis.id, user.id)).thenReturn(Optional.of(analysis));
+        var controller = new AnalysisController(github, mock(SastEngine.class), repository, userRepository,
+                new tools.jackson.databind.ObjectMapper(), mock(SemanticAnalysisService.class),
+                mock(com.fiap.sast.semantic.SemanticSuggestionService.class), mock(com.fiap.sast.analysis.AnalysisJobService.class));
+
+        var tasks = controller.tasks(() -> user.email);
+        assertEquals(1, tasks.size());
+        assertEquals(analysis.id, tasks.getFirst().analysisId());
+        controller.acknowledgeTask(analysis.id, () -> user.email);
+        assertEquals(true, analysis.taskAcknowledged);
+        verify(repository).save(analysis);
     }
 
     private static MockMvc mvc(GitHubClient github, AnalysisRepository repository) {

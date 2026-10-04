@@ -1,4 +1,4 @@
-import type { Analysis, HistoryPage, LoginResponse, Session, SystemsPage } from "./types";
+import type { Analysis, AnalysisTask, HistoryPage, LoginResponse, Session, SystemsPage } from "./types";
 
 const ACCESS_TOKEN_KEY = "sast-access-token";
 
@@ -104,6 +104,8 @@ export const api = {
     }),
   analysis: (id: string) =>
     request<Analysis>("/api/analyses/" + encodeURIComponent(id)),
+  tasks: () => request<AnalysisTask[]>("/api/analyses/tasks"),
+  acknowledgeTask: (id: string) => request<void>(`/api/analyses/tasks/${encodeURIComponent(id)}/ack`, { method: "POST" }),
   systems: (page = 0, size = 20) =>
     request<SystemsPage>(`/api/analyses/systems?page=${page}&size=${size}`),
   history: (owner: string, repository: string, page = 0, size = 20) =>

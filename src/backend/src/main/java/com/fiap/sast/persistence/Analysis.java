@@ -40,6 +40,17 @@ public class Analysis {
     public String promptVersion;
     public String suggestionStatus = "NOT_APPLICABLE";
     public String snapshotHash;
+    @Column(name = "commit_sha", length = 40)
+    public String commitSha;
+    @Column(name = "attempt_count", nullable = false)
+    public int attemptCount;
+    @Column(name = "lease_owner", length = 100)
+    public String leaseOwner;
+    @Column(name = "lease_until")
+    public Instant leaseUntil;
+    @Column(name = "next_attempt_at")
+    public Instant nextAttemptAt;
+    public boolean taskAcknowledged = true;
 
     public Instant createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
 

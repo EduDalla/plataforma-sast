@@ -35,14 +35,14 @@ Incluído na CP1:
 
 - uma única origem: repositórios públicos em `github.com`;
 - uma única linguagem analisada: arquivos Java `.java`;
-- análise síncrona de um snapshot por requisição;
+- análise de um snapshot por tentativa, executada pelo worker após a criação assíncrona da task;
 - tela para URL/referência do GitHub e apresentação do resultado por arquivo;
 - persistência dos metadados e achados no PostgreSQL;
 - testes automatizados do parser, das regras, do engine e da API.
 
 A extensão autorizada inclui autenticação real com usuários no PostgreSQL, bootstrap por ambiente, tokens JWT Bearer e isolamento das análises por usuário. Consulte [Autenticação e frontend](CP1-Autenticacao-e-Frontend.md) para os contratos atuais e a inicialização da conta.
 
-Ficam para entregas posteriores: dashboard, histórico visual, relatórios, Taint Analysis, IA, sugestões de correção, filas, CI/CD e Security Gates.
+Ficam para entregas posteriores: dashboard, histórico visual, relatórios, Taint Analysis, IA, sugestões de correção, CI/CD e Security Gates. A fila RabbitMQ da task foi adicionada posteriormente para a execução de IA já existente e não altera o escopo das regras determinísticas.
 
 > Evolução posterior: a CP2 acrescentou taint analysis, classificação consultiva de findings e sugestões independentes de segurança e desempenho com Ollama. Os campos aditivos (`semanticStatus`, `aiAssessment`, `suggestionStatus` e `suggestions`) e a operação estão em [CP2 — IA local](CP2-IA-Local.md); a severidade e as contagens da CP1 permanecem determinísticas.
 

@@ -1,0 +1,1 @@
+ALTER TABLE analyses ADD COLUMN task_acknowledged BOOLEAN NOT NULL DEFAULT TRUE;

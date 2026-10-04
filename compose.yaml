@@ -8,6 +8,12 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes: ["postgres_data:/var/lib/postgresql"]
     healthcheck: { test: ["CMD-SHELL","pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"], interval: 5s, timeout: 5s, retries: 10 }
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-sast}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-change-me}
+    healthcheck: { test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"], interval: 5s, timeout: 5s, retries: 10 }
   api:
     build: { context: ., dockerfile: src/backend/Dockerfile }
     networks: [default, ollama_net]
@@ -15,6 +21,9 @@ services:
       SPRING_DATASOURCE_URL: "jdbc:postgresql://db:5432/${POSTGRES_DB}"
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-sast}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-change-me}
       SAST_GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       SAST_GITHUB_MAX_ARCHIVE_BYTES: ${SAST_GITHUB_MAX_ARCHIVE_BYTES:-104857600}
       SAST_GITHUB_MAX_JAVA_FILES: ${SAST_GITHUB_MAX_JAVA_FILES:-1000}
@@ -25,7 +34,7 @@ services:
       SAST_COOKIE_SECURE: ${SAST_COOKIE_SECURE:-false}
       SAST_JWT_SECRET: ${SAST_JWT_SECRET:-}
       SAST_JWT_ISSUER: ${SAST_JWT_ISSUER:-sast-api}
-      SAST_JWT_ACCESS_TOKEN_MINUTES: ${SAST_JWT_ACCESS_TOKEN_MINUTES:-15}
+      SAST_JWT_ACCESS_TOKEN_MINUTES: ${SAST_JWT_ACCESS_TOKEN_MINUTES:-120}
       SAST_OLLAMA_BASE_URL: ${SAST_OLLAMA_BASE_URL:-http://ollama:11434}
       SAST_OLLAMA_MODEL: ${SAST_OLLAMA_MODEL:-llama3.2:3b}
       SAST_OLLAMA_MAX_CANDIDATES: ${SAST_OLLAMA_MAX_CANDIDATES:-0}
@@ -33,8 +42,36 @@ services:
       SAST_OLLAMA_SUGGESTION_MAX_METHODS: ${SAST_OLLAMA_SUGGESTION_MAX_METHODS:-4}
       SAST_OLLAMA_SUGGESTION_BUDGET_SECONDS: ${SAST_OLLAMA_SUGGESTION_BUDGET_SECONDS:-60}
     ports: ["${API_PORT}:8080"]
-    depends_on: { db: { condition: service_healthy } }
+    depends_on: { db: { condition: service_healthy }, rabbitmq: { condition: service_healthy } }
     healthcheck: { test: ["CMD","curl","--fail","http://localhost:8080/health"], interval: 5s, timeout: 5s, retries: 10 }
+  worker:
+    build: { context: ., dockerfile: src/backend/Dockerfile }
+    networks: [default, ollama_net]
+    environment:
+      SPRING_PROFILES_ACTIVE: worker
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://db:5432/${POSTGRES_DB}"
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-sast}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-change-me}
+      SAST_BOOTSTRAP_EMAIL: ${SAST_BOOTSTRAP_EMAIL:-}
+      SAST_BOOTSTRAP_PASSWORD: ${SAST_BOOTSTRAP_PASSWORD:-}
+      SAST_JWT_SECRET: ${SAST_JWT_SECRET:-}
+      SAST_JWT_ISSUER: ${SAST_JWT_ISSUER:-sast-api}
+      SAST_JWT_ACCESS_TOKEN_MINUTES: ${SAST_JWT_ACCESS_TOKEN_MINUTES:-120}
+      SAST_GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      SAST_GITHUB_MAX_ARCHIVE_BYTES: ${SAST_GITHUB_MAX_ARCHIVE_BYTES:-104857600}
+      SAST_GITHUB_MAX_JAVA_FILES: ${SAST_GITHUB_MAX_JAVA_FILES:-1000}
+      SAST_GITHUB_MAX_FILE_BYTES: ${SAST_GITHUB_MAX_FILE_BYTES:-2097152}
+      SAST_GITHUB_MAX_EXTRACTED_BYTES: ${SAST_GITHUB_MAX_EXTRACTED_BYTES:-524288000}
+      SAST_OLLAMA_BASE_URL: ${SAST_OLLAMA_BASE_URL:-http://ollama:11434}
+      SAST_OLLAMA_MODEL: ${SAST_OLLAMA_MODEL:-llama3.2:3b}
+      SAST_OLLAMA_MAX_CANDIDATES: ${SAST_OLLAMA_MAX_CANDIDATES:-0}
+      SAST_OLLAMA_TOTAL_BUDGET_SECONDS: ${SAST_OLLAMA_TOTAL_BUDGET_SECONDS:-0}
+      SAST_OLLAMA_SUGGESTION_MAX_METHODS: ${SAST_OLLAMA_SUGGESTION_MAX_METHODS:-4}
+      SAST_OLLAMA_SUGGESTION_BUDGET_SECONDS: ${SAST_OLLAMA_SUGGESTION_BUDGET_SECONDS:-60}
+    depends_on: { db: { condition: service_healthy }, rabbitmq: { condition: service_healthy } }
   web:
     build: { context: ., dockerfile: src/frontend/Dockerfile }
     ports: ["${WEB_PORT}:80"]
