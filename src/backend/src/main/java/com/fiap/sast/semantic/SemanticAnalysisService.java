@@ -24,7 +24,7 @@ import tools.jackson.databind.ObjectMapper;
 public class SemanticAnalysisService {
     private static final Logger log = LoggerFactory.getLogger(SemanticAnalysisService.class);
     public static final String PROMPT_VERSION = "2";
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(20);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(60);
     private static final int MAX_CONTEXT_CHARACTERS = 6000;
     private static final int MAX_TRACE_CHARACTERS = 1500;
     private static final int MAX_ASSESSMENT_CHARACTERS = 4096;

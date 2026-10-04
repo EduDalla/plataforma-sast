@@ -41,7 +41,9 @@ services:
     depends_on: { api: { condition: service_healthy } }
   ollama:
     image: ollama/ollama:latest
-    networks: [ollama_net]
+    networks:
+      ollama_net:
+        aliases: [ollama]
     volumes: ["ollama_data:/root/.ollama"]
 networks: { ollama_net: {} }
 volumes: { postgres_data: {}, ollama_data: {} }

@@ -12,7 +12,16 @@ Configure o `.env` conforme `.env.example` e inicie os serviços com `docker com
 docker compose exec ollama ollama pull llama3.2:3b
 ```
 
-O Ollama não publica porta no host. A API usa `http://ollama:11434` no Compose; fora dele, `SAST_OLLAMA_BASE_URL` pode apontar para um Ollama local. `SAST_OLLAMA_MODEL` define o modelo. `SAST_OLLAMA_MAX_CANDIDATES=0` e `SAST_OLLAMA_TOTAL_BUDGET_SECONDS=0` significam analisar todos os candidatos sem orçamento agregado. Cada chamada individual tem timeout máximo de 20 segundos e uma repetição apenas para falha transitória. O proxy Nginx aguarda até 180 segundos por resposta da API, incluindo o download do GitHub.
+O Ollama não publica porta no host. A API usa `http://ollama:11434` no Compose; fora dele, `SAST_OLLAMA_BASE_URL` pode apontar para um Ollama local. `SAST_OLLAMA_MODEL` define o modelo. `SAST_OLLAMA_MAX_CANDIDATES=0` e `SAST_OLLAMA_TOTAL_BUDGET_SECONDS=0` significam analisar todos os candidatos sem orçamento agregado. Cada avaliação de finding tem timeout máximo de 60 segundos e uma repetição apenas para falha transitória. Esse limite permite que o modelo local conclua o JSON estruturado em uma máquina sem GPU. O proxy Nginx aguarda até 180 segundos por resposta da API, incluindo o download do GitHub.
+
+O serviço `ollama` tem um alias explícito na rede `ollama_net`. Se as avaliações e sugestões terminarem em `DEGRADED` mesmo com o modelo instalado, confira a resolução do nome e a conectividade a partir da API:
+
+```bash
+docker compose exec -T api getent hosts ollama
+docker compose exec -T api curl --fail --silent --show-error http://ollama:11434/api/tags
+```
+
+Se o alias tiver sido adicionado após a criação dos contêineres, aplique a configuração com `docker compose up -d --no-deps --force-recreate ollama`. O volume `ollama_data` preserva o modelo. Repita uma análise para atualizar os estados degradados; o código do repositório analisado continua sem ser executado.
 
 A varredura de métodos usa `SAST_OLLAMA_SUGGESTION_MAX_METHODS=4` e `SAST_OLLAMA_SUGGESTION_BUDGET_SECONDS=60` por padrão. Cada tentativa tem timeout máximo de 30 segundos e pede no máximo uma hipótese curta por método. A AST prioriza consultas de dados dentro de laços e operações sensíveis de segurança; laços genéricos não são enviados. O contexto se concentra na operação selecionada e tem no máximo 1.800 caracteres. O limite de métodos ou de tempo produz `suggestionStatus: DEGRADED`, indicando cobertura parcial; `COMPLETED` indica que todos os métodos candidatos foram consultados e `NOT_APPLICABLE` indica ausência de candidatos. A varredura não promete cobertura de todos os métodos do repositório. O orçamento dessa etapa é adicional ao enriquecimento dos findings, portanto análises grandes ainda podem atingir o timeout do proxy.
 

@@ -101,6 +101,8 @@ O Ollama será executado como serviço local na rede interna do Docker Compose, 
 
 A indisponibilidade do Ollama não impedirá a inicialização da API. Para cada chamada serão realizadas no máximo duas tentativas no total, cada uma com timeout de 20 segundos. A segunda tentativa ocorrerá somente para timeout, erro de conexão ou resposta HTTP transitória. Depois disso, a análise será concluída com os findings determinísticos e `semanticStatus: DEGRADED`.
 
+**Ajuste operacional da CP2:** a avaliação de findings passou a usar timeout de 60 segundos por tentativa. A demonstração com `llama3.2:3b` em CPU mostrou que 20 segundos interrompiam a geração do JSON estruturado, mesmo com a conexão à API do Ollama funcionando. O número máximo de tentativas e a degradação segura permanecem os mesmos.
+
 O prompt conterá somente:
 
 - metadados do finding;

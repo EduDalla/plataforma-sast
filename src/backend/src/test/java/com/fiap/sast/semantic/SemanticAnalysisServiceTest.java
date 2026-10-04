@@ -46,8 +46,9 @@ class SemanticAnalysisServiceTest {
         var result = service((prompt, timeout) -> {
             assertTrue(prompt.contains("<dados_nao_confiaveis>"));
             assertTrue(prompt.contains("Runtime.getRuntime().exec(input)"));
+            assertEquals(java.time.Duration.ofSeconds(60), timeout);
             return VALID;
-        }, 10, 45).enrich(List.of(finding));
+        }, 10, 90).enrich(List.of(finding));
         assertEquals("COMPLETED", result.status());
         assertEquals("High", result.assessments().get(finding.findingId()).suggestedSeverity());
         assertEquals("High", finding.finding().severity());

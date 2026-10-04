@@ -33,7 +33,7 @@ class LiveOllamaDemoTest {
     private final ObjectMapper mapper = new ObjectMapper();
     private final SemanticAnalysisService semantic = new SemanticAnalysisService(
             new OllamaClient(mapper, System.getenv().getOrDefault("SAST_OLLAMA_BASE_URL", "http://ollama:11434"), model),
-            parser, mapper, model, 10, 45);
+            parser, mapper, model, 10, 240);
 
     /**
      * Demonstra que um fixture vulnerável recebe três avaliações sem executar o fonte.
