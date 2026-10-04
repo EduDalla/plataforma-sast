@@ -72,25 +72,18 @@
 .form-action button {
   min-width: 190px;
   min-height: 48px;
-  padding: 9px 12px 9px 20px;
+  padding: 12px 22px;
   border: 1px solid var(--primary-button-bg, #315b43);
-  border-radius: 9px;
+  border-radius: 7px;
   background: var(--primary-button-bg, #315b43);
   color: var(--primary-button-text, #fff);
-  box-shadow: 0 3px 9px #0b120d24;
-  font-size: 14px;
-  font-weight: 700;
-  gap: 14px;
-  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 18px;
 }
 .form-action button:hover:not(:disabled) {
   border-color: var(--primary-button-hover, #244833);
   background: var(--primary-button-hover, #244833);
-  box-shadow: 0 5px 13px #0b120d30;
-  transform: translateY(-1px);
-}
-.form-action button:active:not(:disabled) {
-  transform: translateY(0);
 }
 .form-action button:focus-visible {
   outline: 3px solid var(--accent, #4c8b71);
@@ -105,20 +98,7 @@
   cursor: wait;
 }
 .form-action button .action-arrow {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  border-radius: 50%;
-  background: var(--primary-button-text, #fff);
-  color: var(--primary-button-bg, #315b43);
-  font-size: 16px;
-  line-height: 1;
-}
-.form-action button:disabled .action-arrow {
-  background: var(--border, #d9e3d8);
-  color: var(--text-soft, #6f7e72);
+  font-size: 15px;
 }
 .scope-card {
   border: 1px solid #e3e7df;
