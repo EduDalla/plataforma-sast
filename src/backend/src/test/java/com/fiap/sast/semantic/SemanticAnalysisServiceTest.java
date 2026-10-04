@@ -106,7 +106,7 @@ class SemanticAnalysisServiceTest {
             return VALID;
         };
         var result = service(gateway, 1, 45).enrich(List.of(candidate(), candidate()));
-        assertEquals("DEGRADED", result.status());
+        assertEquals("COMPLETED", result.status());
         assertEquals(1, calls.get());
         assertEquals(1, result.assessments().size());
         assertEquals("COMPLETED", service(gateway, 0, 0).enrich(List.of(candidate())).status());

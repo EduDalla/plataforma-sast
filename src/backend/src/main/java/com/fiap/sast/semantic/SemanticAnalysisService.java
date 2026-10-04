@@ -144,7 +144,10 @@ public class SemanticAnalysisService {
             }
         }
 
-        var status = assessments.size() == candidates.size() ? "COMPLETED" : "DEGRADED";
+        // maxCandidates representa o orçamento deliberado da etapa semântica.
+        // Só há degradação quando um candidato selecionado não foi avaliado.
+        var status = assessments.size() == Math.min(ordered.size(), candidateLimit)
+                ? "COMPLETED" : "DEGRADED";
         log.atInfo().setMessage("semantic_completed")
                 .addKeyValue("candidates", candidates.size())
                 .addKeyValue("assessed", assessments.size())

@@ -10,6 +10,17 @@ spring:
     hibernate.ddl-auto: validate
   flyway:
     enabled: true
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:sast}
+    password: ${SPRING_RABBITMQ_PASSWORD:change-me}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 1
 management:
   endpoints.web.base-path: /
   endpoint.health.show-details: never
@@ -17,7 +28,7 @@ sast:
   jwt:
     secret: ${SAST_JWT_SECRET:}
     issuer: ${SAST_JWT_ISSUER:sast-api}
-    access-token-minutes: ${SAST_JWT_ACCESS_TOKEN_MINUTES:15}
+    access-token-minutes: ${SAST_JWT_ACCESS_TOKEN_MINUTES:120}
   bootstrap:
     email: ${SAST_BOOTSTRAP_EMAIL:}
     password: ${SAST_BOOTSTRAP_PASSWORD:}
@@ -34,6 +45,9 @@ sast:
     total-budget-seconds: ${SAST_OLLAMA_TOTAL_BUDGET_SECONDS:0}
     suggestion-max-methods: ${SAST_OLLAMA_SUGGESTION_MAX_METHODS:4}
     suggestion-budget-seconds: ${SAST_OLLAMA_SUGGESTION_BUDGET_SECONDS:60}
+  rabbit:
+    publisher-delay-ms: ${SAST_RABBIT_PUBLISHER_DELAY_MS:1000}
+    reconciler-delay-ms: ${SAST_RABBIT_RECONCILER_DELAY_MS:10000}
 server:
   servlet:
     session:

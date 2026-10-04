@@ -114,7 +114,9 @@ public class SemanticSuggestionService {
             }
             if (valid) processed++;
         }
-        String status = processed == candidates.size() ? "COMPLETED" : "DEGRADED";
+        // O limite de métodos é uma decisão de orçamento, não uma falha da IA.
+        // A interface informa que a cobertura é parcial quando necessário.
+        String status = processed == limit ? "COMPLETED" : "DEGRADED";
         log.atInfo().setMessage("suggestion_scan_completed")
                 .addKeyValue("candidates", candidates.size()).addKeyValue("processed", processed)
                 .addKeyValue("suggestions", suggestions.size()).addKeyValue("status", status).log();
@@ -208,6 +210,11 @@ public class SemanticSuggestionService {
                     || !Double.isFinite(confidence.doubleValue())
                     || confidence.doubleValue() < 0 || confidence.doubleValue() > 1)
                 throw new IllegalArgumentException();
+            // Acesso a dados dentro de laço é a hipótese determinística de N+1.
+            // Quando a IA confirma a categoria de desempenho, o ajuste é crítico.
+            if (candidate.priority() >= 5 && "PERFORMANCE".equals(category)) {
+                severity = "Critical";
+            }
             result.add(new AiSuggestion(category, severity, value(item, "title", 160), candidate.path(), candidate.line(),
                     candidate.evidence(), value(item, "rationale", 600), confidence.doubleValue(),
                     value(item, "recommendation", 800), value(item, "limitations", 500),

@@ -37,9 +37,10 @@ class SemanticSuggestionServiceTest {
             assertTrue(prompt.contains("<dados_nao_confiaveis>"));
             return VALID;
         }, 1, 60).scan(files());
-        assertEquals("DEGRADED", result.status());
+        assertEquals("COMPLETED", result.status());
         assertEquals(1, result.suggestions().size());
         assertEquals(3, result.suggestions().get(0).line());
+        assertEquals("Critical", result.suggestions().get(0).severity());
     }
 
     @Test void acceptsEmptyAnswerAndRejectsUnexpectedFields() {
@@ -57,7 +58,7 @@ class SemanticSuggestionServiceTest {
 
     @Test void acceptsTheSameFourSeverityLevelsUsedByFindings() {
         for (var severity : List.of("Critical", "High", "Medium", "Low")) {
-            var result = service((prompt, timeout) -> VALID.replace("Medium", severity), 1, 60).scan(files());
+            var result = service((prompt, timeout) -> VALID.replace("PERFORMANCE", "SECURITY").replace("Medium", severity), 1, 60).scan(files());
             assertEquals(severity, result.suggestions().get(0).severity());
         }
     }
@@ -89,7 +90,7 @@ class SemanticSuggestionServiceTest {
             return "{\"suggestions\":[]}";
         }, 1, 60).scan(files());
         assertEquals(1, calls.get());
-        assertEquals("DEGRADED", limited.status());
+        assertEquals("COMPLETED", limited.status());
         var unavailable = service((prompt, timeout) -> {
             throw new OllamaGateway.OllamaFailure(false);
         }, 2, 60).scan(files());
