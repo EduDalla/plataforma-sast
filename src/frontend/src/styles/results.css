@@ -242,7 +242,7 @@
 .finding summary {
   list-style: none;
   cursor: pointer;
-  padding: 22px 24px;
+  padding: 28px 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -280,12 +280,12 @@
   background: #e5f0f6;
 }
 .finding h4 {
-  font-size: 14px;
-  margin: 9px 0 7px;
+  font-size: 17px;
+  margin: 11px 0 9px;
   font-weight: 650;
 }
 .finding summary p {
-  font-size: 11px;
+  font-size: 13px;
   color: #929b8e;
   margin: 0;
 }
@@ -307,37 +307,63 @@
 }
 .finding-detail {
   border-top: 1px solid #edf0e9;
-  padding: 22px 24px;
+  padding: 30px;
 }
 .finding-detail h5 {
-  font-size: 11px;
-  margin: 0 0 9px;
+  font-size: 13px;
+  margin: 0 0 11px;
   color: #616e5c;
 }
 .finding-detail p {
-  font-size: 12px;
+  font-size: 15px;
   color: #7e8978;
   line-height: 1.7;
-  margin-bottom: 22px;
+  margin-bottom: 28px;
 }
-.finding-detail pre {
-  padding: 17px 15px;
+.code-block {
+  margin: 0 0 28px;
+  border: 1px solid #dce5d8;
+  border-radius: 8px;
+  overflow: hidden;
   background: #f6f8f4;
-  border: 1px solid #e8ece3;
-  border-radius: 5px;
-  overflow: auto;
+}
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 14px;
+  border-bottom: 1px solid #dce5d8;
+  color: #63705f;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 1.2px;
+}
+.java-code {
+  padding: 19px 17px;
+  background: #f6f8f4;
+  overflow-x: auto;
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 0;
+  white-space: pre;
+  tab-size: 4;
+}
+.java-code .token.comment { color: #71806e; }
+.java-code .token.keyword { color: #8256a1; font-weight: 650; }
+.java-code .token.string { color: #9b5c2d; }
+.java-code .token.number { color: #2c7690; }
+.java-code .token.class-name,
+.java-code .token.function { color: #286b50; }
+.java-code .token.operator,
+.java-code .token.punctuation { color: #596658; }
+.finding-detail > .muted {
   font-size: 12px;
-  margin-bottom: 18px;
+  overflow-wrap: anywhere;
 }
 .line-number {
   color: #a4ae9a;
   display: inline-block;
   padding-right: 20px;
   user-select: none;
-}
-.finding-detail > .muted {
-  font-size: 10px;
-  overflow-wrap: anywhere;
 }
 .taint-trace {
   margin-bottom: 18px;

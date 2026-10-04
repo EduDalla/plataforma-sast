@@ -30,7 +30,9 @@
 
 - [ ] Organizar resultados em identificação da análise, estado, resumo e achados.
 - [ ] Manter arquivo, severidade, título, CWE e localização visíveis.
-- [ ] Exibir descrição, código, rastro e avaliação consultiva em detalhes expansíveis.
+- [x] Exibir descrição, código, rastro e avaliação consultiva em detalhes expansíveis.
+- [x] Renderizar os trechos Java em bloco identificado como JAVA, com realce de sintaxe e rolagem local para linhas longas.
+- [x] Ampliar tipografia e espaçamento dos cards de findings e sugestões, mantendo leitura responsiva nos temas claro e escuro.
 - [ ] Diferenciar visualmente achados determinísticos e sugestões de IA nos dois temas.
 - [ ] Distinguir conclusão sem achados, processamento, falha e ausência de correspondências nos filtros.
 - [ ] Remover qualquer indicação de sucesso em análises interrompidas.
@@ -46,7 +48,7 @@
 - [ ] Validar navegação por teclado e foco visível.
 - [ ] Garantir gerenciamento de foco nos modais e associação acessível dos erros aos campos.
 - [ ] Respeitar a preferência por movimento reduzido.
-- [ ] Revisar todas as telas nos dois temas, nas larguras de 360, 768 e 1440 px e com zoom de 200%.
+- [x] Revisar cards de resultados nos dois temas, nas larguras de 360, 768 e 1440 px e com zoom de 200%.
 - [ ] Evitar rolagem horizontal da página, permitindo rolagem localizada em código e histórico.
 
 ## Testes e documentação

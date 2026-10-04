@@ -1,8 +1,31 @@
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
+import Prism from "prismjs";
+import "prismjs/components/prism-java";
 import { api } from "./api";
 import type { Analysis, HistoryEntry, SystemsPage } from "./types";
 import { priorityLabels, summarizeResults, unifiedResults } from "./resultModel";
+
+function renderJavaTokens(tokens: (Prism.Token | string)[]): ReactNode[] {
+  return tokens.map((token, index) => {
+    if (typeof token === "string") return token;
+    const content = Array.isArray(token.content)
+      ? renderJavaTokens(token.content as (Prism.Token | string)[])
+      : String(token.content);
+    return <span className={`token ${token.type}`} key={`${token.type}-${index}`}>{content}</span>;
+  });
+}
+
+export function JavaCodeBlock({ code, line }: { code: string; line?: number }) {
+  const grammar = Prism.languages.java;
+  const tokens = grammar ? Prism.tokenize(code, grammar) : [code];
+  return (
+    <div className="code-block" aria-label="Código Java">
+      <div className="code-block-header"><span>JAVA</span><span>Trecho analisado</span></div>
+      <pre className="java-code"><code className="language-java">{line != null && <span className="line-number">{line}</span>}{renderJavaTokens(tokens as (Prism.Token | string)[])}</code></pre>
+    </div>
+  );
+}
 
 export function Shield() {
   return (
@@ -736,11 +759,11 @@ export function Results({
           <summary><div><span className={`badge ${item.priority.toLowerCase()}`}>{priorityLabels[item.priority]}</span><span className="ai-kicker">{item.source}</span><h4>{item.title}</h4><p>{item.finding?.cwe ? `${item.finding.cwe} · ` : ""}Linha {item.line}{item.column ? `, coluna ${item.column}` : ""}</p></div><span className="expand">Ver detalhes <span aria-hidden="true">⌄</span></span></summary>
           <div className="finding-detail">
             {item.finding ? <>
-              <h5>Descrição</h5><p>{item.finding.description}</p><h5>Trecho do código</h5><pre><code><span className="line-number">{item.finding.line}</span>{item.finding.snippet}</code></pre>
+              <h5>Descrição</h5><p>{item.finding.description}</p><JavaCodeBlock code={item.finding.snippet} line={item.finding.line} />
               {item.finding.taintTrace && <TaintTraceView trace={item.finding.taintTrace} />}
               {item.finding.aiAssessment && <section className="ai-assessment" aria-label="Avaliação consultiva da IA"><div className="ai-assessment-heading"><div><span className="ai-kicker">ANÁLISE SEMÂNTICA</span><h5>Avaliação da IA</h5></div><span className="ai-consultive">Consultiva</span></div><div className="ai-assessment-summary"><div><span>Severidade sugerida:<strong className={`ai-severity ai-severity-${item.finding.aiAssessment.suggestedSeverity.toLowerCase()}`}>{severityNames[item.finding.aiAssessment.suggestedSeverity]}</strong></span></div><div><span>Provável falso positivo:<strong>{item.finding.aiAssessment.likelyFalsePositive ? "Sim" : "Não"}</strong></span></div><div><span>Confiança do modelo:<strong>{Math.round(item.finding.aiAssessment.confidence * 100)}%</strong></span></div></div><div className="ai-assessment-copy">{item.finding.aiAssessment.risk && <div><h6>Risco contextual</h6><p>{item.finding.aiAssessment.risk}</p></div>}<div><h6>Justificativa</h6><p>{item.finding.aiAssessment.rationale}</p></div>{item.finding.aiAssessment.evidence?.length ? <div><h6>Evidências</h6><ul>{item.finding.aiAssessment.evidence.map((evidence, index) => <li key={index}>{evidence}</li>)}</ul></div> : null}{item.finding.aiAssessment.falsePositiveReason && <div><h6>Motivo da avaliação de falso positivo</h6><p>{item.finding.aiAssessment.falsePositiveReason}</p></div>}<div><h6>Remediação sugerida</h6><p>{item.finding.aiAssessment.remediation}</p></div>{item.finding.aiAssessment.recommendations?.length ? <div><h6>Ações recomendadas</h6><ul>{item.finding.aiAssessment.recommendations.map((recommendation, index) => <li key={index}>{recommendation}</li>)}</ul></div> : null}{item.finding.aiAssessment.limitations && <div><h6>Limitações</h6><p>{item.finding.aiAssessment.limitations}</p></div>}</div><small className="ai-assessment-meta">Modelo {item.finding.aiAssessment.model} · A severidade exibida permanece a da regra.</small></section>}
               <span className="muted">Regra {item.finding.ruleId} · {item.finding.fileName}</span>
-            </> : item.suggestion && <><h5>Evidência</h5><p>{item.suggestion.evidence}</p><h5>Justificativa</h5><p>{item.suggestion.rationale}</p><h5>Recomendação</h5><p>{item.suggestion.recommendation}</p><h5>Confiança</h5><p>{Math.round(item.suggestion.confidence * 100)}%</p><h5>Limitações</h5><p>{item.suggestion.limitations}</p><small className="ai-assessment-meta">Modelo {item.suggestion.model} · Sugestão consultiva</small></>}
+            </> : item.suggestion && <><JavaCodeBlock code={item.suggestion.evidence} line={item.suggestion.line} /><h5>Justificativa</h5><p>{item.suggestion.rationale}</p><h5>Recomendação</h5><p>{item.suggestion.recommendation}</p><h5>Confiança</h5><p>{Math.round(item.suggestion.confidence * 100)}%</p><h5>Limitações</h5><p>{item.suggestion.limitations}</p><small className="ai-assessment-meta">Modelo {item.suggestion.model} · Sugestão consultiva</small></>}
           </div>
         </details>)}
       </div>)}

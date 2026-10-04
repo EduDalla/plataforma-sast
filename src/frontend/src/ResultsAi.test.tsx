@@ -29,6 +29,8 @@ describe("lista unificada de vulnerabilidades e melhorias", () => {
     expect(item).toHaveTextContent("Regra");
     expect(within(item).getByRole("region", { name: "Avaliação consultiva da IA" })).toHaveTextContent("Severidade sugerida:Média");
     expect(item).toHaveTextContent("A entrada chega ao sink.");
+    expect(within(item).getByLabelText("Código Java")).toBeInTheDocument();
+    expect(within(item).getByText("exec")).toHaveClass("token", "function");
     expect(document.querySelector(".stats")!).toHaveTextContent("Vulnerabilidades/Melhorias1");
   });
   it("contabiliza sugestão independente no mesmo arquivo sem fundi-la com finding", () => {
@@ -39,7 +41,7 @@ describe("lista unificada de vulnerabilidades e melhorias", () => {
     expect(document.querySelectorAll("details.finding")).toHaveLength(2);
     expect(screen.getByText("Possível N+1").closest("details")).toHaveTextContent("Alta");
     expect(document.querySelector(".stats")!).toHaveTextContent("Vulnerabilidades/Melhorias2");
-    expect(screen.getByText("Evidência").parentElement).toHaveTextContent("repository.findById(id)");
+    expect(screen.getAllByLabelText("Código Java")).toHaveLength(2);
   });
   it("marca sugestões antigas sem severidade como sem classificação", () => {
     const data: Analysis = { ...base, findings: [], suggestions: [{ category: "SECURITY", severity: null, title: "Revisar validação",

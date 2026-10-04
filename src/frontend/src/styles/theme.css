@@ -132,6 +132,26 @@
   border-color: var(--border);
   color: var(--text);
 }
+.app-shell .code-block {
+  border-color: var(--border);
+  background: var(--surface-input);
+}
+.app-shell .code-block-header {
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+.app-shell .java-code {
+  background: var(--surface-input);
+  color: var(--text);
+}
+.app-shell .java-code .token.comment { color: #8da18f; }
+.app-shell .java-code .token.keyword { color: #d4a8ee; }
+.app-shell .java-code .token.string { color: #e8b17e; }
+.app-shell .java-code .token.number { color: #8bc9de; }
+.app-shell .java-code .token.class-name,
+.app-shell .java-code .token.function { color: #9dd8b2; }
+.app-shell .java-code .token.operator,
+.app-shell .java-code .token.punctuation { color: #bdcabb; }
 .app-shell .ai-assessment {
   border-color: #43634b;
   border-left-color: #9ac7a2;
