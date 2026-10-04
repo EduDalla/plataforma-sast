@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
   waitFor,
 } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
@@ -273,9 +274,7 @@ describe("fluxo autenticado da análise", () => {
     expect(await screen.findByRole("heading", { name: /Análise concluída/ })).toBeInTheDocument();
     expect(location.pathname).toBe("/analyses/analysis-1");
   });
-  it("mantém dicas no modal durante a análise e limpa a rotação ao concluir", async () => {
-    const setIntervalSpy = vi.spyOn(window, "setInterval");
-    const clearIntervalSpy = vi.spyOn(window, "clearInterval");
+  it("mostra progresso sem bloquear a tela e encerra a notificação após o sucesso", async () => {
     let resolve!: (value: Analysis) => void;
     vi.mocked(api.create).mockReturnValue(new Promise((promiseResolve) => {
       resolve = promiseResolve;
@@ -284,31 +283,38 @@ describe("fluxo autenticado da análise", () => {
     try {
       render(<App />);
       await submit();
-
-      const modal = screen.getByRole("dialog", { name: "Análise em andamento" });
-      expect(modal).toHaveAttribute("aria-modal", "true");
-      expect(document.activeElement).toBe(modal);
-      const firstTip = screen.getByText(/Use variáveis|Uma análise|Validação de entrada|Atualizar dependências|O princípio|Logs ajudam|Revisões pequenas/).textContent;
-      expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 7000);
-
-      fireEvent.click(screen.getByRole("button", { name: /Próxima dica/ }));
-      const secondTip = screen.getByText(/Use variáveis|Uma análise|Validação de entrada|Atualizar dependências|O princípio|Logs ajudam|Revisões pequenas/).textContent;
-      expect(secondTip).not.toBe(firstTip);
-
-      const lastIntervalCall = setIntervalSpy.mock.calls[setIntervalSpy.mock.calls.length - 1];
-      const rotate = lastIntervalCall?.[0] as () => void;
-      act(() => rotate());
-      const thirdTip = screen.getByText(/Use variáveis|Uma análise|Validação de entrada|Atualizar dependências|O princípio|Logs ajudam|Revisões pequenas/).textContent;
-      expect(thirdTip).not.toBe(secondTip);
-
-      resolve(sample);
-      expect(await screen.findByRole("heading", { name: /Análise concluída/ })).toBeInTheDocument();
+      expect(screen.getByText("Preparando análise")).toBeInTheDocument();
       expect(screen.queryByRole("dialog", { name: "Análise em andamento" })).not.toBeInTheDocument();
-      expect(clearIntervalSpy).toHaveBeenCalled();
+      vi.useFakeTimers();
+      resolve(sample);
+      await act(async () => { await Promise.resolve(); });
+      expect(screen.getByRole("heading", { name: /Análise concluída/ })).toBeInTheDocument();
+      expect(screen.getByText("Os resultados já estão disponíveis.")).toBeInTheDocument();
+      await act(async () => { vi.advanceTimersByTime(2850); });
+      expect(screen.queryByText("Os resultados já estão disponíveis.")).not.toBeInTheDocument();
     } finally {
-      setIntervalSpy.mockRestore();
-      clearIntervalSpy.mockRestore();
+      vi.useRealTimers();
     }
+  });
+  it("empilha etapa, avaliação e sugestões durante o processamento", async () => {
+    history.replaceState(null, "", "/analyses/analysis-1");
+    vi.mocked(api.analysis).mockResolvedValue({
+      ...sample,
+      status: "PROCESSING",
+      stage: "DETERMINISTIC",
+      filesProcessed: 12,
+      filesTotal: 46,
+      semanticStatus: "RUNNING",
+      suggestionStatus: "RUNNING",
+    });
+    render(<App />);
+
+    const center = await screen.findByLabelText("Notificações da análise");
+    expect(center.querySelectorAll("li")).toHaveLength(3);
+    expect(within(center).getByText("Analisando arquivos Java")).toBeInTheDocument();
+    expect(within(center).getByText("Avaliação dos achados")).toBeInTheDocument();
+    expect(within(center).getByText("Sugestões consultivas")).toBeInTheDocument();
+    expect(center.querySelector(".analysis-notification-copy span")).toHaveTextContent(/12 de 46/);
   });
   it("trata sucesso sem achados", async () => {
     vi.mocked(api.systems).mockResolvedValue({ systems: [{ owner: "acme", repositoryName: "demo", repositoryUrl: sample.repositoryUrl, latestCreatedAt: sample.createdAt, totalAnalyses: 1, latest: { analysisId: sample.analysisId, reference: sample.reference, createdAt: sample.createdAt, filesAnalyzed: 1, findings: 0 } }], page: 0, size: 20, totalSystems: 1, totalAnalyses: 1, totalFindings: 0, totalCritical: 0, totalFiles: 1 });

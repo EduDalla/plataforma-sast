@@ -331,7 +331,7 @@ export function AnalysisForm({
                 {busy ? "Análise em andamento. Você pode continuar nesta página." : "Somente repositórios públicos"}
               </span>
               <button type="submit" disabled={busy}>
-                {busy ? "Analisando…" : "Iniciar análise"} <span aria-hidden="true">→</span>
+                {busy ? "Analisando…" : "Iniciar análise"} <span className="action-arrow" aria-hidden="true">→</span>
               </button>
             </div>
           </form>
@@ -367,82 +367,6 @@ export function AnalysisForm({
         </aside>
       </div>
     </>
-  );
-}
-
-const analysisTips = [
-  "Use variáveis de ambiente para manter senhas e tokens fora do código-fonte.",
-  "Uma análise estática examina o código sem precisar executá-lo.",
-  "Validação de entrada deve acontecer antes de montar comandos, consultas ou caminhos de arquivo.",
-  "Atualizar dependências reduz a exposição a vulnerabilidades já conhecidas.",
-  "O princípio do menor privilégio limita o impacto de uma credencial comprometida.",
-  "Logs ajudam na investigação, mas nunca devem registrar senhas, tokens ou código-fonte completo.",
-  "Revisões pequenas e frequentes tornam problemas de segurança mais fáceis de identificar.",
-];
-
-/**
- * Seleciona um índice de dica diferente da dica atualmente exibida.
- *
- * @param currentIndex índice da dica atualmente exibida
- * @returns índice da próxima dica
- */
-function nextAnalysisTip(currentIndex: number) {
-  let nextIndex = Math.floor(Math.random() * analysisTips.length);
-  while (nextIndex === currentIndex) {
-    nextIndex = Math.floor(Math.random() * analysisTips.length);
-  }
-  return nextIndex;
-}
-
-/**
- * Exibe o andamento da análise enquanto a API processa o repositório.
- *
- * @returns modal bloqueante com uma dica de segurança ou curiosidade
- */
-export function AnalysisProgressModal() {
-  const [tipIndex, setTipIndex] = useState(() => Math.floor(Math.random() * analysisTips.length));
-  const modalRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    modalRef.current?.focus();
-    const interval = window.setInterval(() => {
-      setTipIndex((currentIndex) => nextAnalysisTip(currentIndex));
-    }, 7000);
-    return () => window.clearInterval(interval);
-  }, []);
-
-  function showNextTip() {
-    setTipIndex((currentIndex) => nextAnalysisTip(currentIndex));
-  }
-
-  return (
-    <div className="analysis-progress-backdrop" role="presentation">
-      <section
-        ref={modalRef}
-        className="analysis-progress-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="analysis-progress-title"
-        aria-describedby="analysis-progress-description"
-        tabIndex={-1}
-      >
-        <div className="analysis-progress-icon" aria-hidden="true">
-          <span className="spinner" />
-        </div>
-        <span className="eyebrow">PLATAFORMA SAST</span>
-        <h2 id="analysis-progress-title">Análise em andamento</h2>
-        <p id="analysis-progress-description">
-          Estamos examinando o repositório com segurança. Aguarde a conclusão para ver os resultados.
-        </p>
-        <div className="analysis-tip" aria-live="polite">
-          <span className="analysis-tip-label">Dica enquanto você espera</span>
-          <p>{analysisTips[tipIndex]}</p>
-        </div>
-        <button type="button" className="secondary analysis-tip-button" onClick={showNextTip}>
-          Próxima dica <span aria-hidden="true">→</span>
-        </button>
-      </section>
-    </div>
   );
 }
 
@@ -832,27 +756,8 @@ export function Results({
           </p>
         </div>
       </div>
-      {data.status === "PROCESSING" && <div className="analysis-polling-loader" role="status" aria-live="polite" aria-label="Análise em andamento">
-        <div className="spinner" aria-hidden="true" />
-        <span>Atualizando resultados da análise…</span>
-      </div>}
-      {data.status === "PROCESSING" && <p className="semantic-status" role="status">
-        Etapa atual: {data.stage || "QUEUED"}. Arquivos processados: {data.filesProcessed || 0}/{data.filesTotal || "…"}. Os achados e contadores aparecem conforme a análise avança.
-      </p>}
       {data.status === "FAILED" && <p className="semantic-status" role="alert">
         {userFriendlyFailureMessage(data)}
-      </p>}
-      {data.semanticStatus && data.semanticStatus !== "NOT_APPLICABLE" && <p className="semantic-status" role="status">
-        {data.semanticStatus === "PENDING" || data.semanticStatus === "RUNNING" ? "Avaliação da IA em andamento. Os achados determinísticos já podem ser consultados." :
-          data.semanticStatus === "COMPLETED" ? "Avaliação da IA concluída para todos os achados." :
-          data.semanticStatus === "DEGRADED" ? "Avaliação da IA parcial ou indisponível. Os achados das regras permanecem completos." :
-          "Nenhum achado para avaliar com IA."}
-      </p>}
-      {data.suggestionStatus && data.suggestionStatus !== "NOT_APPLICABLE" && <p className="semantic-status" role="status">
-        {data.suggestionStatus === "PENDING" || data.suggestionStatus === "RUNNING" ? "Sugestões da IA sendo processadas; esta tela será atualizada automaticamente."
-          : data.suggestionStatus === "COMPLETED"
-          ? "Varredura consultiva da IA concluída para os métodos candidatos."
-          : "Varredura consultiva parcial ou indisponível; alguns métodos candidatos não foram avaliados."}
       </p>}
       <div className="stats">
         <div>

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "./api";
+import { AnalysisNotificationCenter } from "./AnalysisNotificationCenter";
+import type { AnalysisNotification } from "./AnalysisNotificationCenter";
 import {
   AnalysisForm,
   AnalysisFailureModal,
-  AnalysisProgressModal,
   Dashboard,
   DashboardPrompt,
   ErrorMessage,
@@ -19,6 +20,51 @@ import type { Analysis, HistoryEntry, Session, SystemsPage } from "./types";
 type Theme = "light" | "dark";
 const THEME_STORAGE_KEY = "sast-theme";
 const LAST_ANALYSIS_KEY = "sast-last-analysis";
+
+function analysisStageTitle(stage?: Analysis["stage"] | string) {
+  switch (stage) {
+    case "DOWNLOADING": return "Acessando repositório";
+    case "DETERMINISTIC": return "Analisando arquivos Java";
+    case "SEMANTIC": return "Avaliando achados";
+    case "SUGGESTIONS": return "Verificando sugestões";
+    case "COMPLETED": return "Análise concluída";
+    case "FAILED": return "Análise interrompida";
+    default: return "Preparando análise";
+  }
+}
+
+function analysisStageMessage(data: Analysis) {
+  if (data.stage === "DETERMINISTIC" && data.filesTotal != null) {
+    const total = data.filesTotal;
+    const processed = data.filesProcessed ?? 0;
+    const milestone = total > 0 ? Math.floor((processed / total) * 10) * 10 : 0;
+    return `Arquivos Java processados: ${processed} de ${total} (${milestone}% concluído).`;
+  }
+  if (data.stage === "DOWNLOADING") return "Obtendo os arquivos públicos do repositório com segurança.";
+  if (data.stage === "SEMANTIC") return "Os achados das regras já estão disponíveis enquanto a avaliação acontece.";
+  if (data.stage === "SUGGESTIONS") return "A análise está verificando métodos candidatos para sugestões.";
+  return "A análise está avançando. Os resultados aparecem nesta página.";
+}
+
+function semanticNotification(status: Analysis["semanticStatus"]): Pick<AnalysisNotification, "title" | "message" | "tone" | "final"> | null {
+  if (status === "PENDING" || status === "RUNNING")
+    return { title: "Avaliação dos achados", message: "A avaliação está em andamento; os achados das regras já podem ser consultados.", tone: "progress" };
+  if (status === "COMPLETED")
+    return { title: "Avaliação concluída", message: "Todos os achados candidatos foram avaliados.", tone: "success", final: true };
+  if (status === "DEGRADED")
+    return { title: "Avaliação parcial", message: "Alguns achados não receberam avaliação; os resultados das regras estão disponíveis.", tone: "warning", final: true };
+  return null;
+}
+
+function suggestionNotification(status: Analysis["suggestionStatus"]): Pick<AnalysisNotification, "title" | "message" | "tone" | "final"> | null {
+  if (status === "PENDING" || status === "RUNNING")
+    return { title: "Sugestões consultivas", message: "Verificando métodos candidatos. A página será atualizada automaticamente.", tone: "progress" };
+  if (status === "COMPLETED")
+    return { title: "Sugestões concluídas", message: "A verificação dos métodos candidatos terminou.", tone: "success", final: true };
+  if (status === "DEGRADED")
+    return { title: "Sugestões parciais", message: "Alguns métodos candidatos não foram avaliados.", tone: "warning", final: true };
+  return null;
+}
 
 function readTheme(): Theme {
   try {
@@ -63,9 +109,38 @@ export function App() {
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [dashboardPromptOpen, setDashboardPromptOpen] = useState(false);
   const [analysisFailureOpen, setAnalysisFailureOpen] = useState(false);
+  const [analysisNotifications, setAnalysisNotifications] = useState<AnalysisNotification[]>([]);
+  const [notificationAnnouncement, setNotificationAnnouncement] = useState("");
   const dashboardLinkRef = useRef<HTMLAnchorElement>(null);
   const pending = useRef(false);
   const generation = useRef(0);
+  const observedAnalysis = useRef<{ analysisId: string; status: Analysis["status"]; stage?: Analysis["stage"]; semanticStatus?: Analysis["semanticStatus"]; suggestionStatus?: Analysis["suggestionStatus"] } | undefined>(undefined);
+  const previousPath = useRef(path);
+  const upsertNotification = useCallback((notification: AnalysisNotification) => {
+    setAnalysisNotifications((current) => {
+      const index = current.findIndex((item) => item.id === notification.id);
+      if (index < 0) return [...current, notification];
+      const next = [...current];
+      next[index] = notification;
+      return next;
+    });
+  }, []);
+  const dismissNotification = useCallback((id: string) => {
+    setAnalysisNotifications((current) => current.filter((item) => item.id !== id));
+  }, []);
+  const clearAnalysisNotifications = useCallback(() => {
+    setAnalysisNotifications([]);
+    setNotificationAnnouncement("");
+  }, []);
+  useEffect(() => {
+    const wasAnalysis = /^\/analyses\/[^/]+$/.test(previousPath.current);
+    const isAnalysis = /^\/analyses\/[^/]+$/.test(path);
+    if (wasAnalysis && !isAnalysis) {
+      clearAnalysisNotifications();
+      observedAnalysis.current = undefined;
+    }
+    previousPath.current = path;
+  }, [path, clearAnalysisNotifications]);
   const loadSystems = useCallback(async (page = 0) => {
     if (typeof api.systems !== "function") return undefined;
     const value = await api.systems(page);
@@ -258,21 +333,101 @@ export function App() {
     setSubmitting(true);
     setError("");
     setResult(undefined);
+    observedAnalysis.current = undefined;
+    setNotificationAnnouncement("Preparando análise. Solicitando a análise do repositório.");
+    upsertNotification({ id: "analysis-submission", title: "Preparando análise", message: "Solicitando a análise do repositório…", tone: "progress" });
     const operation = ++generation.current;
     try {
       const data = await api.create(url, reference);
       if (generation.current === operation) {
+        dismissNotification("analysis-submission");
         setResult(data);
         storeLastAnalysisId(data.analysisId);
+        if (data.status === "COMPLETED" || data.status === "Completed") {
+          upsertNotification({ id: `analysis:${data.analysisId}:result`, title: "Análise concluída", message: "Os resultados já estão disponíveis.", tone: "success", final: true });
+          setNotificationAnnouncement("Análise concluída. Os resultados já estão disponíveis.");
+        } else if (data.status === "FAILED") {
+          upsertNotification({ id: `analysis:${data.analysisId}:result`, title: "Análise interrompida", message: "Não foi possível concluir a análise. Consulte os detalhes na página.", tone: "error", final: true });
+          setNotificationAnnouncement("Análise interrompida. Consulte os detalhes na página.");
+        }
         navigate(`/analyses/${data.analysisId}`);
       }
     } catch (e) {
-      if (generation.current === operation) failure(e);
+      if (generation.current === operation) {
+        const message = e instanceof Error ? e.message : "Não foi possível concluir a solicitação.";
+        upsertNotification({ id: "analysis-submission", title: "Não foi possível iniciar a análise", message, tone: "error", final: true });
+        setNotificationAnnouncement(`Não foi possível iniciar a análise. ${message}`);
+        failure(e);
+      }
     } finally {
       pending.current = false;
       setSubmitting(false);
     }
   }
+
+  useEffect(() => {
+    if (!result) return;
+    const previous = observedAnalysis.current;
+    const sameAnalysis = previous?.analysisId === result.analysisId;
+    const announcements: string[] = [];
+    if (result.status === "PROCESSING") {
+      const stage = result.stage || "QUEUED";
+      if (!sameAnalysis || previous?.stage !== stage) {
+        if (sameAnalysis && previous?.stage) {
+          const previousId = `analysis:${result.analysisId}:stage:${previous.stage}`;
+          upsertNotification({ id: previousId, title: analysisStageTitle(previous.stage), message: "Etapa concluída.", tone: "success", final: true });
+        }
+        upsertNotification({
+          id: `analysis:${result.analysisId}:stage:${stage}`,
+          title: analysisStageTitle(stage),
+          message: analysisStageMessage(result),
+          tone: "progress",
+        });
+        announcements.push(`${analysisStageTitle(stage)}. ${analysisStageMessage(result)}`);
+      } else {
+        upsertNotification({
+          id: `analysis:${result.analysisId}:stage:${stage}`,
+          title: analysisStageTitle(stage),
+          message: analysisStageMessage(result),
+          tone: "progress",
+        });
+      }
+      const semantic = semanticNotification(result.semanticStatus);
+      if (semantic) {
+        upsertNotification({ id: `analysis:${result.analysisId}:semantic`, ...semantic });
+        if (!sameAnalysis || previous?.semanticStatus !== result.semanticStatus)
+          announcements.push(`${semantic.title}. ${semantic.message}`);
+      }
+      const suggestions = suggestionNotification(result.suggestionStatus);
+      if (suggestions) {
+        upsertNotification({ id: `analysis:${result.analysisId}:suggestions`, ...suggestions });
+        if (!sameAnalysis || previous?.suggestionStatus !== result.suggestionStatus)
+          announcements.push(`${suggestions.title}. ${suggestions.message}`);
+      }
+    } else if (sameAnalysis && previous.status === "PROCESSING") {
+      const stageId = `analysis:${result.analysisId}:stage:${previous.stage || "QUEUED"}`;
+      upsertNotification({
+        id: stageId,
+        title: result.status === "FAILED" ? "Análise interrompida" : "Análise concluída",
+        message: result.status === "FAILED" ? "A análise foi interrompida. Consulte os detalhes e tente novamente." : "Os resultados já estão disponíveis.",
+        tone: result.status === "FAILED" ? "error" : "success",
+        final: true,
+      });
+      announcements.push(result.status === "FAILED" ? "Análise interrompida. Consulte os detalhes e tente novamente." : "Análise concluída. Os resultados já estão disponíveis.");
+      const semantic = semanticNotification(result.semanticStatus);
+      if (result.status === "FAILED" && (result.semanticStatus === "PENDING" || result.semanticStatus === "RUNNING"))
+        upsertNotification({ id: `analysis:${result.analysisId}:semantic`, title: "Avaliação interrompida", message: "A avaliação complementar foi encerrada junto com a análise.", tone: "error", final: true });
+      else if (semantic && result.semanticStatus !== "PENDING" && result.semanticStatus !== "RUNNING")
+        upsertNotification({ id: `analysis:${result.analysisId}:semantic`, ...semantic });
+      const suggestions = suggestionNotification(result.suggestionStatus);
+      if (result.status === "FAILED" && (result.suggestionStatus === "PENDING" || result.suggestionStatus === "RUNNING"))
+        upsertNotification({ id: `analysis:${result.analysisId}:suggestions`, title: "Verificação de sugestões interrompida", message: "A etapa consultiva foi encerrada junto com a análise.", tone: "error", final: true });
+      else if (suggestions && result.suggestionStatus !== "PENDING" && result.suggestionStatus !== "RUNNING")
+        upsertNotification({ id: `analysis:${result.analysisId}:suggestions`, ...suggestions });
+    }
+    if (announcements.length > 0) setNotificationAnnouncement(announcements.join(" "));
+    observedAnalysis.current = { analysisId: result.analysisId, status: result.status, stage: result.stage, semanticStatus: result.semanticStatus, suggestionStatus: result.suggestionStatus };
+  }, [result, upsertNotification]);
 
   useEffect(() => {
     const match = path.match(/^\/analyses\/([^/]+)$/);
@@ -308,6 +463,8 @@ export function App() {
       generation.current++;
       setSession(null);
       setResult(undefined);
+      clearAnalysisNotifications();
+      observedAnalysis.current = undefined;
       setSystems(undefined);
       storeLastAnalysisId(null);
       setError("");
@@ -319,6 +476,8 @@ export function App() {
   function newAnalysis() {
     setError("");
     setResult(undefined);
+    clearAnalysisNotifications();
+    observedAnalysis.current = undefined;
     setSubmitting(false);
     setAnalysisFailureOpen(false);
     setDashboardPromptOpen(false);
@@ -426,6 +585,7 @@ export function App() {
           </button>
         </div>
       </header>
+      <AnalysisNotificationCenter notifications={analysisNotifications} announcement={notificationAnnouncement} onDismiss={dismissNotification} />
       <main className="workspace">
         {path === "/dashboard" ? (
           systems ? <Dashboard systems={systems} central onOpen={() => undefined} onOpenSystem={openSystem} onPage={changeSystemsPage} /> : <section className="panel system-page-loading" role="status">Carregando sistemas analisados…</section>
@@ -448,7 +608,6 @@ export function App() {
           </section>
         )}
       </main>
-      {submitting && <AnalysisProgressModal />}
       {result?.status === "FAILED" && analysisFailureOpen && (
         <AnalysisFailureModal
           data={result}

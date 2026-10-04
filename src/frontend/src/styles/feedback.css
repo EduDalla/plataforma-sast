@@ -43,87 +43,93 @@
   border-color: var(--border-muted);
   border-top-color: var(--accent);
 }
-.analysis-progress-backdrop {
+.analysis-notification-center {
   position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: #142018cc;
+  z-index: 30;
+  top: 94px;
+  left: 50%;
+  width: min(560px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  pointer-events: none;
 }
-.analysis-progress-modal {
-  width: min(100%, 540px);
-  padding: 38px 42px 34px;
+.analysis-notification-center ol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.analysis-notification {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  min-height: 66px;
+  padding: 14px 18px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 22px 70px #0b120d55;
-  text-align: center;
+  box-shadow: 0 10px 30px #0b120d2b;
+  animation: notification-enter 220ms ease-out both;
+  transition: opacity 300ms ease, transform 300ms ease, margin 300ms ease;
 }
-.analysis-progress-modal:focus {
-  outline: none;
+.analysis-notification-success { border-left-color: #4b9562; }
+.analysis-notification-warning { border-left-color: #c68a2c; }
+.analysis-notification-error { border-left-color: #bd5447; }
+.analysis-notification.is-exiting {
+  opacity: 0;
+  transform: translateY(-24px);
+  margin-bottom: -76px;
 }
-.analysis-progress-modal .eyebrow {
-  margin: 0 0 11px;
-  color: var(--accent);
-}
-.analysis-progress-modal h2 {
-  margin: 0 0 10px;
-  font-size: 25px;
-}
-.analysis-progress-modal > p {
-  max-width: 410px;
-  margin: 0 auto;
-  color: var(--text-soft);
-  font-size: 13px;
-  line-height: 1.7;
-}
-.analysis-progress-icon {
+.analysis-notification-indicator {
   display: grid;
   place-items: center;
-  min-height: 52px;
-  margin-bottom: 20px;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+  font-size: 17px;
+  font-weight: 750;
 }
-.analysis-progress-icon .spinner {
+.analysis-notification-success .analysis-notification-indicator { color: #4b9562; }
+.analysis-notification-warning .analysis-notification-indicator { color: #c68a2c; }
+.analysis-notification-error .analysis-notification-indicator { color: #bd5447; }
+.analysis-notification-indicator .spinner {
+  width: 20px;
+  height: 20px;
   margin: 0;
+  border-width: 2px;
   border-color: var(--border-muted);
   border-top-color: var(--accent);
 }
-.analysis-tip {
-  margin: 27px 0 22px;
-  padding: 17px 19px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--surface-muted);
-  text-align: left;
+.analysis-notification-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
-.analysis-tip-label {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--accent);
-  font-size: 10px;
-  font-weight: 750;
-  letter-spacing: 0.7px;
-  text-transform: uppercase;
-}
-.analysis-tip p {
-  min-height: 42px;
-  margin: 0;
+.analysis-notification-copy strong { font-size: 13px; }
+.analysis-notification-copy > span {
   color: var(--text-soft);
-  font-size: 13px;
-  line-height: 1.65;
-}
-.analysis-tip-button {
-  margin: 0 auto;
-  background: var(--surface);
-  color: var(--text);
-  border-color: var(--border);
   font-size: 12px;
+  line-height: 1.45;
 }
-.analysis-tip-button:hover:not(:disabled) {
-  background: var(--surface-muted);
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+@keyframes notification-enter {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .analysis-failure-modal {
   width: min(100%, 520px);

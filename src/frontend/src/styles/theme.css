@@ -11,6 +11,9 @@
   --text-muted: #8a978d;
   --accent: #315b43;
   --accent-soft: #dfece0;
+  --primary-button-bg: #315b43;
+  --primary-button-hover: #244833;
+  --primary-button-text: #fff;
   background: var(--page-bg);
   color: var(--text);
 }
@@ -26,6 +29,9 @@
   --text-muted: #8e9f92;
   --accent: #9ac7a2;
   --accent-soft: #294333;
+  --primary-button-bg: #b6e8bc;
+  --primary-button-hover: #c8f2cd;
+  --primary-button-text: #17351f;
 }
 .app-shell .topbar {
   background: var(--surface);

@@ -45,18 +45,19 @@ describe("resultado da análise semântica", () => {
   it("mostra o carregamento e mantém as áreas vazias durante o polling", () => {
     const data = { ...base, status: "PROCESSING" as const, findings: [], suggestions: [], semanticStatus: "RUNNING" as const, suggestionStatus: "RUNNING" as const };
     render(<><Results data={data} /><AiSuggestions data={data} /></>);
-    expect(screen.getByRole("status", { name: "Análise em andamento" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Análise em andamento" })).toBeInTheDocument();
+    expect(screen.queryByText(/Etapa atual:/)).not.toBeInTheDocument();
     expect(screen.getByText("Aguardando resultados")).toBeInTheDocument();
     expect(screen.getByText("Aguardando resultados das sugestões consultivas…")).toBeInTheDocument();
   });
 
   it("remove o indicador quando a análise termina ou falha", () => {
     const { rerender } = render(<Results data={{ ...base, status: "PROCESSING" }} />);
-    expect(screen.getByRole("status", { name: "Análise em andamento" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Análise em andamento" })).toBeInTheDocument();
     rerender(<Results data={{ ...base, status: "COMPLETED" }} />);
-    expect(screen.queryByRole("status", { name: "Análise em andamento" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Análise em andamento" })).not.toBeInTheDocument();
     rerender(<Results data={{ ...base, status: "FAILED", failureStage: "SEMANTIC", failureMessage: "Falha controlada" }} />);
-    expect(screen.queryByRole("status", { name: "Análise em andamento" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Análise em andamento" })).not.toBeInTheDocument();
   });
 
   it("mostra a sugestão separada da severidade e das contagens determinísticas", () => {
@@ -72,7 +73,6 @@ describe("resultado da análise semântica", () => {
 
   it("mantém achado sem avaliação visível quando o Ollama falha", () => {
     render(<Results data={{ ...base, semanticStatus: "DEGRADED", findings: [{ ...base.findings[0], aiAssessment: null }] }} />);
-    expect(screen.getByText(/Avaliação da IA parcial ou indisponível/)).toBeInTheDocument();
     expect(screen.getByText("Runtime.exec")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Sugestão da IA" })).not.toBeInTheDocument();
   });
