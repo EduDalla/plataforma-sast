@@ -50,6 +50,16 @@ export interface AiSuggestion {
   model: string;
   promptVersion: string;
 }
+export type ResultPriority = "Critical" | "High" | "Medium" | "Low" | "Unclassified";
+export interface ResultSummary {
+  total: number;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  unclassified: number;
+  highestPriority: ResultPriority | null;
+}
 export interface Analysis {
   analysisId: string;
   status: "PROCESSING" | "COMPLETED" | "FAILED" | "Completed";
@@ -61,6 +71,7 @@ export interface Analysis {
   semanticStatus?: "PENDING" | "RUNNING" | "COMPLETED" | "DEGRADED" | "NOT_APPLICABLE";
   suggestionStatus?: "PENDING" | "RUNNING" | "COMPLETED" | "DEGRADED" | "NOT_APPLICABLE";
   suggestions?: AiSuggestion[];
+  resultSummary?: ResultSummary;
   findings: Finding[];
   stage?: "QUEUED" | "DOWNLOADING" | "DETERMINISTIC" | "SEMANTIC" | "SUGGESTIONS" | "COMPLETED" | "FAILED";
   filesProcessed?: number;
@@ -74,6 +85,7 @@ export interface HistoryEntry {
   createdAt: string;
   filesAnalyzed: number;
   findings: number;
+  resultSummary?: ResultSummary;
 }
 export interface SystemCard {
   owner: string;
@@ -92,6 +104,7 @@ export interface SystemsPage {
   totalFindings: number;
   totalCritical: number;
   totalFiles: number;
+  resultSummary?: ResultSummary;
 }
 export interface HistoryPage {
   owner: string;

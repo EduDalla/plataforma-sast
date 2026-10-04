@@ -11,11 +11,11 @@ import {
   Login,
   Processing,
   Results,
-  AiSuggestions,
   Shield,
   SystemDashboard,
 } from "./components";
 import type { Analysis, HistoryEntry, Session, SystemsPage } from "./types";
+import { priorityLabels, summarizeResults, unifiedResults } from "./resultModel";
 
 type Theme = "light" | "dark";
 const THEME_STORAGE_KEY = "sast-theme";
@@ -25,8 +25,8 @@ function analysisStageTitle(stage?: Analysis["stage"] | string) {
   switch (stage) {
     case "DOWNLOADING": return "Acessando repositório";
     case "DETERMINISTIC": return "Analisando arquivos Java";
-    case "SEMANTIC": return "Avaliando achados";
-    case "SUGGESTIONS": return "Verificando sugestões";
+    case "SEMANTIC": return "Avaliando vulnerabilidades/melhorias identificadas";
+    case "SUGGESTIONS": return "Buscando vulnerabilidades/melhorias adicionais";
     case "COMPLETED": return "Análise concluída";
     case "FAILED": return "Análise interrompida";
     default: return "Preparando análise";
@@ -41,14 +41,14 @@ function analysisStageMessage(data: Analysis) {
     return `Arquivos Java processados: ${processed} de ${total} (${milestone}% concluído).`;
   }
   if (data.stage === "DOWNLOADING") return "Obtendo os arquivos públicos do repositório com segurança.";
-  if (data.stage === "SEMANTIC") return "Os achados das regras já estão disponíveis enquanto a avaliação acontece.";
-  if (data.stage === "SUGGESTIONS") return "A análise está verificando métodos candidatos para sugestões.";
+  if (data.stage === "SEMANTIC") return "As vulnerabilidades e melhorias das regras já estão disponíveis enquanto a IA avalia os achados.";
+  if (data.stage === "SUGGESTIONS") return "A IA está verificando métodos candidatos para vulnerabilidades e melhorias adicionais.";
   return "A análise está avançando. Os resultados aparecem nesta página.";
 }
 
 function semanticNotification(status: Analysis["semanticStatus"]): Pick<AnalysisNotification, "title" | "message" | "tone" | "final"> | null {
   if (status === "PENDING" || status === "RUNNING")
-    return { title: "Avaliação dos achados", message: "A avaliação está em andamento; os achados das regras já podem ser consultados.", tone: "progress" };
+    return { title: "Avaliação de vulnerabilidades/melhorias", message: "A avaliação está em andamento; os itens das regras já podem ser consultados.", tone: "progress" };
   if (status === "COMPLETED")
     return { title: "Avaliação concluída", message: "Todos os achados candidatos foram avaliados.", tone: "success", final: true };
   if (status === "DEGRADED")
@@ -58,11 +58,11 @@ function semanticNotification(status: Analysis["semanticStatus"]): Pick<Analysis
 
 function suggestionNotification(status: Analysis["suggestionStatus"]): Pick<AnalysisNotification, "title" | "message" | "tone" | "final"> | null {
   if (status === "PENDING" || status === "RUNNING")
-    return { title: "Sugestões consultivas", message: "Verificando métodos candidatos. A página será atualizada automaticamente.", tone: "progress" };
+    return { title: "Verificação de vulnerabilidades/melhorias adicionais", message: "Verificando métodos candidatos. A lista será atualizada automaticamente.", tone: "progress" };
   if (status === "COMPLETED")
-    return { title: "Sugestões concluídas", message: "A verificação dos métodos candidatos terminou.", tone: "success", final: true };
+    return { title: "Verificação de vulnerabilidades/melhorias concluída", message: "A verificação dos métodos candidatos terminou.", tone: "success", final: true };
   if (status === "DEGRADED")
-    return { title: "Sugestões parciais", message: "Alguns métodos candidatos não foram avaliados.", tone: "warning", final: true };
+    return { title: "Verificação parcial de vulnerabilidades/melhorias", message: "Alguns métodos candidatos não foram avaliados.", tone: "warning", final: true };
   return null;
 }
 
@@ -406,14 +406,19 @@ export function App() {
       }
     } else if (sameAnalysis && previous.status === "PROCESSING") {
       const stageId = `analysis:${result.analysisId}:stage:${previous.stage || "QUEUED"}`;
+      const unifiedSummary = result.resultSummary ?? summarizeResults(unifiedResults(result.findings, result.suggestions ?? []));
+      const highest = unifiedSummary.highestPriority ? priorityLabels[unifiedSummary.highestPriority] : "Sem classificação";
+      const completionMessage = unifiedSummary.total
+        ? `${unifiedSummary.total} vulnerabilidade(s)/melhoria(s) identificada(s). Maior prioridade: ${highest}.`
+        : "Nenhuma vulnerabilidade ou melhoria identificada nas verificações concluídas.";
       upsertNotification({
         id: stageId,
         title: result.status === "FAILED" ? "Análise interrompida" : "Análise concluída",
-        message: result.status === "FAILED" ? "A análise foi interrompida. Consulte os detalhes e tente novamente." : "Os resultados já estão disponíveis.",
+        message: result.status === "FAILED" ? "A análise foi interrompida. Consulte os detalhes e tente novamente." : completionMessage,
         tone: result.status === "FAILED" ? "error" : "success",
         final: true,
       });
-      announcements.push(result.status === "FAILED" ? "Análise interrompida. Consulte os detalhes e tente novamente." : "Análise concluída. Os resultados já estão disponíveis.");
+      announcements.push(result.status === "FAILED" ? "Análise interrompida. Consulte os detalhes e tente novamente." : `Análise concluída. ${completionMessage}`);
       const semantic = semanticNotification(result.semanticStatus);
       if (result.status === "FAILED" && (result.semanticStatus === "PENDING" || result.semanticStatus === "RUNNING"))
         upsertNotification({ id: `analysis:${result.analysisId}:semantic`, title: "Avaliação interrompida", message: "A avaliação complementar foi encerrada junto com a análise.", tone: "error", final: true });
@@ -599,7 +604,6 @@ export function App() {
           <>
             <ErrorMessage message={error} />
             <Results data={result} onNavigate={(href) => navigate(href)} />
-            <AiSuggestions data={result} />
           </>
         ) : (
           <section className="panel">

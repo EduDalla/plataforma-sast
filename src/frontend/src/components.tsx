@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { api } from "./api";
-import type { Analysis, HistoryEntry, SystemCard, SystemsPage } from "./types";
+import type { Analysis, HistoryEntry, SystemsPage } from "./types";
+import { priorityLabels, summarizeResults, unifiedResults } from "./resultModel";
 
 export function Shield() {
   return (
@@ -506,26 +507,21 @@ export function Dashboard({
     return <section className="dashboard-page dashboard-central">
       <Breadcrumb items={[{ label: "Dashboard" }]} />
       <div className="dashboard-title"><div><span className="eyebrow">SEUS SISTEMAS</span><h1>Dashboard</h1><p>Selecione um sistema para acompanhar suas análises.</p></div></div>
+      <div className="dashboard-stats"><div><span>Sistemas</span><strong>{systems.totalSystems}</strong><small>repositórios</small></div><div><span>Análises</span><strong>{systems.totalAnalyses}</strong><small>execuções consideradas</small></div><div><span>Vulnerabilidades/Melhorias</span><strong>{systems.resultSummary?.total ?? systems.totalFindings}</strong><small>em todas as execuções</small></div><div><span>Críticas</span><strong className="dashboard-red">{systems.resultSummary?.critical ?? systems.totalCritical}</strong><small>prioridade imediata</small></div></div>
       <SystemCards data={systems} onOpenSystem={onOpenSystem} onPage={onPage} />
     </section>;
   }
   const findings = data?.findings || [];
-  const severity = {
-    Critical: findings.filter((finding) => finding.severity === "Critical").length,
-    High: findings.filter((finding) => finding.severity === "High").length,
-    Medium: findings.filter((finding) => finding.severity === "Medium").length,
-    Low: findings.filter((finding) => finding.severity === "Low").length,
-  };
-  const files = [...new Set(findings.map((finding) => finding.fileName))]
+  const suggestions = data?.suggestions ?? [];
+  const items = unifiedResults(findings, suggestions);
+  const summary = systems?.resultSummary ?? data?.resultSummary ?? summarizeResults(items);
+  const files = [...new Set(items.map((item) => item.fileName))]
     .map((fileName) => ({
       fileName,
-      count: findings.filter((finding) => finding.fileName === fileName).length,
+      count: items.filter((item) => item.fileName === fileName).length,
     }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
-  const suggestions = data?.suggestions ?? [];
-  const securitySuggestions = suggestions.filter((item) => item.category === "SECURITY").length;
-  const performanceSuggestions = suggestions.filter((item) => item.category === "PERFORMANCE").length;
   const suggestionCoverage = data?.suggestionStatus === "COMPLETED"
     ? "Métodos candidatos avaliados. A varredura consultiva não cobre todo o repositório."
     : data?.suggestionStatus === "DEGRADED"
@@ -535,6 +531,18 @@ export function Dashboard({
     : data?.suggestionStatus === "PENDING" || data?.suggestionStatus === "RUNNING"
     ? "Sugestões consultivas em processamento. Os números ainda são parciais."
     : "Cobertura consultiva não informada nesta execução.";
+  const chartTotal = summary.total;
+  const dashboardEmptyMessage = data?.status === "FAILED"
+    ? "A análise falhou; os dados parciais não confirmam ausência de itens."
+    : data?.status === "PROCESSING" || data?.suggestionStatus === "PENDING" || data?.suggestionStatus === "RUNNING"
+    ? "Verificações em processamento; os totais podem mudar."
+    : data?.suggestionStatus === "DEGRADED"
+    ? "Nenhum item disponível nas etapas parciais; isso não confirma ausência de problemas."
+    : "Nenhuma vulnerabilidade ou melhoria encontrada nesta execução.";
+  const firstEnd = chartTotal ? summary.critical / chartTotal * 100 : 0;
+  const secondEnd = chartTotal ? (summary.critical + summary.high) / chartTotal * 100 : 0;
+  const thirdEnd = chartTotal ? (summary.critical + summary.high + summary.medium) / chartTotal * 100 : 0;
+  const topItems = items.slice(0, 4);
 
   return (
     <section className="dashboard-page">
@@ -547,33 +555,26 @@ export function Dashboard({
       </div>
       <div className="dashboard-stats">
         <div><span>Análises</span><strong>{systems?.totalAnalyses ?? (data ? totalHistory : 0)}</strong><small>no histórico</small></div>
-        <div><span>Vulnerabilidades</span><strong>{systems?.totalFindings ?? findings.length}</strong><small>detectadas pelas regras</small></div>
-        <div><span>Críticas</span><strong className="dashboard-red">{systems?.totalCritical ?? severity.Critical}</strong><small>atenção imediata</small></div>
+        <div><span>Vulnerabilidades/Melhorias</span><strong>{summary.total}</strong><small>itens nas verificações</small></div>
+        <div><span>Críticas</span><strong className="dashboard-red">{summary.critical}</strong><small>prioridade imediata</small></div>
         <div><span>Arquivos analisados</span><strong>{systems?.totalFiles ?? data?.filesAnalyzed ?? 0}</strong><small>arquivos Java</small></div>
       </div>
-      <p className="dashboard-scope">Vulnerabilidades e arquivos correspondem à execução selecionada. Zero achados não garante ausência de problemas.</p>
-      <div className="dashboard-stats" aria-label="Resumo das melhorias consultivas">
-        <div><span>Sugestões de segurança</span><strong>{securitySuggestions}</strong><small>hipóteses para revisão</small></div>
-        <div><span>Melhorias de performance</span><strong>{performanceSuggestions}</strong><small>oportunidades para validar</small></div>
-        <div><span>Sugestões críticas ou altas</span><strong>{suggestions.filter((item) => item.severity === "Critical" || item.severity === "High").length}</strong><small>prioridade de revisão consultiva</small></div>
-        <div><span>Arquivos com pontos de atenção</span><strong>{new Set([...findings, ...suggestions].map((item) => item.fileName)).size}</strong><small>regras e sugestões, sem duplicação</small></div>
-      </div>
-      <p className="dashboard-scope" role="status">{suggestionCoverage} As sugestões não entram na contagem de vulnerabilidades.</p>
+      <p className="dashboard-scope">Os indicadores de itens correspondem à execução selecionada. A prioridade usa a severidade de cada item.</p>
+      <p className="dashboard-scope" role="status">{suggestionCoverage}</p>
       <div className="dashboard-grid">
         <article className="dashboard-card severity-card">
-          <h2><span className="chart-icon">◔</span> Severidade</h2>
-          {findings.length ? <div className="severity-chart-row"><div className="severity-donut" style={{ background: `conic-gradient(#f04444 0 ${severity.Critical / findings.length * 100}%, #ff761c ${severity.Critical / findings.length * 100}% ${(severity.Critical + severity.High) / findings.length * 100}%, #ffcc19 ${(severity.Critical + severity.High) / findings.length * 100}% ${(severity.Critical + severity.High + severity.Medium) / findings.length * 100}%, #3d82f4 ${(severity.Critical + severity.High + severity.Medium) / findings.length * 100}% 100%)` }}><span>{findings.length}</span></div><div className="severity-legend"><span><i className="legend-critical"/>Crítico <b>{severity.Critical}</b></span><span><i className="legend-high"/>Alto <b>{severity.High}</b></span><span><i className="legend-medium"/>Médio <b>{severity.Medium}</b></span><span><i className="legend-low"/>Baixo <b>{severity.Low}</b></span></div></div> : <div className="dashboard-empty"><span>✓</span><p>Nenhuma vulnerabilidade detectada pelas regras nesta execução.</p></div>}
+          <h2><span className="chart-icon">◔</span> Prioridade dos itens</h2>
+          {chartTotal ? <div className="severity-chart-row"><div className="severity-donut" style={{ background: `conic-gradient(#f04444 0 ${firstEnd}%, #ff761c ${firstEnd}% ${secondEnd}%, #ffcc19 ${secondEnd}% ${thirdEnd}%, #3d82f4 ${thirdEnd}% ${summary.unclassified ? (summary.critical + summary.high + summary.medium + summary.low) / chartTotal * 100 : 100}%, #94a3b8 ${summary.unclassified ? (summary.critical + summary.high + summary.medium + summary.low) / chartTotal * 100 : 100}% 100%)` }}><span>{chartTotal}</span></div><div className="severity-legend"><span><i className="legend-critical"/>Crítica <b>{summary.critical}</b></span><span><i className="legend-high"/>Alta <b>{summary.high}</b></span><span><i className="legend-medium"/>Média <b>{summary.medium}</b></span><span><i className="legend-low"/>Baixa <b>{summary.low}</b></span><span>Sem classificação <b>{summary.unclassified}</b></span></div></div> : <div className="dashboard-empty"><span>{data?.status === "FAILED" ? "!" : data?.status === "PROCESSING" || data?.suggestionStatus === "RUNNING" ? "…" : "✓"}</span><p>{dashboardEmptyMessage}</p></div>}
         </article>
         <article className="dashboard-card detected-card">
-          <h2>Prioridades de revisão</h2>
-          <ul>
-            <li><div><strong>{severity.Critical + severity.High} achado(s) crítico(s) ou alto(s)</strong><p>Revise as evidências das regras e as recomendações disponíveis nos detalhes.</p></div></li>
-            <li><div><strong>{securitySuggestions} sugestão(ões) de segurança</strong><p>Valide as hipóteses consultivas antes de tratá-las como vulnerabilidades.</p></div></li>
-            <li><div><strong>{performanceSuggestions} melhoria(s) de performance</strong><p>Confira as recomendações nos detalhes da análise e meça o impacto antes e depois da alteração.</p></div></li>
-          </ul>
+          <h2>Itens de maior prioridade</h2>
+          {topItems.length ? <ul>{topItems.map((item) => <li key={item.key}>
+            <i className={item.priority.toLowerCase()} />
+            <div><button className="dashboard-result-link" type="button" onClick={onOpen}><strong>{priorityLabels[item.priority]} · {item.title}</strong></button>
+              <p>{item.source} · {item.fileName}:{item.line}</p></div>
+          </li>)}</ul> : <div className="dashboard-list-empty">Nenhum item disponível para ordenar por prioridade.</div>}
         </article>
-        <article className="dashboard-card files-card"><h2><span className="chart-icon">☷</span> Arquivos com mais achados</h2>{files.length ? <ul>{files.map((file) => <li key={file.fileName}><span>{file.fileName}</span><b>{file.count} {file.count === 1 ? "falha" : "falhas"}</b></li>)}</ul> : <div className="dashboard-list-empty">Nenhum arquivo com achados das regras.</div>}</article>
-        <article className="dashboard-card detected-card"><h2><span className="chart-icon">▣</span> Achados das regras</h2>{findings.length ? <ul>{findings.slice(0, 4).map((finding) => <li key={`${finding.fileName}:${finding.ruleId}:${finding.line}:${finding.column}`}><i className={finding.severity.toLowerCase()}/><div><strong>{finding.cwe} · {finding.title}</strong><p>{finding.description}</p></div></li>)}</ul> : <div className="dashboard-list-empty">Nenhuma ocorrência das regras verificadas. Consulte também as sugestões e os limites de cobertura.</div>}</article>
+        <article className="dashboard-card files-card"><h2><span className="chart-icon">☷</span> Arquivos com mais itens</h2>{files.length ? <ul>{files.map((file) => <li key={file.fileName}><span>{file.fileName}</span><b>{file.count} {file.count === 1 ? "item" : "itens"}</b></li>)}</ul> : <div className="dashboard-list-empty">Nenhum arquivo com itens.</div>}</article>
       </div>
       {data && <button className="dashboard-last" onClick={onOpen}>Ver mais detalhes <span aria-hidden="true">↗</span></button>}
     </section>
@@ -602,7 +603,7 @@ function SystemCards({ data, onOpenSystem, onPage }: { data: SystemsPage; onOpen
       const key = `${system.owner}/${system.repositoryName}`;
       return <button className="system-card" key={key} type="button" onClick={() => onOpenSystem?.(system.owner, system.repositoryName)} aria-label={`Abrir dashboard de ${system.repositoryName}`}>
         <div className="system-card-top"><div><span className="system-kicker">SISTEMA</span><h3>{system.repositoryName}</h3><p>{system.owner}/{system.repositoryName}</p></div><span className="system-count">{system.totalAnalyses} análise{system.totalAnalyses === 1 ? "" : "s"}</span></div>
-        <div className="system-latest"><span>Última análise</span><strong>{dateLabel(system.latest.createdAt)}</strong><small>{system.latest.reference || "Branch padrão"} · {system.latest.findings} achado{system.latest.findings === 1 ? "" : "s"}</small></div>
+        <div className="system-latest"><span>Última análise</span><strong>{dateLabel(system.latest.createdAt)}</strong><small>{system.latest.reference || "Branch padrão"} · {system.latest.resultSummary?.total ?? system.latest.findings} vulnerabilidade(s)/melhoria(s)</small><small>Maior prioridade: {system.latest.resultSummary?.highestPriority ? priorityLabels[system.latest.resultSummary.highestPriority] : "Sem prioridade"}</small></div>
         <span className="system-open">Abrir dashboard <span aria-hidden="true">→</span></span>
       </button>;
     })}</div>
@@ -645,7 +646,7 @@ export function SystemDashboard({
           <small>{totalHistory} execução{totalHistory === 1 ? "" : "ões"} · mais recente à direita</small>
         </div>
         <div className="system-history-list">
-          {history.map((entry) => <button key={entry.analysisId} type="button" className={entry.analysisId === data.analysisId ? "selected" : ""} onClick={() => onSelect(entry.analysisId)} disabled={loading || entry.analysisId === data.analysisId} aria-current={entry.analysisId === data.analysisId ? "page" : undefined}>{dateLabel(entry.createdAt)} · {entry.reference || "padrão"}</button>)}
+          {history.map((entry) => <button key={entry.analysisId} type="button" className={entry.analysisId === data.analysisId ? "selected" : ""} onClick={() => onSelect(entry.analysisId)} disabled={loading || entry.analysisId === data.analysisId} aria-current={entry.analysisId === data.analysisId ? "page" : undefined}>{dateLabel(entry.createdAt)} · {entry.reference || "padrão"} · {entry.resultSummary?.total ?? entry.findings} item(ns) · {entry.resultSummary?.highestPriority ? priorityLabels[entry.resultSummary.highestPriority] : "Sem prioridade"}</button>)}
           {hasMore && <button type="button" onClick={onMore} disabled={loading}>{loading ? "Carregando…" : "Carregar anteriores"}</button>}
         </div>
       </div>
@@ -668,38 +669,6 @@ const traceStepLabels: Record<string, string> = {
   conditional: "Expressão condicional",
   sink: "Execução de comando",
 };
-
-export function AiSuggestions({ data }: { data: Analysis }) {
-  const suggestionGroups = ["Critical", "High", "Medium", "Low", "Unclassified"].map((severity) => ({
-    severity,
-    items: (data.suggestions ?? []).filter((suggestion) => (suggestion.severity || "Unclassified") === severity),
-  })).filter((group) => group.items.length > 0);
-
-  if (data.status !== "PROCESSING" && (data.suggestions?.length ?? 0) === 0) return null;
-
-  return <section className="findings" aria-label="Possíveis problemas sugeridos pela IA">
-    <div className="findings-heading">
-      <h2>Possíveis problemas sugeridos pela IA</h2>
-      <span>{data.suggestions?.length ?? 0} melhoria(s) consultiva(s) · Hipóteses para revisão humana</span>
-    </div>
-    {suggestionGroups.map((group) => <div className="suggestion-severity-group" key={group.severity}>
-      <h3>{group.severity === "Unclassified" ? "Sem classificação" : severityNames[group.severity as keyof typeof severityNames]} <small>({group.items.length})</small></h3>
-      {group.items.map((suggestion, index) => <article className="finding ai-assessment" key={`${suggestion.fileName}:${suggestion.line}:${index}`}>
-        <div className="finding-detail">
-          <h3><span className={suggestion.severity ? `badge ${suggestion.severity.toLowerCase()}` : "badge"}>{suggestion.severity ? severityNames[suggestion.severity] : "Sem classificação"}</span> {suggestion.title}</h3>
-          <p>{suggestion.category === "PERFORMANCE" ? "Desempenho" : "Segurança"} · {suggestion.fileName}:{suggestion.line} · Confiança {Math.round(suggestion.confidence * 100)}%</p>
-          <h4>Evidência no código</h4>
-          <pre><code>{suggestion.evidence}</code></pre>
-          <h4>Por que revisar</h4><p>{suggestion.rationale}</p>
-          <h4>Recomendação</h4><p>{suggestion.recommendation}</p>
-          <h4>Limitações</h4><p>{suggestion.limitations}</p>
-          <small>Modelo {suggestion.model} · Confirme a hipótese antes de agir. Em casos de N+1, a quantidade real de consultas depende da execução.</small>
-        </div>
-      </article>)}
-    </div>)}
-    {(data.suggestions?.length ?? 0) === 0 && <p className="results-awaiting" role="status">Aguardando resultados das sugestões consultivas…</p>}
-  </section>;
-}
 
 function traceStepLabel(kind: string) {
   return traceStepLabels[kind] || kind;
@@ -728,193 +697,54 @@ export function Results({
   data: Analysis;
   onNavigate?: (href: string) => void;
 }) {
-  const groups = new Map<string, Analysis["findings"]>();
-  data.findings.forEach((f) =>
-    groups.set(f.fileName, [...(groups.get(f.fileName) || []), f]),
-  );
+  const items = unifiedResults(data.findings, data.suggestions ?? []);
+  const summary = data.resultSummary ?? summarizeResults(items);
+  const groups = new Map<string, typeof items>();
+  items.forEach((item) => groups.set(item.fileName, [...(groups.get(item.fileName) || []), item]));
+  const orderedGroups = [...groups].sort((a, b) =>
+    Math.min(...a[1].map((item) => ["Critical", "High", "Medium", "Low", "Unclassified"].indexOf(item.priority)))
+      - Math.min(...b[1].map((item) => ["Critical", "High", "Medium", "Low", "Unclassified"].indexOf(item.priority)))
+    || a[0].localeCompare(b[0]));
   const systemBreadcrumb = repositoryBreadcrumb(data.repositoryUrl);
-  return (
-    <>
-      <Breadcrumb
-        items={[
-          { label: "Dashboard", href: "/dashboard" },
-          ...(systemBreadcrumb ? [systemBreadcrumb] : []),
-          { label: "Análise" },
-        ]}
-        onNavigate={onNavigate}
-      />
-      <div className="result-heading">
-        <div>
-          <span className="eyebrow">RESULTADOS DA ANÁLISE</span>
-          <h1>
-            {data.status === "PROCESSING" ? "Análise em andamento" : data.status === "FAILED" ? "Análise interrompida" : "Análise concluída"}{" "}
-            {data.status !== "PROCESSING" && <span className="complete-mark" aria-label={data.status === "FAILED" ? "Falhou" : "Concluída"}>{data.status === "FAILED" ? "!" : "✓"}</span>}
-          </h1>
-          <p className="repository">
-            {data.repositoryUrl.replace("https://github.com/", "")}
-            <span className="ref">{data.reference || "Branch padrão"}</span>
-          </p>
-        </div>
-      </div>
-      {data.status === "FAILED" && <p className="semantic-status" role="alert">
-        {userFriendlyFailureMessage(data)}
-      </p>}
-      <div className="stats">
-        <div>
-          <span>Vulnerabilidades</span>
-          <strong>{data.findings.length}</strong>
-        </div>
-        <div>
-          <span>Críticas</span>
-          <strong className="critical-text">
-            {data.findings.filter((f) => f.severity === "Critical").length}
-          </strong>
-        </div>
-        <div>
-          <span>Altas</span>
-          <strong className="high-text">
-            {data.findings.filter((f) => f.severity === "High").length}
-          </strong>
-        </div>
-        <div>
-          <span>Arquivos analisados</span>
-          <strong>
-            {data.status === "PROCESSING" ? `${data.filesProcessed ?? 0}/${data.filesTotal || "…"}` : data.filesAnalyzed}
-            <small> Java</small>
-          </strong>
-        </div>
-      </div>
-      {data.findings.length === 0 ? (
-        <section className="panel empty">
-          {data.status === "PROCESSING" ? (
-            <span className="empty-loading" role="status" aria-label="Carregando resultados">
-              <span className="spinner" aria-hidden="true" />
-            </span>
-          ) : (
-            <span className="complete-mark">✓</span>
-          )}
-          <h2>{data.status === "PROCESSING" ? "Aguardando resultados" : "Nenhuma vulnerabilidade encontrada"}</h2>
-          <p>
-            {data.status === "PROCESSING" ? "Os findings determinísticos aparecerão aqui assim que forem processados." : "Não encontramos ocorrências das regras verificadas nesta análise."}
-          </p>
-        </section>
-      ) : (
-        <section className="findings">
-          <div className="findings-heading">
-            <h2>Vulnerabilidades encontradas</h2>
-            <span>{groups.size} arquivo(s) com achados</span>
+  const partial = data.semanticStatus === "DEGRADED" || data.suggestionStatus === "DEGRADED";
+  const running = data.status === "PROCESSING" || data.semanticStatus === "RUNNING" || data.suggestionStatus === "RUNNING";
+  const severityNames: Record<string, string> = { Critical: "Crítica", High: "Alta", Medium: "Média", Low: "Baixa" };
+  return <>
+    <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, ...(systemBreadcrumb ? [systemBreadcrumb] : []), { label: "Análise" }]} onNavigate={onNavigate} />
+    <div className="result-heading"><div>
+      <span className="eyebrow">RESULTADOS DA ANÁLISE</span>
+      <h1>{data.status === "PROCESSING" ? "Análise em andamento" : data.status === "FAILED" ? "Análise interrompida" : "Análise concluída"} {data.status !== "PROCESSING" && <span className="complete-mark" aria-label={data.status === "FAILED" ? "Falhou" : "Concluída"}>{data.status === "FAILED" ? "!" : "✓"}</span>}</h1>
+      <p className="repository">{data.repositoryUrl.replace("https://github.com/", "")}<span className="ref">{data.reference || "Branch padrão"}</span></p>
+    </div></div>
+    {data.status === "FAILED" && <p className="semantic-status" role="alert">{userFriendlyFailureMessage(data)}</p>}
+    {partial && data.status !== "FAILED" && <p className="semantic-status" role="status">Resultado parcial: uma etapa de IA foi concluída com cobertura limitada. Os itens exibidos não representam cobertura completa.</p>}
+    <div className="stats">
+      <div><span>Vulnerabilidades/Melhorias</span><strong>{summary.total}</strong></div>
+      <div><span>Críticas</span><strong className="critical-text">{summary.critical}</strong></div>
+      <div><span>Altas</span><strong className="high-text">{summary.high}</strong></div>
+      <div><span>Arquivos analisados</span><strong>{data.status === "PROCESSING" ? `${data.filesProcessed ?? 0}/${data.filesTotal || "…"}` : data.filesAnalyzed}<small> Java</small></strong></div>
+    </div>
+    {items.length === 0 ? <section className="panel empty">
+      {running ? <span className="empty-loading" role="status" aria-label="Carregando resultados"><span className="spinner" aria-hidden="true" /></span> : <span className="complete-mark">{data.status === "FAILED" ? "!" : "✓"}</span>}
+      <h2>{data.status === "FAILED" ? "Análise sem conclusão" : running ? "Aguardando resultados" : partial ? "Nenhum item disponível nesta etapa parcial" : "Nenhuma vulnerabilidade ou melhoria encontrada"}</h2>
+      <p>{data.status === "FAILED" ? userFriendlyFailureMessage(data) : running ? "As vulnerabilidades e melhorias serão exibidas aqui conforme as etapas terminarem." : partial ? "Uma etapa teve falha ou cobertura limitada; a ausência de itens não confirma que não existam problemas." : "As verificações concluídas não identificaram ocorrências nesta execução."}</p>
+    </section> : <section className="findings" aria-label="Vulnerabilidades e melhorias">
+      <div className="findings-heading"><h2>Vulnerabilidades/Melhorias</h2><span>{groups.size} arquivo(s) com ocorrências</span></div>
+      {orderedGroups.map(([file, group]) => <div className="file-group" key={file}>
+        <h3><span aria-hidden="true">⌘</span> {file}</h3>
+        {group.map((item) => <details className="finding" key={item.key}>
+          <summary><div><span className={`badge ${item.priority.toLowerCase()}`}>{priorityLabels[item.priority]}</span><span className="ai-kicker">{item.source}</span><h4>{item.title}</h4><p>{item.finding?.cwe ? `${item.finding.cwe} · ` : ""}Linha {item.line}{item.column ? `, coluna ${item.column}` : ""}</p></div><span className="expand">Ver detalhes <span aria-hidden="true">⌄</span></span></summary>
+          <div className="finding-detail">
+            {item.finding ? <>
+              <h5>Descrição</h5><p>{item.finding.description}</p><h5>Trecho do código</h5><pre><code><span className="line-number">{item.finding.line}</span>{item.finding.snippet}</code></pre>
+              {item.finding.taintTrace && <TaintTraceView trace={item.finding.taintTrace} />}
+              {item.finding.aiAssessment && <section className="ai-assessment" aria-label="Avaliação consultiva da IA"><div className="ai-assessment-heading"><div><span className="ai-kicker">ANÁLISE SEMÂNTICA</span><h5>Avaliação da IA</h5></div><span className="ai-consultive">Consultiva</span></div><div className="ai-assessment-summary"><div><span>Severidade sugerida:<strong className={`ai-severity ai-severity-${item.finding.aiAssessment.suggestedSeverity.toLowerCase()}`}>{severityNames[item.finding.aiAssessment.suggestedSeverity]}</strong></span></div><div><span>Provável falso positivo:<strong>{item.finding.aiAssessment.likelyFalsePositive ? "Sim" : "Não"}</strong></span></div><div><span>Confiança do modelo:<strong>{Math.round(item.finding.aiAssessment.confidence * 100)}%</strong></span></div></div><div className="ai-assessment-copy">{item.finding.aiAssessment.risk && <div><h6>Risco contextual</h6><p>{item.finding.aiAssessment.risk}</p></div>}<div><h6>Justificativa</h6><p>{item.finding.aiAssessment.rationale}</p></div>{item.finding.aiAssessment.evidence?.length ? <div><h6>Evidências</h6><ul>{item.finding.aiAssessment.evidence.map((evidence, index) => <li key={index}>{evidence}</li>)}</ul></div> : null}{item.finding.aiAssessment.falsePositiveReason && <div><h6>Motivo da avaliação de falso positivo</h6><p>{item.finding.aiAssessment.falsePositiveReason}</p></div>}<div><h6>Remediação sugerida</h6><p>{item.finding.aiAssessment.remediation}</p></div>{item.finding.aiAssessment.recommendations?.length ? <div><h6>Ações recomendadas</h6><ul>{item.finding.aiAssessment.recommendations.map((recommendation, index) => <li key={index}>{recommendation}</li>)}</ul></div> : null}{item.finding.aiAssessment.limitations && <div><h6>Limitações</h6><p>{item.finding.aiAssessment.limitations}</p></div>}</div><small className="ai-assessment-meta">Modelo {item.finding.aiAssessment.model} · A severidade exibida permanece a da regra.</small></section>}
+              <span className="muted">Regra {item.finding.ruleId} · {item.finding.fileName}</span>
+            </> : item.suggestion && <><h5>Evidência</h5><p>{item.suggestion.evidence}</p><h5>Justificativa</h5><p>{item.suggestion.rationale}</p><h5>Recomendação</h5><p>{item.suggestion.recommendation}</p><h5>Confiança</h5><p>{Math.round(item.suggestion.confidence * 100)}%</p><h5>Limitações</h5><p>{item.suggestion.limitations}</p><small className="ai-assessment-meta">Modelo {item.suggestion.model} · Sugestão consultiva</small></>}
           </div>
-          {[...groups].map(([file, findings]) => (
-            <div className="file-group" key={file}>
-              <h3>
-                <span aria-hidden="true">⌘</span> {file}
-              </h3>
-              {findings.map((f) => (
-                <details
-                  className="finding"
-                  key={f.ruleId + ":" + f.line + ":" + f.column}
-                >
-                  <summary>
-                    <div>
-                      <span className={"badge " + f.severity.toLowerCase()}>
-                        {severityNames[f.severity]}
-                      </span>
-                      <h4>{f.title}</h4>
-                      <p>
-                        {f.cwe} <span>·</span> Linha {f.line}, coluna {f.column}
-                      </p>
-                    </div>
-                    <span className="expand">
-                      Ver detalhes <span aria-hidden="true">⌄</span>
-                    </span>
-                  </summary>
-                  <div className="finding-detail">
-                    <h5>Descrição</h5>
-                    <p>{f.description}</p>
-                    <h5>Trecho do código</h5>
-                    <pre>
-                      <code>
-                        <span className="line-number">{f.line}</span>
-                        {f.snippet}
-                      </code>
-                    </pre>
-                    {f.taintTrace && <TaintTraceView trace={f.taintTrace} />}
-                    {f.aiAssessment && <section className="ai-assessment" aria-label="Sugestão da IA">
-                      <div className="ai-assessment-heading">
-                        <div>
-                          <span className="ai-kicker">ANÁLISE SEMÂNTICA</span>
-                          <h5>Sugestão da IA</h5>
-                        </div>
-                        <span className="ai-consultive">Consultiva</span>
-                      </div>
-                      <div className="ai-assessment-summary">
-                        <div>
-                          <span>
-                            Severidade sugerida:
-                            <strong className={`ai-severity ai-severity-${f.aiAssessment.suggestedSeverity.toLowerCase()}`}>
-                              {severityNames[f.aiAssessment.suggestedSeverity]}
-                            </strong>
-                          </span>
-                        </div>
-                        <div>
-                          <span>
-                            Provável falso positivo:
-                            <strong>{f.aiAssessment.likelyFalsePositive ? "Sim" : "Não"}</strong>
-                          </span>
-                        </div>
-                        <div>
-                          <span>
-                            Confiança do modelo:
-                            <strong>{Math.round(f.aiAssessment.confidence * 100)}%</strong>
-                          </span>
-                        </div>
-                      </div>
-                      <div className="ai-assessment-copy">
-                        {f.aiAssessment.risk && <div>
-                          <h6>Risco contextual</h6>
-                          <p>{f.aiAssessment.risk}</p>
-                        </div>}
-                        <div>
-                          <h6>Justificativa</h6>
-                          <p>{f.aiAssessment.rationale}</p>
-                        </div>
-                        {f.aiAssessment.evidence && f.aiAssessment.evidence.length > 0 && <div>
-                          <h6>Evidências</h6>
-                          <ul>{f.aiAssessment.evidence.map((item, index) => <li key={index}>{item}</li>)}</ul>
-                        </div>}
-                        {f.aiAssessment.falsePositiveReason && <div>
-                          <h6>Motivo da avaliação de falso positivo</h6>
-                          <p>{f.aiAssessment.falsePositiveReason}</p>
-                        </div>}
-                        <div>
-                          <h6>Remediação sugerida</h6>
-                          <p>{f.aiAssessment.remediation}</p>
-                        </div>
-                        {f.aiAssessment.recommendations && f.aiAssessment.recommendations.length > 0 && <div>
-                          <h6>Ações recomendadas</h6>
-                          <ul>{f.aiAssessment.recommendations.map((item, index) => <li key={index}>{item}</li>)}</ul>
-                        </div>}
-                        {f.aiAssessment.limitations && <div>
-                          <h6>Limitações</h6>
-                          <p>{f.aiAssessment.limitations}</p>
-                        </div>}
-                      </div>
-                      <small className="ai-assessment-meta">Modelo {f.aiAssessment.model} · Confirme a sugestão antes de agir.</small>
-                    </section>}
-                    <span className="muted">
-                      Regra {f.ruleId} · {f.fileName}
-                    </span>
-                  </div>
-                </details>
-              ))}
-            </div>
-          ))}
-        </section>
-      )}
-      <p className="result-footer">
-        Concluída em {new Date(data.createdAt).toLocaleString("pt-BR")} ·
-        Análise estática Java
-      </p>
-    </>
-  );
+        </details>)}
+      </div>)}
+    </section>}
+    <p className="result-footer">Concluída em {new Date(data.createdAt).toLocaleString("pt-BR")} · Análise estática Java</p>
+  </>;
 }

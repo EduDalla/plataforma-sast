@@ -136,7 +136,7 @@ describe("fluxo autenticado da análise", () => {
     }] });
     render(<App />);
     await submit();
-    expect(await screen.findByRole("region", { name: "Possíveis problemas sugeridos pela IA" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Vulnerabilidades/Melhorias" })).toBeInTheDocument();
     expect(screen.getByText("Avaliar busca em lote")).toBeInTheDocument();
     expect(location.pathname).toBe("/analyses/analysis-1");
   });
@@ -312,8 +312,8 @@ describe("fluxo autenticado da análise", () => {
     const center = await screen.findByLabelText("Notificações da análise");
     expect(center.querySelectorAll("li")).toHaveLength(3);
     expect(within(center).getByText("Analisando arquivos Java")).toBeInTheDocument();
-    expect(within(center).getByText("Avaliação dos achados")).toBeInTheDocument();
-    expect(within(center).getByText("Sugestões consultivas")).toBeInTheDocument();
+    expect(within(center).getByText("Avaliação de vulnerabilidades/melhorias")).toBeInTheDocument();
+    expect(within(center).getByText("Verificação de vulnerabilidades/melhorias adicionais")).toBeInTheDocument();
     expect(center.querySelector(".analysis-notification-copy span")).toHaveTextContent(/12 de 46/);
   });
   it("trata sucesso sem achados", async () => {
