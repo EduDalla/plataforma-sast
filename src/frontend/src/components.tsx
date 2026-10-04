@@ -786,7 +786,13 @@ export function Results({
       </div>
       {data.findings.length === 0 ? (
         <section className="panel empty">
-          <span className="complete-mark">✓</span>
+          {data.status === "PROCESSING" ? (
+            <span className="empty-loading" role="status" aria-label="Carregando resultados">
+              <span className="spinner" aria-hidden="true" />
+            </span>
+          ) : (
+            <span className="complete-mark">✓</span>
+          )}
           <h2>{data.status === "PROCESSING" ? "Aguardando resultados" : "Nenhuma vulnerabilidade encontrada"}</h2>
           <p>
             {data.status === "PROCESSING" ? "Os findings determinísticos aparecerão aqui assim que forem processados." : "Não encontramos ocorrências das regras verificadas nesta análise."}

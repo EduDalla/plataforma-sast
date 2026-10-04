@@ -392,6 +392,20 @@
   text-align: center;
   padding: 55px 25px;
 }
+.empty-loading {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  margin: 0 auto;
+}
+.empty-loading .spinner {
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  border-color: var(--border-muted);
+  border-top-color: var(--accent);
+}
 .empty h2 {
   margin: 20px 0 10px;
 }
