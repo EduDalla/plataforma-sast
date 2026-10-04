@@ -79,9 +79,13 @@ public class AnalysisController {
             String description, String fileName, int line, int column, String snippet,
             TaintTrace taintTrace, AiAssessment aiAssessment) {}
 
+    public record ResultSummary(int total, int critical, int high, int medium, int low,
+            int unclassified, String highestPriority) {}
+
     public record Result(UUID analysisId, String status, String repositoryUrl, String reference,
             String language, int filesAnalyzed, Instant createdAt, String semanticStatus,
             String suggestionStatus, List<AiSuggestion> suggestions, List<FindingResult> findings,
+            ResultSummary resultSummary,
             String stage, int filesProcessed, int filesTotal, String failureStage, String failureMessage) {}
 
     private Result toResult(Analysis analysis) {
@@ -108,7 +112,8 @@ public class AnalysisController {
                 .toList();
         return new Result(analysis.id, analysis.status, analysis.repositoryUrl, analysis.reference,
                 analysis.language, analysis.filesAnalyzed, analysis.createdAt, analysis.semanticStatus,
-                analysis.suggestionStatus, suggestions, findings, analysis.stage, analysis.filesProcessed,
+                analysis.suggestionStatus, suggestions, findings, summarize(findings, suggestions),
+                analysis.stage, analysis.filesProcessed,
                 analysis.filesTotal, analysis.failureStage, analysis.failureMessage);
     }
 
@@ -134,16 +139,86 @@ public class AnalysisController {
         }
     }
 
-    public record HistoryEntry(UUID analysisId, String reference, Instant createdAt, int filesAnalyzed, int findings) {}
+    public record HistoryEntry(UUID analysisId, String reference, Instant createdAt, int filesAnalyzed,
+            int findings, ResultSummary resultSummary) {}
     public record SystemCard(String owner, String repositoryName, String repositoryUrl,
             Instant latestCreatedAt, int totalAnalyses, HistoryEntry latest) {}
     public record SystemsPage(List<SystemCard> systems, int page, int size, int totalSystems,
-            int totalAnalyses, int totalFindings, int totalCritical, int totalFiles) {}
+            int totalAnalyses, int totalFindings, int totalCritical, int totalFiles,
+            ResultSummary resultSummary) {}
     public record HistoryPage(String owner, String repositoryName, List<HistoryEntry> history,
             int page, int size, int total) {}
 
     private static HistoryEntry history(Analysis a) {
-        return new HistoryEntry(a.id, a.reference, a.createdAt, a.filesAnalyzed, a.findings.size());
+        return new HistoryEntry(a.id, a.reference, a.createdAt, a.filesAnalyzed, a.findings.size(),
+                summarize(a));
+    }
+
+    private static ResultSummary summarize(Analysis analysis) {
+        int critical = 0, high = 0, medium = 0, low = 0, unclassified = 0;
+        for (var finding : analysis.findings) {
+            switch (java.util.Objects.requireNonNullElse(finding.severity, "")) {
+                case "Critical" -> critical++;
+                case "High" -> high++;
+                case "Medium" -> medium++;
+                case "Low" -> low++;
+                default -> unclassified++;
+            }
+        }
+        for (var suggestion : analysis.suggestions) {
+            switch (java.util.Objects.requireNonNullElse(suggestion.severity, "")) {
+                case "Critical" -> critical++;
+                case "High" -> high++;
+                case "Medium" -> medium++;
+                case "Low" -> low++;
+                default -> unclassified++;
+            }
+        }
+        return summary(critical, high, medium, low, unclassified);
+    }
+
+    private static ResultSummary summarize(List<FindingResult> findings, List<AiSuggestion> suggestions) {
+        int critical = 0, high = 0, medium = 0, low = 0, unclassified = 0;
+        for (var finding : findings) {
+            switch (java.util.Objects.requireNonNullElse(finding.severity(), "")) {
+                case "Critical" -> critical++;
+                case "High" -> high++;
+                case "Medium" -> medium++;
+                case "Low" -> low++;
+                default -> unclassified++;
+            }
+        }
+        for (var suggestion : suggestions) {
+            switch (java.util.Objects.requireNonNullElse(suggestion.severity(), "")) {
+                case "Critical" -> critical++;
+                case "High" -> high++;
+                case "Medium" -> medium++;
+                case "Low" -> low++;
+                default -> unclassified++;
+            }
+        }
+        return summary(critical, high, medium, low, unclassified);
+    }
+
+    private static ResultSummary summarize(List<String> priorities) {
+        int critical = 0, high = 0, medium = 0, low = 0, unclassified = 0;
+        for (var priority : priorities) {
+            switch (java.util.Objects.requireNonNullElse(priority, "")) {
+                case "Critical" -> critical++;
+                case "High" -> high++;
+                case "Medium" -> medium++;
+                case "Low" -> low++;
+                default -> unclassified++;
+            }
+        }
+        return summary(critical, high, medium, low, unclassified);
+    }
+
+    private static ResultSummary summary(int critical, int high, int medium, int low, int unclassified) {
+        int total = critical + high + medium + low + unclassified;
+        String highest = critical > 0 ? "Critical" : high > 0 ? "High" : medium > 0 ? "Medium"
+                : low > 0 ? "Low" : unclassified > 0 ? "Unclassified" : null;
+        return new ResultSummary(total, critical, high, medium, low, unclassified, highest);
     }
 
     private static String findingsFingerprint(Analysis analysis) {
@@ -205,7 +280,13 @@ public class AnalysisController {
                 analyses.stream().flatMap(analysis -> analysis.findings.stream())
                         .mapToInt(finding -> "Critical".equals(finding.severity) ? 1 : 0)
                         .sum(),
-                analyses.stream().mapToInt(a -> a.filesAnalyzed).sum());
+                analyses.stream().mapToInt(a -> a.filesAnalyzed).sum(),
+                summarize(analyses.stream().flatMap(analysis -> {
+                    var priorities = new ArrayList<String>();
+                    analysis.findings.forEach(finding -> priorities.add(finding.severity));
+                    analysis.suggestions.forEach(suggestion -> priorities.add(suggestion.severity));
+                    return priorities.stream();
+                }).toList()));
     }
 
     @GetMapping("/systems/{owner}/{repository}/history")
