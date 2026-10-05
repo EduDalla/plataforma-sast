@@ -24,7 +24,7 @@ Esta matriz compara o checkout atual com o pedido de adequação e com o arquivo
 | RF14 | IA semântica e redução de falsos positivos | **Parcial.** Ollama avalia findings, sugere severidade e provável falso positivo, sem alterar a regra; não há medição documentada de precisão/impacto. | Medir em corpus rotulado e apresentar limites, confiança e taxa de avaliações inválidas/degradadas. |
 | RF15 | Taint analysis | **Parcial.** Rastreia algumas entradas HTTP até execução de comando dentro de um método. | Documentar limites, ampliar casos prioritários se a rubrica exigir e testar fontes, propagação, sanitização e sinks. |
 | RF16 | Sugestão de correção | **Atendido com cobertura limitada.** Ollama gera remediação de findings e sugestões para métodos selecionados. | Demonstrar resposta válida e degradação segura quando IA estiver indisponível. |
-| RF17 | Integração com CI/CD | **Pendente.** Não há workflow de CI/CD no checkout. | Rodar build, testes e análise SAST automaticamente em PR, com resultado consumível pelo pipeline. |
+| RF17 | Integração com CI/CD | **Parcial.** `.github/workflows/ci.yml` executa backend, frontend e validação Compose em PR e em `main`; ainda não consulta a análise SAST do repositório-alvo. | Exigir o check na branch protegida e integrar a análise SAST assíncrona no C-02, sem executar o código-alvo. |
 | RF18 | Security Gate e bloqueio de PR inseguro | **Pendente.** O teste de qualidade Maven não avalia findings do repositório submetido. | Definir política determinística, implementar gate e provar sucesso/falha em PRs de exemplo. |
 
 ## Requisitos não funcionais do documento original
@@ -36,7 +36,7 @@ Esta matriz compara o checkout atual com o pedido de adequação e com o arquivo
 | RNF03 | Docker/Compose | **Parcial.** `compose.yaml` define os serviços e `docker compose config` valida a configuração. | Fazer demonstração funcional com contêineres, health checks e análise de ponta a ponta. |
 | RNF04 | Escalabilidade e processamento assíncrono | **Parcial.** Há RabbitMQ, outbox, claim e reconciliação. | Testar concorrência, duplicação, retomada e limites de recursos; documentar capacidade observada. |
 | RNF05 | Baixo índice de falsos positivos | **Pendente de evidência.** Há testes de regras, mas não corpus rotulado nem métrica de precisão. | Definir amostras positivas/negativas e registrar falsos positivos, falsos negativos e limites do parser/taint. |
-| RNF06 | Testes automatizados | **Parcial.** Existem testes de parser, regras, API, IA e frontend. | Executá-los em CI com JDK 21 e integração; acrescentar testes do gate e das lacunas corrigidas. |
+| RNF06 | Testes automatizados | **Parcial.** Existem testes de parser, regras, API, IA e frontend, e o workflow C-01 os executa em CI; há limitações ambientais registradas para Testcontainers/Mockito fora do runner configurado. | Registrar execução limpa no CI e acrescentar testes do gate e das lacunas corrigidas. |
 | RNF07 | Manutenibilidade | **Parcial.** `SecurityRule` permite novas regras e `BackendQualityTest` verifica qualidade com baseline. | Publicar documentação técnica final, convenções e decisões de arquitetura. |
 | RNF08 | Privacidade e propriedade intelectual | **Parcial.** O fluxo restringe a origem a repositórios públicos do GitHub e não persiste fonte integral. | Registrar política de uso autorizado, retenção de dados derivados e corpus de demonstração com licença verificável. |
 

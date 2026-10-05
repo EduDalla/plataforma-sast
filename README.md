@@ -85,5 +85,6 @@ Se `src/backend/target` não estiver gravável pelo usuário atual, execute o Ma
 - [Manual técnico e API](docs/Manual-tecnico-e-api.md): inicialização, autenticação, rotas e limites de origem.
 - [Evidências e roteiro de defesa](docs/Evidencias-e-roteiro-de-defesa.md): comandos, demonstração e situação por tema.
 - [Decisões de escopo](docs/Decisoes-de-escopo.md): contrato D-01, justificativas e registro da validação da orientação.
+- [CI e operação](docs/CI-e-operacao.md): workflow, verificações automatizadas e limite entre CI e Security Gate.
 
 Esses documentos registram a implementação, as evidências e o trabalho planejado. As funcionalidades marcadas como pendentes ainda não estão implementadas.
