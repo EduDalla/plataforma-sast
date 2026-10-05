@@ -100,11 +100,12 @@ class AnalysisResultSummaryTest {
                 + result.resultSummary().medium() + result.resultSummary().low() + result.resultSummary().unclassified());
 
         var history = controller.history("acme", "demo", 0, 20, principal);
-        assertSummary(history.history().get(0).resultSummary(), 3, 1, 1, 0, 0, 1, "Critical");
+        assertSummary(history.history().get(0).resultSummary(), 1, 1, 0, 0, 0, 0, "Critical");
+        assertEquals(2, history.history().get(0).suggestions());
 
         var systems = controller.systems(0, 20, principal);
         assertSummary(systems.resultSummary(), 3, 1, 1, 0, 0, 1, "Critical");
-        assertSummary(systems.systems().get(0).latest().resultSummary(), 3, 1, 1, 0, 0, 1, "Critical");
+        assertSummary(systems.systems().get(0).latest().resultSummary(), 1, 1, 0, 0, 0, 0, "Critical");
         verify(analyses).findCompletedHistory(user.id, "acme", "demo");
         verify(analyses).findCompletedByUser(user.id);
         verify(analyses, never()).findByUserIdOrderByCreatedAtDescIdDesc(user.id);

@@ -50,6 +50,12 @@ Content-Type: application/json
 
 O campo `stage` informa a etapa; `filesProcessed` e `filesTotal` permitem acompanhar a análise determinística. Quando resolvido, `commitSha` identifica o commit de 40 caracteres analisado. Findings possuem regra, CWE, severidade, descrição, arquivo, linha, coluna e snippet; quando existente, `taintTrace` registra fonte, propagação e sink. `aiAssessment` é consultivo e não substitui a severidade do finding.
 
+## Dashboard e relatório analítico
+
+`GET /api/analyses/systems/{owner}/{repository}/history` fornece a série de execuções concluídas e distintas do usuário autenticado. Cada item informa referência, `commitSha`, data, arquivos, findings determinísticos por severidade, quantidade de sugestões consultivas e `coverageStatus`. O dashboard exibe a série em ordem cronológica, calcula a variação do total de findings em relação à execução anterior e identifica a cobertura como `CONFIRMED`, `PARTIAL` ou `FAILED`.
+
+O total, as críticas e a variação da tendência usam somente findings determinísticos. Sugestões de desempenho são exibidas separadamente no botão “Desempenho e recomendações”; sugestões consultivas de segurança permanecem na visão “Vulnerabilidades e segurança”. Execuções parciais ou com falha não são convertidas em zero confirmado.
+
 ## Limites de origem
 
 São aceitas apenas URLs HTTPS com host exato `github.com`, proprietário e repositório válidos e referência validada. O worker valida o redirecionamento para `codeload.github.com`, rejeita Zip Slip e links simbólicos e ignora diretórios de dependências/build. Nenhum caminho de repositório privado é habilitado por este contrato.

@@ -661,6 +661,15 @@ export function SystemDashboard({
   onOpen: () => void;
   onNavigate?: (href: string) => void;
 }) {
+  const chronologicalHistory = [...history].reverse();
+  const coverageLabel = (status?: string) => status === "CONFIRMED" ? "Confirmada" : status === "FAILED" ? "Falha" : "Parcial";
+  const variationLabel = (index: number, entry: HistoryEntry) => {
+    if (entry.coverageStatus && entry.coverageStatus !== "CONFIRMED") return "Não comparável";
+    const previous = chronologicalHistory[index - 1];
+    if (!previous || (previous.coverageStatus && previous.coverageStatus !== "CONFIRMED")) return "—";
+    const variation = entry.findings - previous.findings;
+    return variation > 0 ? `+${variation}` : variation < 0 ? `${variation}` : "Estável";
+  };
   return <>
     <div className="system-dashboard-heading">
       <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: data.repositoryUrl.replace("https://github.com/", "") }]} onNavigate={onNavigate || (() => onBack())} />
@@ -673,10 +682,31 @@ export function SystemDashboard({
           <small>{totalHistory} execução{totalHistory === 1 ? "" : "ões"} · mais recente à direita</small>
         </div>
         <div className="system-history-list">
-          {history.map((entry) => <button key={entry.analysisId} type="button" className={entry.analysisId === data.analysisId ? "selected" : ""} onClick={() => onSelect(entry.analysisId)} disabled={loading || entry.analysisId === data.analysisId} aria-current={entry.analysisId === data.analysisId ? "page" : undefined}>{dateLabel(entry.createdAt)} · {entry.reference || "padrão"} · {entry.resultSummary?.total ?? entry.findings} item(ns) · {entry.resultSummary?.highestPriority ? priorityLabels[entry.resultSummary.highestPriority] : "Sem prioridade"}</button>)}
+          {history.map((entry) => <button key={entry.analysisId} type="button" className={entry.analysisId === data.analysisId ? "selected" : ""} onClick={() => onSelect(entry.analysisId)} disabled={loading || entry.analysisId === data.analysisId} aria-current={entry.analysisId === data.analysisId ? "page" : undefined}>{dateLabel(entry.createdAt)} · {entry.reference || "padrão"} · {entry.findings} vulnerabilidade(s) · {entry.resultSummary?.highestPriority ? priorityLabels[entry.resultSummary.highestPriority] : "Sem prioridade"}</button>)}
           {hasMore && <button type="button" onClick={onMore} disabled={loading}>{loading ? "Carregando…" : "Carregar anteriores"}</button>}
         </div>
       </div>
+      <section className="analysis-trend" aria-labelledby="analysis-trend-title">
+        <div className="analysis-trend-heading">
+          <div><span className="eyebrow">RELATÓRIO ANALÍTICO</span><h2 id="analysis-trend-title">Tendência de vulnerabilidades</h2></div>
+          <small>Somente execuções concluídas e distintas</small>
+        </div>
+        <div className="analysis-trend-table-wrap">
+          <table aria-label="Tendência de vulnerabilidades por execução">
+            <thead><tr><th>Data</th><th>Referência / SHA</th><th>Total</th><th>Críticas determinísticas</th><th>Variação</th><th>Cobertura</th><th>Recomendações</th></tr></thead>
+            <tbody>{chronologicalHistory.length ? chronologicalHistory.map((entry, index) => <tr key={entry.analysisId}>
+              <td>{dateLabel(entry.createdAt)}</td>
+              <td><span>{entry.reference || "padrão"}</span><small>{entry.commitSha ? entry.commitSha.slice(0, 12) : "SHA não informado"}</small></td>
+              <td>{entry.coverageStatus === "CONFIRMED" || !entry.coverageStatus ? entry.findings : "—"}</td>
+              <td>{entry.coverageStatus === "CONFIRMED" || !entry.coverageStatus ? entry.resultSummary?.critical ?? 0 : "—"}</td>
+              <td>{variationLabel(index, entry)}</td>
+              <td>{coverageLabel(entry.coverageStatus)}</td>
+              <td>{entry.suggestions ?? 0}</td>
+            </tr>) : <tr><td colSpan={7}>Nenhuma execução anterior disponível para comparação.</td></tr>}</tbody>
+          </table>
+        </div>
+        <p className="analysis-trend-note">Execuções parciais ou com falha não são convertidas em zero: a ausência de findings só é confirmada quando a cobertura está completa.</p>
+      </section>
       {loading && <p className="system-status" role="status" aria-live="polite">Atualizando os dados da análise selecionada…</p>}
     </div>
     <Dashboard data={data} onOpen={onOpen} totalHistory={totalHistory} />
@@ -749,7 +779,10 @@ export function Results({
   data: Analysis;
   onNavigate?: (href: string) => void;
 }) {
-  const items = unifiedResults(data.findings, data.suggestions ?? []);
+  const [view, setView] = useState<"security" | "performance">("security");
+  const performanceSuggestions = (data.suggestions ?? []).filter((suggestion) => suggestion.category === "PERFORMANCE");
+  const securitySuggestions = (data.suggestions ?? []).filter((suggestion) => suggestion.category === "SECURITY");
+  const items = view === "security" ? unifiedResults(data.findings, securitySuggestions) : unifiedResults([], performanceSuggestions);
   const summary = data.resultSummary ?? summarizeResults(items);
   const groups = new Map<string, typeof items>();
   items.forEach((item) => groups.set(item.fileName, [...(groups.get(item.fileName) || []), item]));
@@ -770,8 +803,12 @@ export function Results({
     </div></div>
     {data.status === "FAILED" && <p className="semantic-status" role="alert">{userFriendlyFailureMessage(data)}</p>}
     {partial && data.status !== "FAILED" && <p className="semantic-status" role="status">Resultado parcial: uma etapa de IA foi concluída com cobertura limitada. Os itens exibidos não representam cobertura completa.</p>}
+    <div className="result-view-switch" role="group" aria-label="Visualização dos resultados">
+      <button type="button" aria-pressed={view === "security"} className={view === "security" ? "active" : ""} onClick={() => setView("security")}>Vulnerabilidades e segurança</button>
+      <button type="button" aria-pressed={view === "performance"} className={view === "performance" ? "active" : ""} onClick={() => setView("performance")}>Desempenho e recomendações</button>
+    </div>
     <div className="stats">
-      <div><span>Vulnerabilidades/Melhorias</span><strong>{summary.total}</strong></div>
+      <div><span>{view === "security" ? "Vulnerabilidades" : "Recomendações de desempenho"}</span><strong>{summary.total}</strong></div>
       <div><span>Críticas</span><strong className="critical-text">{summary.critical}</strong></div>
       <div><span>Altas</span><strong className="high-text">{summary.high}</strong></div>
       <div><span>Arquivos analisados</span><strong>{data.status === "PROCESSING" ? `${data.filesProcessed ?? 0}/${data.filesTotal || "…"}` : data.filesAnalyzed}<small> Java</small></strong></div>
@@ -779,7 +816,7 @@ export function Results({
     {items.length === 0 ? <section className="panel empty">
       {running ? <span className="empty-loading" role="status" aria-label="Carregando resultados"><span className="spinner" aria-hidden="true" /></span> : <span className="complete-mark">{data.status === "FAILED" ? "!" : "✓"}</span>}
       <h2>{data.status === "FAILED" ? "Análise sem conclusão" : running ? "Aguardando resultados" : partial ? "Nenhum item disponível nesta etapa parcial" : "Nenhuma vulnerabilidade ou melhoria encontrada"}</h2>
-      <p>{data.status === "FAILED" ? userFriendlyFailureMessage(data) : running ? "As vulnerabilidades e melhorias serão exibidas aqui conforme as etapas terminarem." : partial ? "Uma etapa teve falha ou cobertura limitada; a ausência de itens não confirma que não existam problemas." : "As verificações concluídas não identificaram ocorrências nesta execução."}</p>
+      <p>{data.status === "FAILED" ? userFriendlyFailureMessage(data) : running ? "Os resultados serão exibidos aqui conforme as etapas terminarem." : partial ? "Uma etapa teve falha ou cobertura limitada; a ausência de itens não confirma que não existam problemas." : view === "performance" ? "Nenhuma recomendação consultiva de desempenho foi identificada nesta execução." : "As verificações determinísticas concluídas não identificaram vulnerabilidades nesta execução."}</p>
     </section> : <section className="findings" aria-label="Vulnerabilidades e melhorias">
       <div className="findings-heading"><h2>Vulnerabilidades/Melhorias</h2><span>{groups.size} arquivo(s) com ocorrências</span></div>
       {orderedGroups.map(([file, group]) => <div className="file-group" key={file}>

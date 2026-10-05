@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it } from "vitest";
 import { Results } from "./components";
@@ -31,17 +31,18 @@ describe("lista unificada de vulnerabilidades e melhorias", () => {
     expect(item).toHaveTextContent("A entrada chega ao sink.");
     expect(within(item).getByLabelText("Código Java")).toBeInTheDocument();
     expect(within(item).getByText("exec")).toHaveClass("token", "function");
-    expect(document.querySelector(".stats")!).toHaveTextContent("Vulnerabilidades/Melhorias1");
+    expect(document.querySelector(".stats")!).toHaveTextContent("Vulnerabilidades1");
   });
   it("contabiliza sugestão independente no mesmo arquivo sem fundi-la com finding", () => {
     const data: Analysis = { ...base, suggestions: [{ category: "PERFORMANCE", severity: "High", title: "Possível N+1",
       fileName: "Example.java", line: 4, evidence: "repository.findById(id)", rationale: "Consulta no loop.",
-      confidence: 0.8, recommendation: "Buscar em lote.", limitations: "Validar por métricas.", model: "llama3.2:3b", promptVersion: "1" }] };
+    confidence: 0.8, recommendation: "Buscar em lote.", limitations: "Validar por métricas.", model: "llama3.2:3b", promptVersion: "1" }] };
     render(<Results data={data} />);
-    expect(document.querySelectorAll("details.finding")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: "Desempenho e recomendações" }));
+    expect(document.querySelectorAll("details.finding")).toHaveLength(1);
     expect(screen.getByText("Possível N+1").closest("details")).toHaveTextContent("Alta");
-    expect(document.querySelector(".stats")!).toHaveTextContent("Vulnerabilidades/Melhorias2");
-    expect(screen.getAllByLabelText("Código Java")).toHaveLength(2);
+    expect(document.querySelector(".stats")!).toHaveTextContent("Recomendações de desempenho1");
+    expect(screen.getAllByLabelText("Código Java")).toHaveLength(1);
   });
   it("usa a mesma estrutura expansível para findings e sugestões consultivas", () => {
     const data: Analysis = { ...base, findings: [], suggestions: [{ category: "SECURITY", severity: "High", title: "Revisar validação",

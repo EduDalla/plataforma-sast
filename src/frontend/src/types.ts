@@ -98,6 +98,11 @@ export interface HistoryEntry {
   filesAnalyzed: number;
   findings: number;
   resultSummary?: ResultSummary;
+  suggestions?: number;
+  commitSha?: string | null;
+  coverageStatus?: "CONFIRMED" | "PARTIAL" | "FAILED" | "PROCESSING" | string;
+  semanticStatus?: Analysis["semanticStatus"];
+  suggestionStatus?: Analysis["suggestionStatus"];
 }
 export interface SystemCard {
   owner: string;

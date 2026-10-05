@@ -5,6 +5,27 @@
   gap: 20px;
   margin-bottom: 30px;
 }
+.result-view-switch {
+  display: flex;
+  gap: 8px;
+  margin: 22px 0 18px;
+}
+.result-view-switch button {
+  border: 1px solid #cfd8cc;
+  border-radius: 6px;
+  background: #f5f7f3;
+  color: #526052;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.result-view-switch button.active,
+.result-view-switch button[aria-pressed="true"] {
+  background: #304b38;
+  border-color: #304b38;
+  color: #fff;
+}
 .semantic-status {
   border: 1px solid #c8d6e8;
   background: #f3f7fd;

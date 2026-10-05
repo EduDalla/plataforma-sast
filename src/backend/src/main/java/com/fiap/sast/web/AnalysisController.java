@@ -202,7 +202,8 @@ public class AnalysisController {
     }
 
     public record HistoryEntry(UUID analysisId, String reference, Instant createdAt, int filesAnalyzed,
-            int findings, ResultSummary resultSummary) {}
+            int findings, ResultSummary resultSummary, int suggestions, String commitSha,
+            String coverageStatus, String semanticStatus, String suggestionStatus) {}
     public record SystemCard(String owner, String repositoryName, String repositoryUrl,
             Instant latestCreatedAt, int totalAnalyses, HistoryEntry latest) {}
     public record SystemsPage(List<SystemCard> systems, int page, int size, int totalSystems,
@@ -216,7 +217,45 @@ public class AnalysisController {
 
     private static HistoryEntry history(Analysis a) {
         return new HistoryEntry(a.id, a.reference, a.createdAt, a.filesAnalyzed, a.findings.size(),
-                summarize(a));
+                summarizeFindings(a.findings), a.suggestions.size(), a.commitSha, coverageStatus(a),
+                a.semanticStatus, a.suggestionStatus);
+    }
+
+    /**
+     * Classifica a cobertura da execução sem transformar etapa incompleta em ausência de vulnerabilidades.
+     *
+     * @param analysis execução concluída ou em processamento
+     * @return estado confirmado, parcial ou com falha
+     */
+    private static String coverageStatus(Analysis analysis) {
+        if ("FAILED".equalsIgnoreCase(analysis.status)) {
+            return "FAILED";
+        }
+        if (!"COMPLETED".equalsIgnoreCase(analysis.status)
+                || analysis.filesTotal <= 0 || analysis.filesProcessed != analysis.filesTotal) {
+            return "PARTIAL";
+        }
+        return "CONFIRMED";
+    }
+
+    /**
+     * Resume exclusivamente os findings determinísticos para a série histórica.
+     *
+     * @param findings ocorrências produzidas pelas regras locais
+     * @return totais por severidade, sem sugestões consultivas da IA
+     */
+    private static ResultSummary summarizeFindings(List<Finding> findings) {
+        int critical = 0, high = 0, medium = 0, low = 0, unclassified = 0;
+        for (var finding : findings) {
+            switch (java.util.Objects.requireNonNullElse(finding.severity, "")) {
+                case "Critical" -> critical++;
+                case "High" -> high++;
+                case "Medium" -> medium++;
+                case "Low" -> low++;
+                default -> unclassified++;
+            }
+        }
+        return summary(critical, high, medium, low, unclassified);
     }
 
     private static ResultSummary summarize(Analysis analysis) {
@@ -301,7 +340,8 @@ public class AnalysisController {
                 + analysis.repositoryName + "\u001d" + String.valueOf(analysis.reference) + "\u001d"
                 + findingsFingerprint(analysis) + "\u001d" + analysis.semanticStatus + "\u001d"
                 + analysis.semanticModel + "\u001d" + analysis.promptVersion + "\u001d"
-                + analysis.snapshotHash + "\u001d" + analysis.suggestionStatus)).toList();
+                + analysis.snapshotHash + "\u001d" + analysis.commitSha + "\u001d"
+                + analysis.suggestionStatus)).toList();
     }
 
     private static String snapshotHash(List<GitHubClient.File> files) {

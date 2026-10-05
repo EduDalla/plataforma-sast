@@ -22,6 +22,23 @@ function count(label: string, expected: string) {
   expect(within(screen.getByText(label).parentElement!).getByText(expected, { selector: "strong" })).toBeInTheDocument();
 }
 describe("dashboard unificado do sistema", () => {
+  it("mostra tendência de alta, queda, estabilidade e não compara cobertura parcial", () => {
+    const summary = (total: number) => ({ total, critical: total > 1 ? 2 : 1, high: 0, medium: 0, low: 0, unclassified: 0, highestPriority: "Critical" as const });
+    render(<SystemDashboard data={analysis} history={[
+      { analysisId: "r5", reference: "main", createdAt: "2026-09-10T12:00:00Z", filesAnalyzed: 46, findings: 2, resultSummary: summary(2), coverageStatus: "CONFIRMED" },
+      { analysisId: "r4", reference: "main", createdAt: "2026-09-09T12:00:00Z", filesAnalyzed: 46, findings: 2, resultSummary: summary(2), coverageStatus: "CONFIRMED" },
+      { analysisId: "r3", reference: "main", createdAt: "2026-09-08T12:00:00Z", filesAnalyzed: 46, findings: 3, resultSummary: summary(3), coverageStatus: "CONFIRMED" },
+      { analysisId: "r2", reference: "main", createdAt: "2026-09-07T12:00:00Z", filesAnalyzed: 46, findings: 2, resultSummary: summary(2), coverageStatus: "CONFIRMED" },
+      { analysisId: "r1", reference: "main", createdAt: "2026-09-06T12:00:00Z", filesAnalyzed: 46, findings: 2, resultSummary: summary(2), coverageStatus: "PARTIAL" },
+    ]} totalHistory={5} hasMore={false} onSelect={() => {}} onBack={() => {}} onMore={() => {}} onOpen={() => {}} />);
+    const table = screen.getByRole("table", { name: "Tendência de vulnerabilidades por execução" });
+    expect(within(table).getByText("+1")).toBeInTheDocument();
+    expect(within(table).getByText("-1")).toBeInTheDocument();
+    expect(within(table).getByText("Estável")).toBeInTheDocument();
+    expect(within(table).getByText("Não comparável")).toBeInTheDocument();
+    expect(within(table).getAllByText("Confirmada")).toHaveLength(4);
+    expect(within(table).getByText("Parcial")).toBeInTheDocument();
+  });
   it("mostra itens mistos no total, prioridade e lista de revisão", () => {
     show();
     count("Análises", "3");

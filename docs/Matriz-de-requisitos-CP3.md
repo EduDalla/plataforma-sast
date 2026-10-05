@@ -20,7 +20,7 @@ Esta matriz compara o checkout atual com o pedido de adequação e com o arquivo
 | RF10 | Arquivo, linha e trecho | **Atendido.** Findings contêm localização e snippet. | Testar precisão de arquivo/linha inclusive com múltiplos achados na mesma linha. |
 | RF11 | Persistir análise e histórico | **Atendido.** PostgreSQL, migrações Flyway e histórico por repositório. | Manter isolamento por usuário e não persistir código integral. |
 | RF12 | Exibir resultados na web | **Atendido.** Há página de resultados, estados parciais e avaliações consultivas. | Testar estados concluído, degradado e falho. |
-| RF13 | Dashboard: quantidade, severidade, tendência, arquivos críticos e histórico | **Parcial.** Totais, distribuição, arquivos com mais itens e histórico existem; falta tendência calculada e exibida entre execuções. | Exibir série temporal do mesmo repositório, com definição explícita de métrica e tratamento de execuções parciais/falhas. |
+| RF13 | Dashboard: quantidade, severidade, tendência, arquivos críticos e histórico | **Parcial avançado.** Totais, distribuição, arquivos com mais itens, histórico e tendência acessível por tabela estão implementados; exportação formal continua fora do contrato. | Validar três execuções, isolamento por usuário e aprovação do formato de relatório pela orientação. |
 | RF14 | IA semântica e redução de falsos positivos | **Parcial.** Ollama avalia findings, sugere severidade e provável falso positivo, sem alterar a regra; não há medição documentada de precisão/impacto. | Medir em corpus rotulado e apresentar limites, confiança e taxa de avaliações inválidas/degradadas. |
 | RF15 | Taint analysis | **Parcial.** Rastreia algumas entradas HTTP até execução de comando dentro de um método. | Documentar limites, ampliar casos prioritários se a rubrica exigir e testar fontes, propagação, sanitização e sinks. |
 | RF16 | Sugestão de correção | **Atendido com cobertura limitada.** Ollama gera remediação de findings e sugestões para métodos selecionados. | Demonstrar resposta válida e degradação segura quando IA estiver indisponível. |
@@ -50,7 +50,7 @@ O stack atual é **JavaParser + Spring Boot + PostgreSQL + RabbitMQ + React + Do
 | CP1: Compose, parser, AST e três violações | Implementados, validação integrada pendente | Execução reproduzível e fixture de três findings sem execução do código. |
 | CP2: taint e IA local | Implementados com limites | Casos de teste, corpus de precisão e demonstração de remediação/degradação. |
 | CP3: CI/CD, gate e bloqueio de PR | Pendente | Workflow versionado, política, PR seguro aprovado e PR crítico bloqueado. |
-| CP3: dashboard e relatório analítico | Parcial | Tendência por execução, distribuição, arquivos críticos e relatório exportável ou artefato equivalente aprovado. |
+| CP3: dashboard e relatório analítico | Parcial avançado | Tendência por execução, distribuição, arquivos críticos e relatório analítico no dashboard; exportação ainda depende de decisão de formato. |
 | CP3: documentação e defesa | Parcial | Manual técnico, evidências de testes e roteiro de apresentação concluídos. |
 
 ## Decisões registradas pelo D-01
@@ -58,6 +58,6 @@ O stack atual é **JavaParser + Spring Boot + PostgreSQL + RabbitMQ + React + Do
 1. RF01: o contrato desta versão usa URL HTTPS pública do GitHub; upload não faz parte do escopo.
 2. RF02/RF08: o contrato desta versão usa Java e os três equivalentes Java descritos em `docs/Decisoes-de-escopo.md`.
 3. Stack: o contrato usa equivalência técnica e mantém o stack implementado.
-4. Relatórios: o contrato desta versão usa dashboard HTTP, resumo e histórico; exportações e Security Gate continuam fora do escopo implementado.
+4. Relatórios: o contrato desta versão usa dashboard HTTP, resumo e histórico analítico; exportações permanecem fora do escopo implementado.
 
 Essas decisões aguardam validação formal da orientação e não autorizam acesso a repositórios privados, execução de código recebido, armazenamento integral da fonte nem alteração de arquitetura sem revisão explícita.

@@ -141,6 +141,7 @@ describe("fluxo autenticado da análise", () => {
     render(<App />);
     await submit();
     expect(await screen.findByRole("heading", { name: "Vulnerabilidades/Melhorias" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Desempenho e recomendações" }));
     expect(screen.getByText("Avaliar busca em lote")).toBeInTheDocument();
     expect(location.pathname).toBe("/analyses/analysis-1");
   });
