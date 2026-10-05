@@ -1,6 +1,6 @@
 # Matriz de requisitos para a entrega final
 
-Esta matriz compara o checkout atual com o pedido de adequação e com o arquivo original `CP - Cyber - Documentação de Desenvolvimento.docx`. É um diagnóstico de planejamento, não uma declaração de que as funções pendentes já existem. O estado deve ser revisto após cada entrega do [plano](Plano-de-adequacao-CP3.md).
+Esta matriz compara o checkout atual com o pedido de adequação e com o arquivo original `CP - Cyber - Documentação de Desenvolvimento.docx`. O contrato técnico adotado para esta versão está em [Decisões de escopo](Decisoes-de-escopo.md); a validação formal da orientação ainda está pendente. É um diagnóstico de planejamento, não uma declaração de que as funções pendentes já existem.
 
 **Legenda:** atendido = há implementação e teste localizado; parcial = há implementação com limite relevante; pendente = não há implementação demonstrável; decisão = as duas descrições do trabalho exigem alinhamento antes de mudar a arquitetura.
 
@@ -8,14 +8,14 @@ Esta matriz compara o checkout atual com o pedido de adequação e com o arquivo
 
 | ID | Exigência | Estado atual e evidência | Trabalho para aceite |
 | --- | --- | --- | --- |
-| RF01 | Receber código-fonte para análise | **Decisão.** A API recebe URL e referência de repositório público em `POST /api/analyses`; não recebe texto ou pacote enviado pelo usuário. | Confirmar se o acesso por URL satisfaz a entrega. Se for obrigatório upload, especificar novo fluxo sem executar ou persistir fonte integral, antes de implementá-lo. |
-| RF02 | Identificar linguagem, com uma linguagem inicial e expansão futura | **Parcial.** A plataforma assume Java e filtra `.java`; o resumo enviado também menciona parsing multilinguagem. | Confirmar se multilinguagem é requisito da entrega final. Caso seja, projetar interface de parser/regras por linguagem e cobertura de outra linguagem, sem comprometer o isolamento atual. |
+| RF01 | Receber código-fonte para análise | **Contrato D-01:** a API recebe URL e referência de repositório público em `POST /api/analyses`; não recebe texto ou pacote enviado pelo usuário. | Validar formalmente se o acesso por URL satisfaz a entrega. Se upload for obrigatório, especificar novo fluxo sem executar ou persistir fonte integral antes de implementá-lo. |
+| RF02 | Identificar linguagem, com uma linguagem inicial e expansão futura | **Contrato D-01:** a entrega identifica Java pelo escopo configurado e filtra `.java`; não há suporte multilinguagem. | Validar se Java único atende à entrega final. Se outra linguagem for obrigatória, projetar parser/regras e impacto antes de alterar a implementação. |
 | RF03 | Validar entradas | **Parcial.** URL HTTPS, host `github.com`, proprietário, repositório e referência são validados em `GitHubClient.validate`. | Testar também os limites e mensagens de erro do fluxo de entrada que for aprovado para RF01. |
 | RF04 | Analisar estaticamente sem executar o código | **Atendido no escopo Java.** O worker lê o snapshot e usa AST; `SastEngineTest` contém teste de não execução. | Preservar esta propriedade em CI e em qualquer expansão. |
 | RF05 | Parser funcional | **Atendido no escopo Java.** `JavaParserSourceParser` usa JavaParser com sintaxe Java 21. | Demonstrar parse válido e erro de sintaxe. |
 | RF06 | Construir AST | **Atendido no escopo Java.** As regras recebem `CompilationUnit`. | Manter AST somente durante a tentativa de análise. |
 | RF07 | Motor de regras | **Atendido.** `SastEngine` recebe implementações de `SecurityRule`. | Corrigir a substituição de achados distintos na mesma linha. |
-| RF08 | Detectar vulnerabilidades iniciais | **Parcial.** Há regras Java para credencial hardcoded, `Runtime.exec()` e `ObjectInputStream.readObject()`, além de taint. O DOCX cita `eval()` e `innerHTML`, exemplos de outras linguagens. | Confirmar aceitação de equivalentes Java; demonstrar três violações e registrar o mapeamento aprovado. |
+| RF08 | Detectar vulnerabilidades iniciais | **Contrato D-01:** as três violações são credencial hardcoded (CWE-798), `Runtime.exec()`/injeção de comando (CWE-78) e `ObjectInputStream.readObject()` (CWE-502), com taint intraprocedural. `eval()` e `innerHTML` são apenas exemplos do DOCX. | Validar a aceitação dos equivalentes Java; demonstrar três violações e manter o mapeamento registrado. |
 | RF09 | Severidade, CWE e descrição | **Atendido.** `SecurityFinding` e o resultado HTTP expõem esses campos. | Preservar a severidade determinística diante da sugestão consultiva da IA. |
 | RF10 | Arquivo, linha e trecho | **Atendido.** Findings contêm localização e snippet. | Testar precisão de arquivo/linha inclusive com múltiplos achados na mesma linha. |
 | RF11 | Persistir análise e histórico | **Atendido.** PostgreSQL, migrações Flyway e histórico por repositório. | Manter isolamento por usuário e não persistir código integral. |
@@ -53,11 +53,11 @@ O stack atual é **JavaParser + Spring Boot + PostgreSQL + RabbitMQ + React + Do
 | CP3: dashboard e relatório analítico | Parcial | Tendência por execução, distribuição, arquivos críticos e relatório exportável ou artefato equivalente aprovado. |
 | CP3: documentação e defesa | Parcial | Manual técnico, evidências de testes e roteiro de apresentação concluídos. |
 
-## Decisões que precisam ser registradas antes de implementação
+## Decisões registradas pelo D-01
 
-1. RF01: URL pública é aceita como forma de envio de código ou deve haver envio direto?
-2. RF02/RF08: uma linguagem Java e três violações Java atendem à entrega final ou é obrigatória uma segunda linguagem e os exemplos `eval()`/`innerHTML`?
-3. Stack: tecnologias listadas no resumo são recomendações ou exigências literais?
-4. Relatórios: um painel e evidências de CI bastam ou é necessário exportar PDF/CSV/SARIF?
+1. RF01: o contrato desta versão usa URL HTTPS pública do GitHub; upload não faz parte do escopo.
+2. RF02/RF08: o contrato desta versão usa Java e os três equivalentes Java descritos em `docs/Decisoes-de-escopo.md`.
+3. Stack: o contrato usa equivalência técnica e mantém o stack implementado.
+4. Relatórios: o contrato desta versão usa dashboard HTTP, resumo e histórico; exportações e Security Gate continuam fora do escopo implementado.
 
-Essas decisões não autorizam acesso a repositórios privados, execução de código recebido, armazenamento integral da fonte nem alteração de arquitetura sem revisão explícita.
+Essas decisões aguardam validação formal da orientação e não autorizam acesso a repositórios privados, execução de código recebido, armazenamento integral da fonte nem alteração de arquitetura sem revisão explícita.

@@ -24,7 +24,7 @@ Evidências mínimas a guardar: status de saída, versões de JDK/Node/Docker, c
 5. **Achados (90 s):** abrir fixture autorizado com credencial hardcoded, `Runtime.exec()` e desserialização; explicar CWE, localização, snippet e, quando aplicável, o trace de taint.
 6. **IA consultiva (60 s):** distinguir avaliação/sugestão de finding determinístico; desligar Ollama ou usar timeout e mostrar `DEGRADED` sem perda dos achados.
 7. **Dashboard e histórico (60 s):** mostrar resumo por severidade, arquivos críticos, sistemas e histórico. Declarar que série temporal de tendência ainda é lacuna documentada, se a versão apresentada não a tiver.
-8. **Limitações e próximos passos (75 s):** mencionar CI/CD e Security Gate pendentes, limites intraprocedurais do taint, escopo Java e necessidade de decisões da orientação.
+8. **Limitações e próximos passos (75 s):** mencionar CI/CD e Security Gate pendentes, limites intraprocedurais do taint, escopo Java e o status de validação externa do contrato D-01.
 
 ## Fixture determinístico
 
@@ -40,4 +40,3 @@ O teste `SastEngineTest` deve ser usado para demonstrar que o fixture permanece 
 | IA consultiva | testes de Ollama e serviços semânticos | Implementado com degradação; ensaio live é opcional. |
 | CI/CD e Security Gate | não há workflow/gate versionado no checkout | Pendente. |
 | Tendência histórica | dashboard tem histórico/resumos, sem série temporal final | Parcial. |
-

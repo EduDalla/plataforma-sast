@@ -84,6 +84,6 @@ Se `src/backend/target` não estiver gravável pelo usuário atual, execute o Ma
 - [Arquitetura e fluxos](docs/Arquitetura-e-fluxos.md): contexto, contêineres, estados e fronteiras de confiança.
 - [Manual técnico e API](docs/Manual-tecnico-e-api.md): inicialização, autenticação, rotas e limites de origem.
 - [Evidências e roteiro de defesa](docs/Evidencias-e-roteiro-de-defesa.md): comandos, demonstração e situação por tema.
-- [Decisões de escopo](docs/Decisoes-de-escopo.md): interpretação atual e pontos para validação da orientação.
+- [Decisões de escopo](docs/Decisoes-de-escopo.md): contrato D-01, justificativas e registro da validação da orientação.
 
 Esses documentos registram a implementação, as evidências e o trabalho planejado. As funcionalidades marcadas como pendentes ainda não estão implementadas.
