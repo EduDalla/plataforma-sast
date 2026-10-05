@@ -625,7 +625,11 @@ function SystemCards({ data, onOpenSystem, onPage }: { data: SystemsPage; onOpen
     <div className="systems-grid">{data.systems.map((system) => {
       const key = `${system.owner}/${system.repositoryName}`;
       return <button className="system-card" key={key} type="button" onClick={() => onOpenSystem?.(system.owner, system.repositoryName)} aria-label={`Abrir dashboard de ${system.repositoryName}`}>
-        <div className="system-card-top"><div><span className="system-kicker">SISTEMA</span><h3>{system.repositoryName}</h3><p>{system.owner}/{system.repositoryName}</p></div><span className="system-count">{system.totalAnalyses} análise{system.totalAnalyses === 1 ? "" : "s"}</span></div>
+        <div className="system-card-top">
+          <div className="system-card-meta"><span className="system-kicker">SISTEMA</span><span className="system-count">{system.totalAnalyses} análise{system.totalAnalyses === 1 ? "" : "s"}</span></div>
+          <h3>{system.repositoryName}</h3>
+          <p>{system.owner}/{system.repositoryName}</p>
+        </div>
         <div className="system-latest"><span>Última análise</span><strong>{dateLabel(system.latest.createdAt)}</strong><small>{system.latest.reference || "Branch padrão"} · {system.latest.resultSummary?.total ?? system.latest.findings} vulnerabilidade(s)/melhoria(s)</small><small>Maior prioridade: {system.latest.resultSummary?.highestPriority ? priorityLabels[system.latest.resultSummary.highestPriority] : "Sem prioridade"}</small></div>
         <span className="system-open">Abrir dashboard <span aria-hidden="true">→</span></span>
       </button>;
