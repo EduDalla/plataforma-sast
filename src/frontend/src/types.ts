@@ -78,6 +78,7 @@ export interface Analysis {
   filesTotal?: number;
   failureStage?: string | null;
   failureMessage?: string | null;
+  commitSha?: string | null;
 }
 export interface AnalysisTask {
   analysisId: string;

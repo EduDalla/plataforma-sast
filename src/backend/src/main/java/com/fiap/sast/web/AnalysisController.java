@@ -147,7 +147,8 @@ public class AnalysisController {
             String language, int filesAnalyzed, Instant createdAt, String semanticStatus,
             String suggestionStatus, List<AiSuggestion> suggestions, List<FindingResult> findings,
             ResultSummary resultSummary,
-            String stage, int filesProcessed, int filesTotal, String failureStage, String failureMessage) {}
+            String stage, int filesProcessed, int filesTotal, String failureStage, String failureMessage,
+            String commitSha) {}
 
     private Result toResult(Analysis analysis) {
         var findings = analysis.findings.stream()
@@ -175,7 +176,7 @@ public class AnalysisController {
                 analysis.language, analysis.filesAnalyzed, analysis.createdAt, analysis.semanticStatus,
                 analysis.suggestionStatus, suggestions, findings, summarize(findings, suggestions),
                 analysis.stage, analysis.filesProcessed,
-                analysis.filesTotal, analysis.failureStage, analysis.failureMessage);
+                analysis.filesTotal, analysis.failureStage, analysis.failureMessage, analysis.commitSha);
     }
 
     private TaintTrace readTaintTrace(String json) {

@@ -57,6 +57,6 @@ class CompletedResultCacheTest {
         return new AnalysisController.Result(id, status, "https://github.com/acme/demo", "main",
                 "java", 1, null, "NOT_APPLICABLE", "NOT_APPLICABLE", List.of(), List.of(finding),
                 new AnalysisController.ResultSummary(1, 0, 1, 0, 0, 0, "High"),
-                status, 1, 1, null, null);
+                status, 1, 1, null, null, null);
     }
 }

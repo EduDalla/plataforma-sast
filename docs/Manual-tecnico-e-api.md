@@ -48,7 +48,7 @@ Content-Type: application/json
 {"repositoryUrl":"https://github.com/OWNER/REPO","reference":"main"}
 ```
 
-O campo `stage` informa a etapa; `filesProcessed` e `filesTotal` permitem acompanhar a análise determinística. Findings possuem regra, CWE, severidade, descrição, arquivo, linha, coluna e snippet; quando existente, `taintTrace` registra fonte, propagação e sink. `aiAssessment` é consultivo e não substitui a severidade do finding.
+O campo `stage` informa a etapa; `filesProcessed` e `filesTotal` permitem acompanhar a análise determinística. Quando resolvido, `commitSha` identifica o commit de 40 caracteres analisado. Findings possuem regra, CWE, severidade, descrição, arquivo, linha, coluna e snippet; quando existente, `taintTrace` registra fonte, propagação e sink. `aiAssessment` é consultivo e não substitui a severidade do finding.
 
 ## Limites de origem
 
@@ -57,4 +57,3 @@ São aceitas apenas URLs HTTPS com host exato `github.com`, proprietário e repo
 ## Operação segura
 
 Não use `git clone`, Maven, Gradle, JVM ou qualquer runtime sobre o repositório analisado. Os comandos de build e teste deste documento executam somente o produto e seus fixtures controlados. Logs devem conter eventos, status e identificadores técnicos, nunca tokens, fonte, prompts ou respostas brutas da IA.
-
