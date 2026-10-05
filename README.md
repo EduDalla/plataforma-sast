@@ -1,70 +1,80 @@
-# Plataforma SAST — CP1
+# Plataforma SAST
 
-Monorepo da plataforma de análise estática de segurança desenvolvida para a CP1 — Fundação e Parsers.
+Monorepo de uma plataforma de análise estática de segurança para arquivos Java de repositórios públicos do GitHub. A plataforma baixa um snapshot, inspeciona o código sem executá-lo e apresenta achados de regras determinísticas, rastros de taint e avaliações consultivas por IA local. Cada pessoa acompanha suas análises, sistemas e histórico pelo frontend.
 
-Nesta etapa, a aplicação recebe a URL de um repositório público do GitHub, baixa seu snapshot, analisa arquivos Java sem executá-los e apresenta vulnerabilidades encontradas por regras baseadas em AST. O Dashboard agrupa os sistemas por repositório e mantém o histórico das análises por data e referência Git.
+## Funcionalidades
 
-## Documentação
+- Cadastro, login e análises isoladas por usuário com JWT Bearer.
+- Análise assíncrona com acompanhamento das etapas e dos resultados parciais.
+- Regras para credencial hardcoded (CWE-798), `Runtime.exec()` (CWE-78), `ObjectInputStream.readObject()` (CWE-502) e taint analysis intraprocedural para injeção de comando.
+- Avaliação consultiva dos achados e sugestões independentes de segurança ou desempenho pelo Ollama local. A IA não altera os achados nem suas severidades determinísticas.
+- Central de sistemas, dashboard por repositório, histórico de execuções e página de resultados com origem e prioridade dos itens.
 
-- [Guia de implementação da CP1](docs/CP1-Implementacao-Fundacao-e-Parsers.md)
-- [ADR-001 — IA local e análise semântica da CP2](docs/adr/ADR-001-ia-e-analise-semantica.md)
-- [Taint Analysis — primeiro incremento da CP2](docs/CP2-Taint-Analysis.md)
-- [IA local — segundo incremento da CP2](docs/CP2-IA-Local.md)
-- [Regras para agentes Codex](AGENTS.md)
+## Como funciona
+
+```text
+Frontend → API → PostgreSQL (tarefa + outbox) → publicador → RabbitMQ → worker
+Worker → GitHub REST API → snapshot Java em memória → parser/AST e regras → Ollama local
+Worker → PostgreSQL → API → frontend (consulta periódica)
+```
+
+`POST /api/analyses` valida a URL e cria uma tarefa com resposta `202 Accepted`. O worker baixa o snapshot oficial, seleciona arquivos `.java`, executa as regras e registra o progresso. O frontend consulta a API até a conclusão ou falha. Se a IA estiver indisponível, a etapa consultiva pode ficar degradada sem remover os findings determinísticos. O código do repositório analisado nunca é compilado ou executado.
 
 ## Estrutura
 
-- `src/frontend`: aplicação React;
-- `src/backend`: API Spring Boot, JavaParser e Rules Engine;
-- `tests`: testes automatizados;
-- `docker` e `compose.yaml`: ambiente local com API, PostgreSQL, RabbitMQ, worker, frontend e Ollama;
-- `docs`: documentação técnica.
+- `src/frontend`: aplicação React, TypeScript e Vite; Nginx serve os arquivos e encaminha `/api` à API.
+- `src/backend`: API e worker Spring Boot, integração com GitHub, JavaParser, regras, taint analysis, persistência e integração com Ollama.
+- `compose.yaml` e `docker/`: ambiente local com frontend, API, worker, PostgreSQL, RabbitMQ e Ollama.
+- `docs/`: decisões e detalhes técnicos; os testes automatizados ficam junto ao backend e ao frontend.
 
-## Inicialização da CP1
+## Inicialização
+
+Com Docker e Docker Compose disponíveis, execute na raiz do monorepo:
 
 ```bash
 cp .env.example .env
-# Preencha SAST_BOOTSTRAP_EMAIL e SAST_BOOTSTRAP_PASSWORD no .env antes de iniciar.
-docker compose up --build
+# Configure no .env: SAST_BOOTSTRAP_EMAIL, SAST_BOOTSTRAP_PASSWORD e SAST_JWT_SECRET.
+docker compose up --build -d
+docker compose exec ollama ollama pull llama3.2:3b
 ```
 
+No primeiro início com banco vazio, informe um e-mail bootstrap e uma senha com pelo menos 12 caracteres e no máximo 72 bytes UTF-8. `SAST_JWT_SECRET` deve conter uma chave Base64 de pelo menos 32 bytes. Substitua também as senhas de exemplo do PostgreSQL e do RabbitMQ no `.env`. O bootstrap cria a conta uma vez e não sobrescreve usuários existentes. Depois da inicialização, também é possível criar contas pela tela de cadastro. O token do GitHub é opcional para repositórios públicos e deve ficar somente no backend.
+
+O comando `ollama pull` baixa o modelo indicado por `SAST_OLLAMA_MODEL`; ajuste o nome no comando se alterar essa variável. Sem o modelo pronto, a análise determinística continua disponível e a avaliação consultiva pode aparecer como degradada.
+
+Com as portas de `.env.example`:
+
 - Frontend: http://localhost:3000
-- API: http://localhost:8085
-- Health check: http://localhost:8085/health
+- API: http://localhost:8080
+- Health check: http://localhost:8080/health
 
-## Depuração remota do backend no Docker
+As portas podem ser alteradas por `WEB_PORT` e `API_PORT` no `.env`. O login devolve um JWT válido por 120 minutos por padrão; o frontend o guarda na `sessionStorage` da aba. Cada usuário vê apenas suas próprias análises. Não há recuperação de senha implementada.
 
-Para iniciar a API com a porta JDWP disponível somente no computador local:
+## Depuração remota do backend
+
+Para expor a porta JDWP da API apenas no computador local:
 
 ```bash
 docker compose -f compose.yaml -f compose.debug.yaml up --build
 ```
 
-`compose.debug.yaml` é um override e não deve ser informado sozinho.
-
-Anexe a IDE a `localhost:5005` usando o transportador socket. A aplicação não fica suspensa na inicialização (`suspend=n`). Para usar outra porta externa, defina `DEBUG_PORT` no `.env`; a porta interna do container permanece `5005`.
-
-Consulte o guia da CP1 para criar os projetos, configurar o GitHub, executar testes e realizar a demonstração.
-
-## Primeiro acesso
-
-Configure `SAST_BOOTSTRAP_EMAIL` e `SAST_BOOTSTRAP_PASSWORD` no seu `.env` local. Use uma senha de pelo menos 12 caracteres e no máximo 72 bytes UTF-8. A primeira inicialização cria a conta e salva somente o hash BCrypt. Depois disso, as variáveis podem ser removidas: não atualizam contas já existentes. Não há cadastro público ou recuperação de senha nesta entrega.
-
-Abra o frontend e entre com essa conta. O access token JWT dura 2 horas e fica na `sessionStorage` somente para preservar a sessão durante um F5 na mesma aba; ao sair, expirar ou fechar a aba, ele é removido. Cada usuário consulta apenas suas próprias análises; registros anteriores à autenticação são preservados, mas ficam inacessíveis. Configure `SAST_JWT_SECRET` com uma chave Base64 de pelo menos 32 bytes.
-
-O fluxo visual inclui login, nova análise de repositório público Java, processamento, uma central de sistemas e um dashboard individual por sistema. Cada dashboard individual permite selecionar uma execução do histórico por data e referência Git, com a mais recente à direita e rolagem para as anteriores. Repetir uma análise sem mudanças nos findings atualiza a data da execução existente, sem criar outro item. A URL de um resultado pode ser reaberta pelo mesmo usuário.
+`compose.debug.yaml` é um override e precisa ser usado com `compose.yaml`. Conecte a IDE a `localhost:5005` por socket. A aplicação inicia sem aguardar o depurador (`suspend=n`); `DEBUG_PORT` altera apenas a porta externa.
 
 ## Verificação
 
-Com JDK 21, Maven, Node.js e Docker disponíveis:
+Com JDK 21, Maven, Node.js e Docker disponíveis, execute na raiz:
 
 ```bash
 mvn --file src/backend/pom.xml verify
 npm --prefix src/frontend run build
 npm --prefix src/frontend run test -- --run
-docker compose config --quiet
+docker compose config
 ```
 
-Os testes de integração iniciam um PostgreSQL descartável pelo Testcontainers. A amostra vulnerável é lida como texto; nunca é compilada ou executada.
+Os testes de integração usam PostgreSQL descartável pelo Testcontainers. O fixture Java vulnerável em memória deve produzir exatamente três findings; seu código é lido como texto e não é executado.
 
-Decisões e contratos da extensão: [Autenticação e frontend](docs/CP1-Autenticacao-e-Frontend.md).
+## Documentação
+
+- [Regras gerais do sistema](REGRAS.MD) e [instruções para agentes](AGENTS.md).
+- [Parser, regras e arquitetura inicial](docs/CP1-Implementacao-Fundacao-e-Parsers.md) e [autenticação e frontend](docs/CP1-Autenticacao-e-Frontend.md).
+- [Taint analysis](docs/CP2-Taint-Analysis.md), [IA local e processamento assíncrono](docs/CP2-IA-Local.md) e [decisão arquitetural sobre análise semântica](docs/adr/ADR-001-ia-e-analise-semantica.md).
