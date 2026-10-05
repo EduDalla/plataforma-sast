@@ -39,7 +39,7 @@ public class SastEngine {
      *
      * @param source conteúdo do arquivo Java
      * @param fileName caminho do arquivo no snapshot
-     * @return findings ordenados e reduzidos por arquivo e linha
+     * @return findings ordenados e deduplicados pela identidade da ocorrência
      */
     public List<SecurityFinding> analyze(String source, String fileName) {
         return analyze(source, fileName, null);
@@ -51,17 +51,17 @@ public class SastEngine {
      * @param source conteúdo do arquivo Java
      * @param fileName caminho do arquivo no snapshot
      * @param cache cache da tentativa, ou {@code null} para parse isolado
-     * @return findings ordenados e reduzidos por arquivo e linha
+     * @return findings ordenados e deduplicados pela identidade da ocorrência
      */
     public List<SecurityFinding> analyze(String source, String fileName, AnalysisParseCache cache) {
         final var ast = cache == null ? parse(source, fileName) : parse(cache, source, fileName);
-        Map<FileLine, SecurityFinding> latestByLine = new LinkedHashMap<>();
+        Map<FindingIdentity, SecurityFinding> findingsByIdentity = new LinkedHashMap<>();
         for (var rule : rules) {
             for (var finding : rule.analyze(ast, source, fileName)) {
-                latestByLine.put(new FileLine(finding.fileName(), finding.line()), finding);
+                findingsByIdentity.putIfAbsent(FindingIdentity.from(finding), finding);
             }
         }
-        return latestByLine.values().stream()
+        return findingsByIdentity.values().stream()
                 .sorted(Comparator.comparing(SecurityFinding::fileName)
                         .thenComparing(SecurityFinding::line)
                         .thenComparing(SecurityFinding::column)
@@ -69,7 +69,20 @@ public class SastEngine {
                 .toList();
     }
 
-    private record FileLine(String fileName, int line) {}
+    /**
+     * Identidade da ocorrência detectada no AST.
+     *
+     * <p>A linha sozinha não identifica um finding: duas regras ou dois nós
+     * diferentes podem começar na mesma linha. O trecho participa da chave
+     * para distinguir nós que compartilham a mesma posição inicial, enquanto
+     * a regra impede que uma regra substitua outra.</p>
+     */
+    private record FindingIdentity(String ruleId, String fileName, int line, int column, String snippet) {
+        private static FindingIdentity from(SecurityFinding finding) {
+            return new FindingIdentity(finding.ruleId(), finding.fileName(), finding.line(),
+                    finding.column(), finding.snippet());
+        }
+    }
 
     private com.github.javaparser.ast.CompilationUnit parse(String source, String fileName) {
         try {

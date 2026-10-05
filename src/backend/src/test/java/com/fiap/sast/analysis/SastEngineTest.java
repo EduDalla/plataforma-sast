@@ -1,9 +1,12 @@
 package com.fiap.sast.analysis;
 
 import com.fiap.sast.parsing.JavaParserSourceParser;
+import com.fiap.sast.parsing.InvalidJavaSourceException;
 import com.fiap.sast.rules.DeserializationRule;
 import com.fiap.sast.rules.HardcodedCredentialRule;
 import com.fiap.sast.rules.RuntimeExecRule;
+import com.fiap.sast.rules.SecurityRule;
+import com.github.javaparser.ast.CompilationUnit;
 import com.fiap.sast.taint.TaintAnalysisEngine;
 import org.junit.jupiter.api.Test;
 
@@ -61,7 +64,7 @@ class SastEngineTest {
 
         var findings = engine.analyze(source, "Controller.java");
 
-        assertEquals(List.of("SAST-JAVA-001", "TAINT-CMDI-001"),
+        assertEquals(List.of("SAST-JAVA-001", "SAST-JAVA-002", "TAINT-CMDI-001"),
                 findings.stream().map(SecurityFinding::ruleId).toList());
         var taintFinding = findings.stream().filter(f -> f.ruleId().equals("TAINT-CMDI-001")).findFirst().orElseThrow();
         assertNotNull(taintFinding.taintTrace());
@@ -69,20 +72,71 @@ class SastEngineTest {
     }
 
     @Test
-    void mantemUltimaVerificacaoNaMesmaLinhaDoMesmoArquivo() {
+    void preservaAchadosDeRegrasDiferentesNaMesmaLinha() {
         var source = "class Example { void run() throws Exception { String password = \"x\"; Runtime.getRuntime().exec(\"x\"); } }";
-        var credential = new HardcodedCredentialRule();
-        var runtime = new RuntimeExecRule();
+        var findings = new SastEngine(new JavaParserSourceParser(), List.of(
+                new HardcodedCredentialRule(), new RuntimeExecRule()))
+                .analyze(source, "One.java");
 
-        var latestRuntime = new SastEngine(new JavaParserSourceParser(), List.of(credential, runtime));
-        assertEquals(List.of("SAST-JAVA-002"), latestRuntime.analyze(source, "One.java").stream()
+        assertEquals(List.of("SAST-JAVA-001", "SAST-JAVA-002"), findings.stream()
                 .map(SecurityFinding::ruleId).toList());
+    }
 
-        var latestCredential = new SastEngine(new JavaParserSourceParser(), List.of(runtime, credential));
-        assertEquals(List.of("SAST-JAVA-001"), latestCredential.analyze(source, "One.java").stream()
+    @Test
+    void preservaDoisAchadosDaMesmaRegraNaMesmaLinha() {
+        var source = "class Example { void run() { String password = \"x\", token = \"y\"; } }";
+        var findings = new SastEngine(new JavaParserSourceParser(), List.of(new HardcodedCredentialRule()))
+                .analyze(source, "One.java");
+
+        assertEquals(2, findings.size());
+        assertEquals(List.of("SAST-JAVA-001", "SAST-JAVA-001"), findings.stream()
                 .map(SecurityFinding::ruleId).toList());
-        assertEquals(List.of("SAST-JAVA-002"), latestRuntime.analyze(source, "Two.java").stream()
-                .map(SecurityFinding::ruleId).toList());
+        assertNotEquals(findings.get(0).column(), findings.get(1).column());
+    }
+
+    @Test
+    void deduplicaAmesmaOcorrenciaEmitidaMaisDeUmaVez() {
+        var duplicate = new SecurityRule() {
+            @Override
+            public String ruleId() {
+                return "TEST-DUPLICATE";
+            }
+
+            @Override
+            public List<SecurityFinding> analyze(CompilationUnit ast, String source, String file) {
+                var finding = new SecurityFinding(ruleId(), "Teste", "Low", "CWE-TEST",
+                        "Ocorrência repetida", file, 1, 1, "class Example {}");
+                return List.of(finding, finding);
+            }
+        };
+
+        var findings = new SastEngine(new JavaParserSourceParser(), List.of(duplicate))
+                .analyze("class Example {}", "Example.java");
+
+        assertEquals(1, findings.size());
+        assertEquals("TEST-DUPLICATE", findings.getFirst().ruleId());
+    }
+
+    @Test
+    void rejeitaFonteJavaInvalidaSemProduzirFinding() {
+        var engine = new SastEngine(new JavaParserSourceParser(), List.of(new RuntimeExecRule()));
+
+        var exception = assertThrows(InvalidJavaSourceException.class,
+                () -> engine.analyze("class Broken {", "Broken.java"));
+
+        assertEquals("Broken.java", exception.fileName);
+    }
+
+    @Test
+    void naoAlertaPadraoSeguroSemCredencialNemExecucao() {
+        var source = "class SafeExample { void run(String value) {"
+                + " String password = readFromVault();"
+                + " logger.info(value); }"
+                + " String readFromVault() { return \"configured\"; } }";
+        var engine = new SastEngine(new JavaParserSourceParser(), List.of(
+                new HardcodedCredentialRule(), new RuntimeExecRule(), new DeserializationRule()));
+
+        assertTrue(engine.analyze(source, "SafeExample.java").isEmpty());
     }
 
     @Test
