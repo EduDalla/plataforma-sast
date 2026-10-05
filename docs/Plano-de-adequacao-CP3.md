@@ -83,9 +83,10 @@ Este plano transforma as lacunas da [matriz](Matriz-de-requisitos-CP3.md) em tar
 
 ## E-01 — Documentação e defesa
 
-- Produzir diagramas C4 de contexto e contêineres coerentes com o Compose, mostrando fronteiras de confiança e fluxo assíncrono.
-- Completar documentação técnica de API, autenticação, estados, modelo de dados, regras/CWE, taint, IA, gate, limites e operação. Corrigir referências antigas no README.
-- Preparar roteiro de demonstração: submissão autorizada, AST e três violações, trace de taint, IA consultiva, dashboard/tendência, PR seguro e PR bloqueado, além de falha de Ollama.
+- Produzir diagramas C4 de contexto e contêineres coerentes com o Compose, mostrando fronteiras de confiança e fluxo assíncrono. **Documentado em `docs/Arquitetura-e-fluxos.md`.**
+- Completar documentação técnica de API, autenticação, estados, regras/CWE, taint, IA, limites e operação. **Documentado em `docs/Manual-tecnico-e-api.md`; modelo de dados detalhado continua dependente das migrações e da evolução do contrato.**
+- Preparar roteiro de demonstração: submissão autorizada, AST e três violações, trace de taint, IA consultiva, dashboard/tendência, PR seguro e PR bloqueado, além de falha de Ollama. **Roteiro e matriz de evidências em `docs/Evidencias-e-roteiro-de-defesa.md`; CI, gate e tendência permanecem explicitamente pendentes.**
+- Registrar a interpretação atual da rubrica e os pontos que exigem confirmação da orientação em `docs/Decisoes-de-escopo.md`.
 - Dividir responsáveis no grupo e guardar evidências de execução e decisões, sem copiar repositórios de terceiros para o material público.
 
-**Aceite:** outra pessoa consegue instalar, verificar e repetir a demonstração a partir dos documentos; cada RF/RNF aponta para evidência de código, teste ou decisão registrada.
+**Aceite documental:** outra pessoa consegue instalar, verificar e repetir a parte implementada da demonstração a partir dos documentos; cada RF/RNF aponta para evidência de código, teste ou decisão registrada. A aceitação integral da entrega continua condicionada às lacunas técnicas listadas na matriz.

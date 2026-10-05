@@ -81,5 +81,9 @@ Se `src/backend/target` não estiver gravável pelo usuário atual, execute o Ma
 - [Matriz de requisitos da entrega final](docs/Matriz-de-requisitos-CP3.md): estado atual, lacunas e decisões de escopo.
 - [Plano de adequação](docs/Plano-de-adequacao-CP3.md): ordem de implementação e critérios de aceite.
 - [Critérios de aceite e defesa](docs/Criterios-de-aceite-e-defesa.md): verificações, evidências e roteiro de apresentação.
+- [Arquitetura e fluxos](docs/Arquitetura-e-fluxos.md): contexto, contêineres, estados e fronteiras de confiança.
+- [Manual técnico e API](docs/Manual-tecnico-e-api.md): inicialização, autenticação, rotas e limites de origem.
+- [Evidências e roteiro de defesa](docs/Evidencias-e-roteiro-de-defesa.md): comandos, demonstração e situação por tema.
+- [Decisões de escopo](docs/Decisoes-de-escopo.md): interpretação atual e pontos para validação da orientação.
 
-Esses três documentos registram trabalho planejado. As funcionalidades marcadas como pendentes ainda não estão implementadas.
+Esses documentos registram a implementação, as evidências e o trabalho planejado. As funcionalidades marcadas como pendentes ainda não estão implementadas.

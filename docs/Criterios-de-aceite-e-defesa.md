@@ -50,23 +50,37 @@ Para o ensaio HTTP, guardar somente status, UUID, estados, contagens e localiza�
 
 ## Evidências de segurança, qualidade e operação
 
-- [ ] Fonte analisada permanece em memória; nenhum processo do repositório alvo é executado, compilado ou testado.
-- [ ] Archive inseguro, link simbólico, caminho perigoso e limite excedido são rejeitados/ignorados segundo a política do projeto.
-- [ ] O serviço de CI não publica token, segredo, snippet, prompt, resposta bruta de IA nem código-fonte integral em logs ou artefatos.
-- [ ] Corpus rotulado de regras e taint registra falsos positivos/falsos negativos; resultados da IA são identificados como consultivos.
-- [ ] Retentativa de publicação, mensagem duplicada e retomada do worker têm evidência de teste ou ensaio operacional.
-- [ ] Capacidade observada (tempo, memória, concorrência, limites) é registrada sem chamar o Compose de prova de escalabilidade de produção.
-- [ ] Código usado na demonstração é próprio, licenciado para esse uso ou possui autorização documentada.
+Registro verificado em 05/10/2026 contra o checkout atual. A classificação abaixo separa evidência automatizada no código do produto, ensaio operacional e lacunas que ainda exigem um ambiente autorizado.
+
+| Item | Status | Evidência reproduzível e limite da conclusão |
+| --- | --- | --- |
+| Fonte analisada permanece em memória; nenhum processo do repositório alvo é executado, compilado ou testado | Comprovado no escopo do teste | `GitHubClient.download` usa archive em memória e `SastEngineTest.analiseNaoExecutaInicializadorDoCodigoFonte` confirma que um inicializador Java não é executado. O teste do fixture `SastEngineTest.fixtureVulneravelProduzTresFindingsComTodosOsCampos` produz exatamente três findings. Isso cobre o fluxo unitário; ainda não substitui um ensaio ponta a ponta com um repositório público autorizado. |
+| Archive inseguro, link simbólico, caminho perigoso e limite excedido são rejeitados/ignorados | Comprovado por teste unitário | `GitHubClientTest.archiveFilteringAndLimits` cobre diretório `target`, Zip Slip e limite por arquivo; `GitHubClientTest.ignoresUnixSymlinkFromCentralDirectory` cobre link simbólico. A implementação também limita entradas, arquivos Java e bytes extraídos e valida o redirecionamento para `codeload.github.com`. |
+| O serviço de CI não publica token, segredo, snippet, prompt, resposta bruta de IA nem código-fonte integral | Parcial | O checkout não possui workflow em `.github/workflows/`; portanto não há evidência de CI nem artefato publicado. No produto, `RequestLoggingFilter`, `ApiExceptionHandler` e os serviços semânticos registram eventos, contagens, estados e tipos de erro sem corpos, snippets, prompts ou respostas brutas; `SAST_GITHUB_TOKEN` é consumido apenas no backend. A política de CI continua pendente até C-01. |
+| Corpus rotulado de regras e taint registra falsos positivos e falsos negativos; IA é consultiva | Parcial | Há fixtures e testes para regras, taint, respostas inválidas e estado `DEGRADED` (`SecurityRulesTest`, `TaintAnalysisEngineTest`, `SemanticAnalysisServiceTest` e `SemanticSuggestionServiceTest`). Não há corpus versionado com rótulos, denominadores, falsos positivos/falsos negativos ou métrica de impacto da IA; Q-01 permanece pendente. |
+| Retentativa de publicação, mensagem duplicada e retomada do worker têm evidência de teste ou ensaio operacional | Parcial | O código implementa outbox com confirmação, backoff, claim por lease, `basicAck` de mensagens duplicadas e reconciliação de leases (`AnalysisOutboxPublisher`, `AnalysisWorkerListener` e `AnalysisLeaseReconciler`). `AnalysisControllerTest` cobre a criação transacional da outbox, mas não há teste dedicado de falha/duplicação/retomada nem ensaio com RabbitMQ; O-01 permanece pendente. |
+| Capacidade observada (tempo, memória, concorrência e limites) é registrada sem alegar escalabilidade de produção | Pendente | Os limites de archive, arquivos Java, arquivo individual e bytes extraídos estão configurados no Compose e exercitados por teste. Ainda não foram registrados tempo por análise, pico de memória, concorrência ou comportamento sob duas tarefas; não há base para declarar capacidade de produção. |
+| Código usado na demonstração é próprio, licenciado para esse uso ou possui autorização documentada | Parcial | O fixture principal é uma string Java mantida em memória no teste (`SastEngineTest`), sem cópia de repositório de terceiros. A demonstração com repositório público ainda precisa registrar a URL, SHA, licença ou autorização no pacote de evidências, sem anexar o código integral. |
+
+### Comandos e resultados registrados
+
+No checkout verificado, `npm --prefix src/frontend run build`, `npm --prefix src/frontend run test -- --run` (5 arquivos e 39 testes) e `docker compose config --quiet` passaram. Os testes unitários específicos de `SastEngineTest`, `GitHubClientTest`, `TaintAnalysisEngineTest`, `SemanticAnalysisServiceTest`, `SemanticSuggestionServiceTest` e `AnalysisJobServiceTest` passaram quando isolados dos testes que exigem recursos bloqueados pelo sandbox.
+
+O `mvn verify` completo não foi considerado evidência positiva neste ambiente: o teste de integração com Testcontainers não encontrou um daemon Docker. A execução também não é uma prova negativa do produto. Os testes que usam Mockito falharam ao carregar o agente Byte Buddy e os testes HTTP locais do cliente Ollama não puderam abrir socket; esses resultados devem ser repetidos em ambiente de desenvolvimento/CI com Docker e permissões de instrumentação habilitados. Nenhum teste executou código baixado de repositório analisado.
+
+Não marcar como concluídos os itens de CI, corpus de precisão, ensaio de RabbitMQ/worker, capacidade ou autorização do repositório de demonstração sem anexar a evidência correspondente ao registro abaixo.
 
 ## Pacote documental da entrega
 
-- [ ] Diagrama C4 de contexto e contêineres: usuário, GitHub público, frontend, API, PostgreSQL, RabbitMQ, worker e Ollama; setas e fronteiras de confiança corretas.
-- [ ] Manual de instalação e configuração sem valores reais de `.env`.
-- [ ] Contratos HTTP e estados `QUEUED`, `DOWNLOADING`, `DETERMINISTIC`, `SEMANTIC`, `SUGGESTIONS`, `COMPLETED` e `FAILED` documentados.
+- [x] Diagrama C4 de contexto e contêineres: usuário, GitHub público, frontend, API, PostgreSQL, RabbitMQ, worker e Ollama; setas e fronteiras de confiança corretas. Ver [Arquitetura e fluxos](Arquitetura-e-fluxos.md).
+- [x] Manual de instalação e configuração sem valores reais de `.env`. Ver [Manual técnico e API](Manual-tecnico-e-api.md).
+- [x] Contratos HTTP e estados `QUEUED`, `DOWNLOADING`, `DETERMINISTIC`, `SEMANTIC`, `SUGGESTIONS`, `COMPLETED` e `FAILED` documentados. Ver [Manual técnico e API](Manual-tecnico-e-api.md).
 - [ ] Catálogo de regras e CWE, limites da taint analysis, política do Security Gate e comportamento de degradação da IA documentados.
 - [ ] Relatório analítico com período, repositório, referência/SHA, severidades, tendência, arquivos críticos e limitações de cobertura.
 - [ ] Matriz RF01–RF18 e RNF01–RNF08 revisada com links para código, testes e evidências reais.
-- [ ] Responsáveis do grupo e roteiro de defesa definidos; cada demonstração possui alternativa gravada ou fixture autorizado para caso de indisponibilidade de rede/IA.
+- [x] Roteiro de defesa e matriz de evidências produzidos. Ver [Evidências e roteiro de defesa](Evidencias-e-roteiro-de-defesa.md). Responsáveis do grupo e gravação alternativa continuam pendentes.
+
+O catálogo técnico, as limitações, as evidências existentes e as lacunas estão descritos nos quatro documentos acima; a política executável de Security Gate e o relatório analítico com tendência continuam pendentes porque não existem no checkout atual.
 
 ## Roteiro curto de defesa
 
