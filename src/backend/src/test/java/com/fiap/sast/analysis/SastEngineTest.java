@@ -61,11 +61,28 @@ class SastEngineTest {
 
         var findings = engine.analyze(source, "Controller.java");
 
-        assertEquals(List.of("SAST-JAVA-001", "SAST-JAVA-002", "TAINT-CMDI-001"),
+        assertEquals(List.of("SAST-JAVA-001", "TAINT-CMDI-001"),
                 findings.stream().map(SecurityFinding::ruleId).toList());
         var taintFinding = findings.stream().filter(f -> f.ruleId().equals("TAINT-CMDI-001")).findFirst().orElseThrow();
         assertNotNull(taintFinding.taintTrace());
         assertEquals("http_param", taintFinding.taintTrace().source().kind());
+    }
+
+    @Test
+    void mantemUltimaVerificacaoNaMesmaLinhaDoMesmoArquivo() {
+        var source = "class Example { void run() throws Exception { String password = \"x\"; Runtime.getRuntime().exec(\"x\"); } }";
+        var credential = new HardcodedCredentialRule();
+        var runtime = new RuntimeExecRule();
+
+        var latestRuntime = new SastEngine(new JavaParserSourceParser(), List.of(credential, runtime));
+        assertEquals(List.of("SAST-JAVA-002"), latestRuntime.analyze(source, "One.java").stream()
+                .map(SecurityFinding::ruleId).toList());
+
+        var latestCredential = new SastEngine(new JavaParserSourceParser(), List.of(runtime, credential));
+        assertEquals(List.of("SAST-JAVA-001"), latestCredential.analyze(source, "One.java").stream()
+                .map(SecurityFinding::ruleId).toList());
+        assertEquals(List.of("SAST-JAVA-002"), latestRuntime.analyze(source, "Two.java").stream()
+                .map(SecurityFinding::ruleId).toList());
     }
 
     @Test

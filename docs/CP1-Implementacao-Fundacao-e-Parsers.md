@@ -16,6 +16,8 @@ A CP1 entrega a primeira versão funcional da plataforma de análise estática d
 
 O código obtido do GitHub **nunca é executado**. A API baixa um snapshot do repositório, seleciona somente arquivos `.java`, transforma cada arquivo em uma árvore sintática e aplica regras determinísticas. Não são executados `git clone`, instalação de dependências, scripts, builds ou testes do repositório analisado.
 
+Quando duas regras apontam para a mesma linha do mesmo arquivo, o engine mantém apenas o último finding produzido na ordem de execução das regras. Linhas e arquivos diferentes continuam independentes. O fixture vulnerável da CP1 mantém três findings porque cada violação está em uma linha distinta.
+
 ### Entregáveis cobertos
 
 | Entregável | Evidência esperada |

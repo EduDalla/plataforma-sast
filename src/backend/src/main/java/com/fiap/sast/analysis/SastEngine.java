@@ -5,7 +5,9 @@ import com.fiap.sast.rules.SecurityRule;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class SastEngine {
@@ -19,14 +21,21 @@ public class SastEngine {
 
     public List<SecurityFinding> analyze(String source, String fileName) {
         final var ast = parse(source, fileName);
-        return rules.stream()
-                .flatMap(rule -> rule.analyze(ast, source, fileName).stream())
+        Map<FileLine, SecurityFinding> latestByLine = new LinkedHashMap<>();
+        for (var rule : rules) {
+            for (var finding : rule.analyze(ast, source, fileName)) {
+                latestByLine.put(new FileLine(finding.fileName(), finding.line()), finding);
+            }
+        }
+        return latestByLine.values().stream()
                 .sorted(Comparator.comparing(SecurityFinding::fileName)
                         .thenComparing(SecurityFinding::line)
                         .thenComparing(SecurityFinding::column)
                         .thenComparing(SecurityFinding::ruleId))
                 .toList();
     }
+
+    private record FileLine(String fileName, int line) {}
 
     private com.github.javaparser.ast.CompilationUnit parse(String source, String fileName) {
         try {
