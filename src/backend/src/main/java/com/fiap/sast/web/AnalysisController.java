@@ -63,17 +63,65 @@ public class AnalysisController {
     private final SemanticSuggestionService suggestionService;
     private final AnalysisJobService jobs;
     private final AnalysisOutboxRepository outbox;
+    private final CompletedResultCache completedResults;
 
+    /**
+     * Cria uma instância para chamadas legadas e testes sem publicador de outbox.
+     *
+     * @param git cliente do GitHub
+     * @param engine motor de regras determinísticas
+     * @param repo repositório de análises
+     * @param users repositório de usuários
+     * @param mapper serializador JSON
+     * @param semantic avaliação consultiva de findings
+     * @param suggestionService sugestões consultivas
+     * @param jobs processador de tarefas
+     */
     public AnalysisController(GitHubClient git, SastEngine engine, AnalysisRepository repo, UserRepository users,
             ObjectMapper mapper, SemanticAnalysisService semantic, SemanticSuggestionService suggestionService,
             AnalysisJobService jobs) {
-        this(git, engine, repo, users, mapper, semantic, suggestionService, jobs, null);
+        this(git, engine, repo, users, mapper, semantic, suggestionService, jobs, null,
+                new CompletedResultCache());
     }
 
-    @Autowired
+    /**
+     * Cria uma instância com outbox e cache local usado em chamadas diretas.
+     *
+     * @param git cliente do GitHub
+     * @param engine motor de regras determinísticas
+     * @param repo repositório de análises
+     * @param users repositório de usuários
+     * @param mapper serializador JSON
+     * @param semantic avaliação consultiva de findings
+     * @param suggestionService sugestões consultivas
+     * @param jobs processador de tarefas
+     * @param outbox repositório de eventos para publicação
+     */
     public AnalysisController(GitHubClient git, SastEngine engine, AnalysisRepository repo, UserRepository users,
             ObjectMapper mapper, SemanticAnalysisService semantic, SemanticSuggestionService suggestionService,
             AnalysisJobService jobs, AnalysisOutboxRepository outbox) {
+        this(git, engine, repo, users, mapper, semantic, suggestionService, jobs, outbox,
+                new CompletedResultCache());
+    }
+
+    /**
+     * Cria o controlador de produção com cache compartilhado pela instância da API.
+     *
+     * @param git cliente do GitHub
+     * @param engine motor de regras determinísticas
+     * @param repo repositório de análises
+     * @param users repositório de usuários
+     * @param mapper serializador JSON
+     * @param semantic avaliação consultiva de findings
+     * @param suggestionService sugestões consultivas
+     * @param jobs processador de tarefas
+     * @param outbox repositório de eventos para publicação
+     * @param completedResults cache local de resultados concluídos
+     */
+    @Autowired
+    public AnalysisController(GitHubClient git, SastEngine engine, AnalysisRepository repo, UserRepository users,
+            ObjectMapper mapper, SemanticAnalysisService semantic, SemanticSuggestionService suggestionService,
+            AnalysisJobService jobs, AnalysisOutboxRepository outbox, CompletedResultCache completedResults) {
         this.git = git;
         this.engine = engine;
         this.repo = repo;
@@ -83,6 +131,7 @@ public class AnalysisController {
         this.suggestionService = suggestionService;
         this.jobs = jobs;
         this.outbox = outbox;
+        this.completedResults = completedResults;
     }
 
     public record Request(@NotBlank String repositoryUrl, String reference) {}
@@ -269,6 +318,14 @@ public class AnalysisController {
         }
     }
 
+    /**
+     * Monta a página de sistemas concluídos e o resumo global do usuário autenticado.
+     *
+     * @param page índice da página solicitado
+     * @param size quantidade solicitada de sistemas por página
+     * @param principal identidade autenticada
+     * @return página de sistemas com totais calculados sobre todas as execuções visíveis
+     */
     @GetMapping("/systems")
     @Transactional(readOnly = true)
     public SystemsPage systems(@RequestParam(defaultValue = "0") int page,
@@ -277,7 +334,7 @@ public class AnalysisController {
         page = Math.max(0, page);
         size = Math.min(20, Math.max(1, size));
 
-        var analyses = distinctExecutions(repo.findByUserIdOrderByCreatedAtDescIdDesc(owner.id));
+        var analyses = distinctExecutions(repo.findCompletedByUser(owner.id));
         var grouped = new LinkedHashMap<String, List<Analysis>>();
         analyses.forEach(a -> grouped.computeIfAbsent(a.repositoryOwner + "/" + a.repositoryName,
                 ignored -> new ArrayList<>()).add(a));
@@ -304,6 +361,16 @@ public class AnalysisController {
                 }).toList()));
     }
 
+    /**
+     * Lista o histórico concluído de um repositório pertencente ao usuário.
+     *
+     * @param owner proprietário do repositório no GitHub
+     * @param repository nome do repositório no GitHub
+     * @param page índice da página solicitado
+     * @param size quantidade solicitada de execuções por página
+     * @param principal identidade autenticada
+     * @return histórico paginado com execuções distintas
+     */
     @GetMapping("/systems/{owner}/{repository}/history")
     @Transactional(readOnly = true)
     public HistoryPage history(@PathVariable String owner, @PathVariable String repository,
@@ -313,8 +380,7 @@ public class AnalysisController {
         page = Math.max(0, page);
         size = Math.min(20, Math.max(1, size));
 
-        var all = distinctExecutions(repo.findByUserIdOrderByCreatedAtDescIdDesc(user.id).stream()
-                .filter(a -> owner.equals(a.repositoryOwner) && repository.equals(a.repositoryName)).toList());
+        var all = distinctExecutions(repo.findCompletedHistory(user.id, owner, repository));
         var from = Math.min(page * size, all.size());
         var to = Math.min(from + size, all.size());
         return new HistoryPage(owner, repository,
@@ -322,20 +388,30 @@ public class AnalysisController {
                 page, size, all.size());
     }
 
+    /**
+     * Apresenta somente tarefas em andamento ou encerradas sem confirmação.
+     *
+     * @param principal identidade autenticada
+     * @return tarefas visíveis para o usuário, com seus resumos atuais
+     */
     @GetMapping("/tasks")
     @Transactional(readOnly = true)
     public List<Task> tasks(Principal principal) {
         var owner = users.findByEmail(principal.getName()).orElseThrow();
-        return repo.findByUserIdOrderByCreatedAtDescIdDesc(owner.id).stream()
-                .filter(analysis -> "PROCESSING".equals(analysis.status)
-                        || (("COMPLETED".equalsIgnoreCase(analysis.status) || "FAILED".equalsIgnoreCase(analysis.status))
-                        && !analysis.taskAcknowledged))
+        return repo.findVisibleTasks(owner.id).stream()
                 .map(analysis -> new Task(analysis.id, analysis.status, analysis.stage, analysis.repositoryUrl,
                         analysis.createdAt, analysis.semanticStatus, analysis.suggestionStatus,
                         summarize(analysis), analysis.taskAcknowledged))
                 .toList();
     }
 
+    /**
+     * Confirma uma tarefa somente quando ela pertence ao usuário autenticado.
+     *
+     * @param id identificador da análise a confirmar
+     * @param principal identidade autenticada
+     * @return resposta sem conteúdo, inclusive quando a tarefa não pertence ao usuário
+     */
     @PostMapping("/tasks/{id}/ack")
     @Transactional
     public ResponseEntity<Void> acknowledgeTask(@PathVariable UUID id, Principal principal) {
@@ -347,6 +423,13 @@ public class AnalysisController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Valida a origem e cria a análise e o evento de outbox na mesma transação.
+     *
+     * @param request URL pública e referência solicitadas
+     * @param principal identidade autenticada
+     * @return resposta de aceite com o endereço do resultado
+     */
     @PostMapping
     @Transactional
     public ResponseEntity<Result> create(@Valid @RequestBody Request request, Principal principal) {
@@ -385,11 +468,22 @@ public class AnalysisController {
         return ResponseEntity.accepted().header("Location", "/api/analyses/" + analysis.id).body(toResult(analysis));
     }
 
+    /**
+     * Obtém o resultado da análise pertencente ao usuário, usando cache só após a conclusão.
+     *
+     * @param id identificador da análise
+     * @param principal identidade autenticada
+     * @return estado atual ou resultado final da análise
+     */
     @GetMapping("/{id}")
     @Transactional(readOnly = true)
     public Result get(@PathVariable UUID id, Principal principal) {
         var owner = users.findByEmail(principal.getName()).orElseThrow();
-        return toResult(repo.findByIdAndUserId(id, owner.id).orElseThrow(NoSuchElementException::new));
+        var cached = completedResults.get(owner.id, id);
+        if (cached != null) return cached;
+        var result = toResult(repo.findByIdAndUserId(id, owner.id).orElseThrow(NoSuchElementException::new));
+        completedResults.put(owner.id, result);
+        return result;
     }
 
     public static class Unprocessable extends RuntimeException {

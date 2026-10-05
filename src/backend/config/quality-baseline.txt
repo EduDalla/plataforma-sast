@@ -1,0 +1,83 @@
+# Ocorrências existentes antes da adoção gradual do gate de qualidade Java.
+# Cada linha limita a regra, o arquivo, a assinatura da ocorrência e sua contagem.
+JAVADOC_MISSING|com/fiap/sast/SastApplication.java|main(String[])|1
+JAVADOC_MISSING|com/fiap/sast/analysis/SecurityFinding.java|SecurityFinding(String, String, String, String, String, String, int, int, String)|1
+JAVADOC_MISSING|com/fiap/sast/auth/BootstrapUser.java|BootstrapUser(UserRepository, PasswordEncoder, String, String)|1
+JAVADOC_MISSING|com/fiap/sast/auth/JwtService.java|JwtService(JwtEncoder, String, long)|1
+JAVADOC_MISSING|com/fiap/sast/auth/JwtService.java|issue(String)|1
+JAVADOC_MISSING|com/fiap/sast/auth/UserRepository.java|findByEmail(String)|1
+JAVADOC_MISSING|com/fiap/sast/messaging/AnalysisLeaseReconciler.java|AnalysisLeaseReconciler(AnalysisRepository, AnalysisOutboxRepository)|1
+JAVADOC_MISSING|com/fiap/sast/messaging/AnalysisLeaseReconciler.java|reconcile()|1
+JAVADOC_MISSING|com/fiap/sast/messaging/AnalysisOutboxPublisher.java|AnalysisOutboxPublisher(AnalysisOutboxRepository, RabbitTemplate)|1
+JAVADOC_MISSING|com/fiap/sast/messaging/AnalysisOutboxPublisher.java|publishReady()|1
+JAVADOC_MISSING|com/fiap/sast/messaging/AnalysisWorkerListener.java|AnalysisWorkerListener(AnalysisJobService)|1
+JAVADOC_MISSING|com/fiap/sast/messaging/AnalysisWorkerListener.java|consume(Message, Channel)|1
+JAVADOC_MISSING|com/fiap/sast/parsing/InvalidJavaSourceException.java|InvalidJavaSourceException(String, String, int, int)|1
+JAVADOC_MISSING|com/fiap/sast/parsing/InvalidJavaSourceException.java|InvalidJavaSourceException(String, int, int)|1
+JAVADOC_MISSING|com/fiap/sast/persistence/AiSuggestionEntity.java|from(Analysis, AiSuggestion)|1
+JAVADOC_MISSING|com/fiap/sast/persistence/AiSuggestionEntity.java|toValue()|1
+JAVADOC_MISSING|com/fiap/sast/persistence/AnalysisOutboxRepository.java|existsByAnalysisIdAndPublishedAtIsNull(UUID)|1
+JAVADOC_MISSING|com/fiap/sast/persistence/AnalysisOutboxRepository.java|findReady(Instant)|1
+JAVADOC_MISSING|com/fiap/sast/persistence/AnalysisOutboxRepository.java|markPublished(UUID, Instant)|1
+JAVADOC_MISSING|com/fiap/sast/persistence/AnalysisRepository.java|claim(UUID, String, Instant, Instant)|1
+JAVADOC_MISSING|com/fiap/sast/persistence/AnalysisRepository.java|findByIdAndUserId(UUID, UUID)|1
+JAVADOC_MISSING|com/fiap/sast/persistence/AnalysisRepository.java|findByUserIdOrderByCreatedAtDescIdDesc(UUID)|1
+JAVADOC_MISSING|com/fiap/sast/persistence/AnalysisRepository.java|findExpiredLeases(Instant)|1
+JAVADOC_MISSING|com/fiap/sast/persistence/AnalysisRepository.java|findFirstByUserIdAndRepositoryOwnerAndRepositoryNameAndReferenceOrderByCreatedAtDescIdDesc(UUID, String, String, String)|1
+JAVADOC_MISSING|com/fiap/sast/rules/DeserializationRule.java|analyze(CompilationUnit, String, String)|1
+JAVADOC_MISSING|com/fiap/sast/rules/DeserializationRule.java|ruleId()|1
+JAVADOC_MISSING|com/fiap/sast/rules/HardcodedCredentialRule.java|analyze(CompilationUnit, String, String)|1
+JAVADOC_MISSING|com/fiap/sast/rules/HardcodedCredentialRule.java|ruleId()|1
+JAVADOC_MISSING|com/fiap/sast/rules/RuleSupport.java|finding(String, String, String, String, String, String, String, Node, TaintTrace)|1
+JAVADOC_MISSING|com/fiap/sast/rules/RuntimeExecRule.java|analyze(CompilationUnit, String, String)|1
+JAVADOC_MISSING|com/fiap/sast/rules/RuntimeExecRule.java|ruleId()|1
+JAVADOC_MISSING|com/fiap/sast/rules/SecurityRule.java|analyze(CompilationUnit, String, String)|1
+JAVADOC_MISSING|com/fiap/sast/rules/SecurityRule.java|ruleId()|1
+JAVADOC_MISSING|com/fiap/sast/semantic/AiAssessment.java|AiAssessment(String, String, double, String, boolean, String, String)|1
+JAVADOC_MISSING|com/fiap/sast/web/AnalysisController.java|Unprocessable()|1
+JAVADOC_PARAM|com/fiap/sast/semantic/OllamaGateway.java|generateSuggestions(String, Duration)|prompt|1
+JAVADOC_PARAM|com/fiap/sast/semantic/OllamaGateway.java|generateSuggestions(String, Duration)|timeout|1
+JAVADOC_RETURN|com/fiap/sast/semantic/OllamaGateway.java|generateSuggestions(String, Duration)|1
+JAVADOC_THROWS|com/fiap/sast/semantic/OllamaGateway.java|generateSuggestions(String, Duration)|OllamaFailure|1
+LONG_LINE|com/fiap/sast/SastApplication.java|48cc400eb0941a89|1
+LONG_LINE|com/fiap/sast/analysis/SecurityFinding.java|11323523c3b62ee8|1
+LONG_LINE|com/fiap/sast/analysis/SecurityFinding.java|6bc204d3a6f93036|1
+LONG_LINE|com/fiap/sast/auth/BootstrapUser.java|0daabbcfdb178828|1
+LONG_LINE|com/fiap/sast/auth/SecurityConfig.java|33b8c526e894b9f6|1
+LONG_LINE|com/fiap/sast/auth/SecurityConfig.java|370dbe129edcbb66|1
+LONG_LINE|com/fiap/sast/github/GitHubClient.java|34f379cacc6e302a|1
+LONG_LINE|com/fiap/sast/github/GitHubClient.java|5e1f6d8d822515c4|1
+LONG_LINE|com/fiap/sast/github/GitHubClient.java|607ed74a0e14539c|1
+LONG_LINE|com/fiap/sast/github/GitHubClient.java|b3d07385bd949612|1
+LONG_LINE|com/fiap/sast/messaging/AnalysisLeaseReconciler.java|9002b51664e3a1a9|1
+LONG_LINE|com/fiap/sast/messaging/AnalysisLeaseReconciler.java|aa3637577128123d|1
+LONG_LINE|com/fiap/sast/messaging/AnalysisOutboxPublisher.java|577e871edff9f346|1
+LONG_LINE|com/fiap/sast/messaging/AnalysisOutboxPublisher.java|861b8a97b29ef54f|1
+LONG_LINE|com/fiap/sast/messaging/RabbitTopology.java|7ea88631df69b9d0|1
+LONG_LINE|com/fiap/sast/messaging/RabbitTopology.java|7f6c018b516a5f17|1
+LONG_LINE|com/fiap/sast/messaging/RabbitTopology.java|cabc0babbd87bd29|1
+LONG_LINE|com/fiap/sast/messaging/RabbitTopology.java|ff2c019b8249c69d|1
+LONG_LINE|com/fiap/sast/persistence/AnalysisOutboxEvent.java|4d1846bf207248e2|1
+LONG_LINE|com/fiap/sast/persistence/AnalysisOutboxRepository.java|27e304b99db7d3db|1
+LONG_LINE|com/fiap/sast/persistence/AnalysisRepository.java|49fe0d7d7bd64e81|1
+LONG_LINE|com/fiap/sast/persistence/AnalysisRepository.java|95aca88b4f8fe19b|1
+LONG_LINE|com/fiap/sast/rules/DeserializationRule.java|65b8a83e518f683c|1
+LONG_LINE|com/fiap/sast/rules/DeserializationRule.java|aff2cc6a5ff0edb3|1
+LONG_LINE|com/fiap/sast/rules/HardcodedCredentialRule.java|4e5a077ab0e2b2bb|1
+LONG_LINE|com/fiap/sast/rules/HardcodedCredentialRule.java|b0708bb12e6e9727|1
+LONG_LINE|com/fiap/sast/rules/RuntimeExecRule.java|6028eadb53685c38|1
+LONG_LINE|com/fiap/sast/rules/RuntimeExecRule.java|83fcc9511168208e|1
+LONG_LINE|com/fiap/sast/rules/SecurityRule.java|c5726fa444da3cfe|1
+LONG_LINE|com/fiap/sast/semantic/OllamaClient.java|0ea188b7d3849dd7|1
+LONG_LINE|com/fiap/sast/semantic/OllamaClient.java|7eee947e5219ad5b|1
+LONG_LINE|com/fiap/sast/semantic/OllamaClient.java|b67b68cb53c7b32b|1
+LONG_LINE|com/fiap/sast/semantic/SemanticAnalysisService.java|b11c6dd6f7829826|1
+LONG_LINE|com/fiap/sast/semantic/SemanticAnalysisService.java|b13a41467ae5d5ca|1
+LONG_LINE|com/fiap/sast/semantic/SemanticAnalysisService.java|bddf468640e3901c|1
+LONG_LINE|com/fiap/sast/semantic/SemanticSuggestionService.java|78a774e70e97c605|1
+LONG_LINE|com/fiap/sast/web/AnalysisController.java|11a129657d77982f|1
+LONG_LINE|com/fiap/sast/web/AnalysisController.java|54d31be0b6cde1b8|1
+LONG_LINE|com/fiap/sast/web/ApiExceptionHandler.java|aee99899a6a6971d|1
+LONG_LINE|com/fiap/sast/web/RequestLoggingFilter.java|2ab758729da370e9|1
+STAR_IMPORT|com/fiap/sast/auth/AppUser.java|8c72e6b573d74a48|1
+STAR_IMPORT|com/fiap/sast/messaging/RabbitTopology.java|4e931d1520c1b6ef|1

@@ -11,6 +11,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.hibernate.annotations.BatchSize;
 
 @Entity
 @Table(name = "analyses")
@@ -55,8 +56,10 @@ public class Analysis {
     public Instant createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
 
     @OneToMany(mappedBy = "analysis", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     public List<Finding> findings = new ArrayList<>();
 
     @OneToMany(mappedBy = "analysis", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     public List<AiSuggestionEntity> suggestions = new ArrayList<>();
 }

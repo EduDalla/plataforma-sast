@@ -73,8 +73,11 @@ docker compose config
 
 Os testes de integração usam PostgreSQL descartável pelo Testcontainers. O fixture Java vulnerável em memória deve produzir exatamente três findings; seu código é lido como texto e não é executado.
 
+Se `src/backend/target` não estiver gravável pelo usuário atual, execute o Maven com `-Dsast.build.directory=/tmp/cp1-cyber-build`. Use JDK 21 para o backend.
+
 ## Documentação
 
 - [Regras gerais do sistema](REGRAS.MD) e [instruções para agentes](AGENTS.md).
 - [Parser, regras e arquitetura inicial](docs/CP1-Implementacao-Fundacao-e-Parsers.md) e [autenticação e frontend](docs/CP1-Autenticacao-e-Frontend.md).
 - [Taint analysis](docs/CP2-Taint-Analysis.md), [IA local e processamento assíncrono](docs/CP2-IA-Local.md) e [decisão arquitetural sobre análise semântica](docs/adr/ADR-001-ia-e-analise-semantica.md).
+- [Boas práticas Java e desempenho do backend](docs/Boas-praticas-Java-e-desempenho.md).

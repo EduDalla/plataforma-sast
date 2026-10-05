@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 public class JavaParserSourceParser implements JavaSourceParser {
     private final JavaParser parser;
 
+    /** Configura o JavaParser para aceitar sintaxe de Java 21. */
     public JavaParserSourceParser() {
         var config = new ParserConfiguration()
                 .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);

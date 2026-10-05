@@ -31,6 +31,14 @@ public class AuthController {
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * Inicializa as rotas de autenticação com verificação BCrypt e emissão de JWT.
+     *
+     * @param authenticationManager autenticador configurado pelo Spring Security
+     * @param jwtService serviço emissor de tokens
+     * @param users repositório de usuários
+     * @param passwordEncoder codificador BCrypt de senhas
+     */
     public AuthController(AuthenticationManager authenticationManager, JwtService jwtService,
             UserRepository users, PasswordEncoder passwordEncoder) {
         this.authenticationManager = authenticationManager;
@@ -55,11 +63,23 @@ public class AuthController {
     public record CurrentSession(String email) {
     }
 
+    /**
+     * Informa a identidade da sessão autenticada sem expor o token novamente.
+     *
+     * @param authentication autenticação validada pelo Spring Security
+     * @return e-mail da sessão atual
+     */
     @org.springframework.web.bind.annotation.GetMapping("/session")
     public CurrentSession session(Authentication authentication) {
         return new CurrentSession(authentication.getName());
     }
 
+    /**
+     * Cadastra uma conta com e-mail normalizado e senha armazenada como hash BCrypt.
+     *
+     * @param input e-mail e senha recebidos na requisição
+     * @return identidade criada ou erro de validação e conflito
+     */
     @PostMapping("/register")
     @Transactional
     public ResponseEntity<?> register(@Valid @RequestBody Register input) {
@@ -80,6 +100,12 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(new CurrentSession(email));
     }
 
+    /**
+     * Autentica credenciais e emite um JWT de duração limitada.
+     *
+     * @param input credenciais recebidas na requisição
+     * @return sessão com token ou erro de autenticação
+     */
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody Login input) {
         var email = input.email().trim().toLowerCase(Locale.ROOT);
@@ -108,6 +134,11 @@ public class AuthController {
                 issued.expiresIn()));
     }
 
+    /**
+     * Encerra a interação HTTP para que o cliente descarte o token local.
+     *
+     * @return resposta sem conteúdo
+     */
     @PostMapping("/logout")
     public ResponseEntity<Void> logout() {
         // JWT é stateless: o cliente descarta o token em memória.

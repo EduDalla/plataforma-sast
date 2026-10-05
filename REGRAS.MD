@@ -43,6 +43,8 @@ Este documento reúne os fluxos, processos e limites arquiteturais da plataforma
 
 ## Evolução e verificação
 
+- O código Java da plataforma segue as convenções em [boas práticas e desempenho](docs/Boas-praticas-Java-e-desempenho.md). JavaDoc de funções principais descreve o objetivo e todos os parâmetros. Um gate de estilo, documentação e padrões de desempenho integra o `mvn verify`.
+- O worker pode reutilizar ASTs apenas durante a tentativa em memória. A API mantém por até 15 minutos somente resultados concluídos em cache local limitado e isolado por usuário; central, histórico e tarefas consultam o banco para refletir novas conclusões imediatamente.
 - Alterações nos contratos HTTP exigem atualização coordenada da API, do frontend, dos testes e da documentação. Mudanças no banco devem ser feitas por novas migrações Flyway.
 - Novas regras determinísticas implementam `SecurityRule`; parser e engine não devem depender de transporte HTTP, GitHub ou JPA. A IA não deve alterar findings gerados por regras.
 - Os testes devem cobrir autenticação e isolamento, validação da origem, fila e retomada, parser e regras, estados degradados, persistência e apresentação dos resultados. O fixture Java vulnerável em memória deve continuar produzindo exatamente três findings, sem executar o código analisado.

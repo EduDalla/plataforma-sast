@@ -1,5 +1,6 @@
 package com.fiap.sast.semantic;
 
+import com.fiap.sast.analysis.AnalysisParseCache;
 import com.fiap.sast.parsing.JavaSourceParser;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.MethodCallExpr;
@@ -50,6 +51,16 @@ public class SemanticSuggestionService {
     private record Candidate(String path, int line, String evidence, String context, int priority) {}
     private record Anchor(int line, int column, int priority) {}
 
+    /**
+     * Inicializa a seleção consultiva de sugestões com limites de custo configuráveis.
+     *
+     * @param gateway cliente do Ollama local
+     * @param parser parser usado para localizar métodos candidatos
+     * @param mapper serializador JSON da aplicação
+     * @param model identificador do modelo consultivo
+     * @param maxMethods máximo de métodos avaliados por análise
+     * @param budgetSeconds orçamento total da etapa em segundos
+     */
     public SemanticSuggestionService(OllamaGateway gateway, JavaSourceParser parser, ObjectMapper mapper,
             @Value("${sast.ollama.model}") String model,
             @Value("${sast.ollama.suggestion-max-methods:4}") int maxMethods,
@@ -62,13 +73,38 @@ public class SemanticSuggestionService {
         this.budget = Duration.ofSeconds(Math.max(0, budgetSeconds));
     }
 
+    /**
+     * Seleciona sugestões sem persistência incremental quando não há consumidor externo.
+     *
+     * @param files arquivos Java transitórios da tentativa
+     * @return estado da etapa e sugestões validadas
+     */
     public Result scan(List<SourceFile> files) {
         return scan(files, ignored -> {});
     }
 
-    /** Executa a varredura e publica cada sugestão válida assim que ela fica disponível. */
+    /**
+     * Executa a varredura e publica cada sugestão válida assim que ela fica disponível.
+     *
+     * @param files arquivos Java mantidos em memória durante a tentativa
+     * @param onSuggestion consumidor chamado para cada sugestão validada
+     * @return estado da etapa e sugestões validadas
+     */
     public Result scan(List<SourceFile> files, Consumer<AiSuggestion> onSuggestion) {
-        var candidates = select(files);
+        return scan(files, onSuggestion, null);
+    }
+
+    /**
+     * Seleciona e avalia métodos com ASTs compartilhadas dentro da tentativa atual.
+     *
+     * @param files arquivos Java mantidos em memória durante a tentativa
+     * @param onSuggestion consumidor chamado para cada sugestão validada
+     * @param parseCache cache da tentativa, ou {@code null} para parse local
+     * @return estado da etapa e sugestões validadas
+     */
+    public Result scan(List<SourceFile> files, Consumer<AiSuggestion> onSuggestion,
+            AnalysisParseCache parseCache) {
+        var candidates = select(files, parseCache);
         if (candidates.isEmpty()) return new Result("NOT_APPLICABLE", List.of());
         var suggestions = new ArrayList<AiSuggestion>();
         var seen = new HashSet<String>();
@@ -123,12 +159,15 @@ public class SemanticSuggestionService {
         return new Result(status, List.copyOf(suggestions));
     }
 
-    private List<Candidate> select(List<SourceFile> files) {
+    private List<Candidate> select(List<SourceFile> files, AnalysisParseCache parseCache) {
         var selected = new ArrayList<Candidate>();
         for (var file : files) {
             try {
                 var lines = file.content().split("\\R", -1);
-                for (var method : parser.parse(file.content()).findAll(MethodDeclaration.class)) {
+                var methods = parseCache == null
+                        ? parser.parse(file.content()).findAll(MethodDeclaration.class)
+                        : parseCache.methods(file.path(), file.content());
+                for (var method : methods) {
                     if (method.getRange().isEmpty()) continue;
                     var anchor = anchor(method);
                     if (anchor == null || anchor.line() > lines.length) continue;

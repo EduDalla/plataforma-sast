@@ -1,6 +1,7 @@
 package com.fiap.sast.semantic;
 
 import com.fiap.sast.analysis.SecurityFinding;
+import com.fiap.sast.analysis.AnalysisParseCache;
 import com.fiap.sast.parsing.JavaSourceParser;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
@@ -79,6 +80,17 @@ public class SemanticAnalysisService {
      * @return estado consolidado e avaliações válidas indexadas pelo identificador do finding
      */
     public Result enrich(List<Candidate> candidates) {
+        return enrich(candidates, null);
+    }
+
+    /**
+     * Avalia findings usando o contexto Java mantido somente durante a tentativa.
+     *
+     * @param candidates findings e fontes transitórias disponíveis para enriquecimento
+     * @param parseCache cache da tentativa, ou {@code null} para parse local
+     * @return estado consolidado e avaliações válidas por identificador
+     */
+    public Result enrich(List<Candidate> candidates, AnalysisParseCache parseCache) {
         if (candidates.isEmpty()) {
             return new Result("NOT_APPLICABLE", Map.of());
         }
@@ -105,7 +117,7 @@ public class SemanticAnalysisService {
             var candidate = ordered.get(index);
             String prompt;
             try {
-                prompt = prompt(candidate, contexts);
+                prompt = prompt(candidate, contexts, parseCache);
             } catch (RuntimeException failure) {
                 log.atWarn().setMessage("semantic_context_unavailable").log();
                 continue;
@@ -186,11 +198,13 @@ public class SemanticAnalysisService {
      *
      * @param candidate finding que será avaliado
      * @param contexts métodos já parseados por arquivo durante a análise atual
+     * @param parseCache cache de ASTs da tentativa, quando disponível
      * @return prompt estruturado para o Ollama
      */
-    private String prompt(Candidate candidate, Map<String, List<MethodDeclaration>> contexts) {
+    private String prompt(Candidate candidate, Map<String, List<MethodDeclaration>> contexts,
+            AnalysisParseCache parseCache) {
         var finding = candidate.finding();
-        String context = context(candidate, contexts);
+        String context = context(candidate, contexts, parseCache);
         var trace = finding.taintTrace() == null
                 ? "ausente"
                 : clip(mapper.writeValueAsString(finding.taintTrace()), MAX_TRACE_CHARACTERS);
@@ -211,9 +225,11 @@ public class SemanticAnalysisService {
      *
      * @param candidate finding e fonte transitória associados
      * @param contexts cache de métodos parseados por arquivo
+     * @param parseCache cache de ASTs da tentativa, quando disponível
      * @return trecho limitado do método e de até dois métodos chamados diretamente
      */
-    private String context(Candidate candidate, Map<String, List<MethodDeclaration>> contexts) {
+    private String context(Candidate candidate, Map<String, List<MethodDeclaration>> contexts,
+            AnalysisParseCache parseCache) {
         var finding = candidate.finding();
         var source = candidate.source();
         if (source == null || source.isBlank()) {
@@ -222,7 +238,8 @@ public class SemanticAnalysisService {
 
         var methods = contexts.computeIfAbsent(finding.fileName(), ignored -> {
             try {
-                return parser.parse(source).findAll(MethodDeclaration.class);
+                return parseCache == null ? parser.parse(source).findAll(MethodDeclaration.class)
+                        : parseCache.methods(finding.fileName(), source);
             } catch (RuntimeException failure) {
                 return List.of();
             }

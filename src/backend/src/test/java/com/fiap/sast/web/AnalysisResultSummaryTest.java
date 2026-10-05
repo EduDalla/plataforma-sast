@@ -27,6 +27,30 @@ import static org.mockito.Mockito.*;
 
 class AnalysisResultSummaryTest {
     @Test
+    void consultaResultadoConcluidoUmaVezMasReconsultaEstadoEmAndamento() {
+        var user = new AppUser();
+        user.id = java.util.UUID.randomUUID();
+        user.email = "cache@example.com";
+        var completed = completedAnalysis(user.id, "done");
+        var processing = completedAnalysis(user.id, "running");
+        processing.status = "PROCESSING";
+        var analyses = mock(AnalysisRepository.class);
+        when(analyses.findByIdAndUserId(completed.id, user.id)).thenReturn(Optional.of(completed));
+        when(analyses.findByIdAndUserId(processing.id, user.id)).thenReturn(Optional.of(processing));
+        var users = mock(UserRepository.class);
+        when(users.findByEmail(user.email)).thenReturn(Optional.of(user));
+        var controller = controller(analyses, users);
+
+        controller.get(completed.id, user.email::toString);
+        controller.get(completed.id, user.email::toString);
+        controller.get(processing.id, user.email::toString);
+        controller.get(processing.id, user.email::toString);
+
+        verify(analyses, times(1)).findByIdAndUserId(completed.id, user.id);
+        verify(analyses, times(2)).findByIdAndUserId(processing.id, user.id);
+    }
+
+    @Test
     void analysisHistoryAndSystemsCountBothKindsAndKeepUnclassifiedSuggestions() {
         var user = new AppUser();
         user.id = java.util.UUID.randomUUID();
@@ -61,7 +85,8 @@ class AnalysisResultSummaryTest {
 
         var analyses = mock(AnalysisRepository.class);
         when(analyses.findByIdAndUserId(analysis.id, user.id)).thenReturn(Optional.of(analysis));
-        when(analyses.findByUserIdOrderByCreatedAtDescIdDesc(user.id)).thenReturn(List.of(analysis));
+        when(analyses.findCompletedByUser(user.id)).thenReturn(List.of(analysis));
+        when(analyses.findCompletedHistory(user.id, "acme", "demo")).thenReturn(List.of(analysis));
         var users = mock(UserRepository.class);
         when(users.findByEmail(user.email)).thenReturn(Optional.of(user));
         var controller = controller(analyses, users);
@@ -80,6 +105,9 @@ class AnalysisResultSummaryTest {
         var systems = controller.systems(0, 20, principal);
         assertSummary(systems.resultSummary(), 3, 1, 1, 0, 0, 1, "Critical");
         assertSummary(systems.systems().get(0).latest().resultSummary(), 3, 1, 1, 0, 0, 1, "Critical");
+        verify(analyses).findCompletedHistory(user.id, "acme", "demo");
+        verify(analyses).findCompletedByUser(user.id);
+        verify(analyses, never()).findByUserIdOrderByCreatedAtDescIdDesc(user.id);
     }
 
     @Test
@@ -99,7 +127,7 @@ class AnalysisResultSummaryTest {
         finding.line = 1;
         second.findings.add(finding);
         var analyses = mock(AnalysisRepository.class);
-        when(analyses.findByUserIdOrderByCreatedAtDescIdDesc(user.id)).thenReturn(List.of(first, second));
+        when(analyses.findCompletedByUser(user.id)).thenReturn(List.of(first, second));
         var users = mock(UserRepository.class);
         when(users.findByEmail(user.email)).thenReturn(Optional.of(user));
 

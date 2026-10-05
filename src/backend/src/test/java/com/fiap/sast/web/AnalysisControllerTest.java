@@ -127,7 +127,7 @@ class AnalysisControllerTest {
         analysis.userId = user.id;
         analysis.status = "COMPLETED";
         analysis.taskAcknowledged = false;
-        when(repository.findByUserIdOrderByCreatedAtDescIdDesc(user.id)).thenReturn(List.of(analysis));
+        when(repository.findVisibleTasks(user.id)).thenReturn(List.of(analysis));
         when(repository.findByIdAndUserId(analysis.id, user.id)).thenReturn(Optional.of(analysis));
         var controller = new AnalysisController(github, mock(SastEngine.class), repository, userRepository,
                 new tools.jackson.databind.ObjectMapper(), mock(SemanticAnalysisService.class),

@@ -4,12 +4,21 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.apache.commons.compress.utils.SeekableInMemoryByteChannel;
-import java.io.*;
-import java.net.*;
-import java.net.http.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Set;
 
 @Component
 public class GitHubClient {
@@ -23,7 +32,13 @@ public class GitHubClient {
     public record Snapshot(String owner, String repo, String url, String reference, List<File> files) {}
     public record File(String path, String content) {}
 
-    /** Resolve a referência uma única vez para tornar retomadas determinísticas. */
+    /**
+     * Resolve a referência uma única vez para tornar retomadas determinísticas.
+     *
+     * @param url URL HTTPS de um repositório público do GitHub
+     * @param ref referência opcional solicitada pela pessoa usuária
+     * @return SHA do commit fixado para a tentativa
+     */
     public String resolveCommitSha(String url, String ref) {
         try {
             var parts = validate(url, ref);
@@ -45,6 +60,13 @@ public class GitHubClient {
         }
     }
 
+    /**
+     * Baixa e filtra o snapshot oficial mantendo archive e fontes somente em memória.
+     *
+     * @param url URL HTTPS de um repositório público do GitHub
+     * @param ref referência ou SHA previamente resolvido
+     * @return metadados e arquivos Java elegíveis do snapshot
+     */
     public Snapshot download(String url, String ref) {
         try {
             var parts = validate(url, ref);
@@ -83,6 +105,13 @@ public class GitHubClient {
         return builder.GET().build();
     }
 
+    /**
+     * Valida origem pública, caminho e referência antes de montar requisições.
+     *
+     * @param raw URL recebida pela API
+     * @param ref referência opcional do repositório
+     * @return proprietário e nome do repositório validados
+     */
     public static String[] validate(String raw, String ref) {
         var uri = URI.create(raw);
         if (!"https".equals(uri.getScheme()) || !"github.com".equals(uri.getHost()) || uri.getUserInfo() != null
