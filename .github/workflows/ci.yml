@@ -67,3 +67,51 @@ jobs:
             echo '- Compose: validado com `docker compose config --quiet`'
             echo '- O workflow executa apenas o produto e seus fixtures; não compila nem executa código analisado.'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  security-gate:
+    name: Security Gate
+    needs: verify
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+
+    steps:
+      - name: Baixar o checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Testar política do gate
+        run: python -m unittest discover -s scripts -p 'test_security_gate.py' -v
+
+      - name: Consultar análise fixa e aplicar política
+        env:
+          SAST_GATE_API_URL: ${{ secrets.SAST_GATE_API_URL }}
+          SAST_GATE_EMAIL: ${{ secrets.SAST_GATE_EMAIL }}
+          SAST_GATE_PASSWORD: ${{ secrets.SAST_GATE_PASSWORD }}
+          SAST_GATE_REPOSITORY_URL: https://github.com/${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          SAST_GATE_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: >-
+          python scripts/security_gate.py
+          --api-url "$SAST_GATE_API_URL"
+          --repository-url "$SAST_GATE_REPOSITORY_URL"
+          --commit-sha "$SAST_GATE_COMMIT_SHA"
+          --email "$SAST_GATE_EMAIL"
+          --password "$SAST_GATE_PASSWORD"
+          --policy .sast/security-gate.json
+
+      - name: Publicar resumo do gate
+        if: always()
+        run: |
+          {
+            echo '## Security Gate'
+            echo
+            echo '- A decisão usa somente findings determinísticos e o commit SHA fixado.'
+            echo '- Severidade sugerida pela IA e degradação consultiva não alteram a decisão.'
+            echo '- O resumo não contém token, senha, snippet, prompt ou código-fonte.'
+          } >> "$GITHUB_STEP_SUMMARY"

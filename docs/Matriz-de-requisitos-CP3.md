@@ -25,7 +25,7 @@ Esta matriz compara o checkout atual com o pedido de adequação e com o arquivo
 | RF15 | Taint analysis | **Parcial.** Rastreia algumas entradas HTTP até execução de comando dentro de um método. | Documentar limites, ampliar casos prioritários se a rubrica exigir e testar fontes, propagação, sanitização e sinks. |
 | RF16 | Sugestão de correção | **Atendido com cobertura limitada.** Ollama gera remediação de findings e sugestões para métodos selecionados. | Demonstrar resposta válida e degradação segura quando IA estiver indisponível. |
 | RF17 | Integração com CI/CD | **Parcial.** `.github/workflows/ci.yml` executa backend, frontend e validação Compose em PR e em `main`; ainda não consulta a análise SAST do repositório-alvo. | Exigir o check na branch protegida e integrar a análise SAST assíncrona no C-02, sem executar o código-alvo. |
-| RF18 | Security Gate e bloqueio de PR inseguro | **Pendente.** O teste de qualidade Maven não avalia findings do repositório submetido. | Definir política determinística, implementar gate e provar sucesso/falha em PRs de exemplo. |
+| RF18 | Security Gate e bloqueio de PR inseguro | **Parcial.** `.sast/security-gate.json` e `scripts/security_gate.py` bloqueiam Critical determinístico novo, falhas e cobertura incompleta; a proteção administrativa da branch e o ensaio contra a API ainda não foram registrados. | Configurar secrets, exigir os checks na branch protegida e provar PR seguro, Critical novo, análise falha e resultado incompleto. |
 
 ## Requisitos não funcionais do documento original
 

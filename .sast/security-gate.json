@@ -1,0 +1,25 @@
+{
+  "policyVersion": 1,
+  "blocking": {
+    "newCriticalDeterministic": true,
+    "failedAnalysis": true,
+    "incompleteDeterministicCoverage": true
+  },
+  "high": {
+    "action": "report-only"
+  },
+  "existingFindings": {
+    "identity": "ruleId:fileName:line:column",
+    "baseline": "latest-previous-completed-analysis-of-same-repository",
+    "movedOrRelocated": "treated-as-new"
+  },
+  "exceptions": {
+    "required": true,
+    "fields": ["id", "owner", "reason", "expiresAt"],
+    "storage": "reviewed-policy-change"
+  },
+  "ai": {
+    "severityAffectsGate": false,
+    "degradedAnalysisAffectsGate": false
+  }
+}

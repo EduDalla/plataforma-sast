@@ -22,4 +22,12 @@ O resumo do job publica apenas versões, estados dos comandos e limites operacio
 
 O YAML cria o check, mas não protege a branch sozinho. No GitHub, a administração do repositório deve exigir o check `Verificar produto` para merge em `main`, bloquear force-push e exigir atualização da branch quando a política adotada determinar isso. Essa configuração administrativa deve ser registrada como evidência separada.
 
-O Security Gate para findings do repositório analisado não faz parte deste C-01; ele é o C-02 e deve consumir somente resultados determinísticos por contrato HTTP, sem executar o código-alvo.
+## Security Gate
+
+O job `Security Gate` depende do check de verificação do produto e usa os secrets `SAST_GATE_API_URL`, `SAST_GATE_EMAIL` e `SAST_GATE_PASSWORD`. Em PRs do próprio repositório, ele envia a URL pública e o SHA do commit para `POST /api/analyses`, consulta `GET /api/analyses/{id}` até um estado terminal e aplica `.sast/security-gate.json`.
+
+O gate falha quando a análise está `FAILED`, expira, não confirma `COMPLETED`/cobertura determinística, usa SHA diferente ou introduz um finding determinístico `Critical` ausente da execução concluída anterior. Findings `High` são reportados sem bloquear. A identidade do baseline é `ruleId:fileName:line:column`; arquivo ou localização movidos são tratados como findings novos. A avaliação/sugestão da IA é ignorada na decisão, inclusive em `DEGRADED`.
+
+PRs de forks não recebem secrets e não executam o job autenticado; a análise do produto continua sendo executada pelo job de verificação. A branch protegida deve exigir os checks `Verificar produto` e `Security Gate` quando os secrets estiverem configurados.
+
+O workflow e o script nunca baixam, compilam, testam ou executam o código do repositório analisado. Eles apenas consultam a API do SAST e publicam contagens e localizações mínimas.
