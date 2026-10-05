@@ -21,14 +21,16 @@ SHA_PATTERN = re.compile(r"^[0-9a-fA-F]{40}$")
 REPOSITORY_PATTERN = re.compile(r"^https://github\.com/([A-Za-z0-9][A-Za-z0-9-]{0,38})/([A-Za-z0-9_.-]{1,100})$")
 
 
+# Pydoc — objetivo: representar uma falha segura sem publicar conteúdo do alvo.
 class GateFailure(RuntimeError):
-    """Falha segura que pode ser publicada sem conteúdo do alvo."""
+    pass
 
 
+# Pydoc — objetivo: agrupar a configuração imutável de uma execução do gate.
+# Parâmetros: api_url, repository_url, commit_sha, email, password,
+# timeout_seconds, poll_seconds e policy_path são fornecidos pelo pipeline.
 @dataclass(frozen=True)
 class GateConfig:
-    """Configuração imutável usada durante uma execução do Security Gate."""
-
     api_url: str
     repository_url: str
     commit_sha: str
@@ -39,17 +41,13 @@ class GateConfig:
     policy_path: Path
 
 
+# Pydoc — objetivo: executar uma requisição JSON autenticada contra a API do SAST.
+# Parâmetros: url é o endpoint; method é o método HTTP; token é o JWT opcional;
+# payload é o corpo JSON opcional.
+# Retorno: tupla com status HTTP e corpo JSON decodificado.
+# Exceções: GateFailure quando a API, a rede ou o JSON retornado falha.
 def request_json(url: str, method: str = "GET", token: str | None = None,
                 payload: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
-    """Executa uma requisição JSON autenticada contra a API do SAST.
-
-    :param url: endpoint HTTPS ou URL base da requisição.
-    :param method: método HTTP a ser utilizado.
-    :param token: JWT Bearer opcional para rotas autenticadas.
-    :param payload: corpo JSON opcional da requisição.
-    :return: tupla com status HTTP e corpo JSON decodificado.
-    :raises GateFailure: quando a API, a rede ou o JSON retornado falha.
-    """
     body = None
     headers = {"Accept": "application/json"}
     if payload is not None:
@@ -68,13 +66,11 @@ def request_json(url: str, method: str = "GET", token: str | None = None,
         raise GateFailure("não foi possível consultar a API do SAST") from error
 
 
+# Pydoc — objetivo: validar e normalizar uma URL HTTPS de repositório público.
+# Parâmetros: value é a URL candidata no formato https://github.com/OWNER/REPO.
+# Retorno: proprietário, nome do repositório e URL normalizada.
+# Exceções: GateFailure quando a URL não atende ao contrato de origem.
 def normalize_repository(value: str) -> tuple[str, str, str]:
-    """Valida e normaliza uma URL HTTPS de repositório público do GitHub.
-
-    :param value: URL candidata no formato ``https://github.com/OWNER/REPO``.
-    :return: proprietário, nome do repositório e URL normalizada.
-    :raises GateFailure: quando a URL não atende ao contrato de origem.
-    """
     match = REPOSITORY_PATTERN.fullmatch(value.rstrip("/"))
     if not match:
         raise GateFailure("repository URL must be an HTTPS public GitHub repository")
@@ -82,24 +78,20 @@ def normalize_repository(value: str) -> tuple[str, str, str]:
     return owner, repository, f"https://github.com/{owner}/{repository}"
 
 
+# Pydoc — objetivo: calcular a identidade estável de um finding determinístico.
+# Parâmetros: finding é o objeto JSON com regra, arquivo, linha e coluna.
+# Retorno: SHA-256 da identidade ruleId:fileName:line:column.
 def fingerprint(finding: dict[str, Any]) -> str:
-    """Calcula a identidade estável de um finding determinístico.
-
-    :param finding: objeto JSON com regra, arquivo, linha e coluna.
-    :return: SHA-256 da identidade ``ruleId:fileName:line:column``.
-    """
     identity = "\x1f".join(str(finding.get(key, "")) for key in
                             ("ruleId", "fileName", "line", "column"))
     return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
 
+# Pydoc — objetivo: autenticar a identidade protegida usada pelo pipeline.
+# Parâmetros: config contém URL da API e credenciais do CI.
+# Retorno: JWT Bearer emitido pela API.
+# Exceções: GateFailure quando a autenticação não retorna um token válido.
 def login(config: GateConfig) -> str:
-    """Autentica a identidade protegida usada pelo pipeline.
-
-    :param config: configuração com URL da API e credenciais do CI.
-    :return: JWT Bearer emitido pela API.
-    :raises GateFailure: quando a autenticação não retorna um token válido.
-    """
     status, body = request_json(config.api_url + "/api/auth/login", "POST",
                                  payload={"email": config.email, "password": config.password})
     token = body.get("accessToken")
@@ -108,14 +100,11 @@ def login(config: GateConfig) -> str:
     return token
 
 
+# Pydoc — objetivo: solicitar uma análise fixada no SHA do commit do PR.
+# Parâmetros: config contém repositório/SHA alvo; token é o JWT do pipeline.
+# Retorno: UUID da análise aceita pela API.
+# Exceções: GateFailure quando a API não aceita a análise como assíncrona.
 def create_analysis(config: GateConfig, token: str) -> str:
-    """Solicita uma análise fixada no SHA do commit do PR.
-
-    :param config: configuração com repositório e SHA alvo.
-    :param token: JWT Bearer da identidade do pipeline.
-    :return: UUID da análise aceita pela API.
-    :raises GateFailure: quando a API não aceita a análise como assíncrona.
-    """
     status, body = request_json(config.api_url + "/api/analyses", "POST", token,
                                 {"repositoryUrl": config.repository_url,
                                  "reference": config.commit_sha})
@@ -125,15 +114,11 @@ def create_analysis(config: GateConfig, token: str) -> str:
     return analysis_id
 
 
+# Pydoc — objetivo: consultar uma análise até estado terminal ou timeout.
+# Parâmetros: config contém timeout/intervalo; token é o JWT; analysis_id é o UUID.
+# Retorno: resultado JSON em COMPLETED ou FAILED.
+# Exceções: GateFailure quando a análise expira ou a API fica indisponível.
 def poll_analysis(config: GateConfig, token: str, analysis_id: str) -> dict[str, Any]:
-    """Consulta uma análise até estado terminal ou expiração do timeout.
-
-    :param config: configuração com timeout e intervalo de polling.
-    :param token: JWT Bearer da identidade do pipeline.
-    :param analysis_id: UUID retornado na criação da análise.
-    :return: resultado JSON em estado ``COMPLETED`` ou ``FAILED``.
-    :raises GateFailure: quando a análise expira ou a API fica indisponível.
-    """
     deadline = time.monotonic() + config.timeout_seconds
     endpoint = config.api_url + "/api/analyses/" + quote(analysis_id, safe="")
     while time.monotonic() < deadline:
@@ -145,18 +130,13 @@ def poll_analysis(config: GateConfig, token: str, analysis_id: str) -> dict[str,
     raise GateFailure("SAST analysis timed out before a terminal state")
 
 
+# Pydoc — objetivo: obter findings da execução concluída anterior do repositório.
+# Parâmetros: config é a API; token é o JWT; current_id é o UUID atual;
+# owner e repository identificam o repositório no GitHub.
+# Retorno: findings anteriores ou lista vazia sem baseline.
+# Exceções: GateFailure quando a API não consulta o histórico.
 def previous_findings(config: GateConfig, token: str, current_id: str,
                       owner: str, repository: str) -> list[dict[str, Any]]:
-    """Obtém os findings da execução concluída anterior do mesmo repositório.
-
-    :param config: configuração da API do SAST.
-    :param token: JWT Bearer da identidade do pipeline.
-    :param current_id: UUID da análise atual, que deve ser ignorada no baseline.
-    :param owner: proprietário do repositório no GitHub.
-    :param repository: nome do repositório no GitHub.
-    :return: findings da execução anterior ou lista vazia quando não há baseline.
-    :raises GateFailure: quando a API não pode consultar o histórico.
-    """
     path = f"/api/analyses/systems/{quote(owner, safe='')}/{quote(repository, safe='')}" \
            "/history?page=0&size=20"
     _, history = request_json(config.api_url + path, token=token)
@@ -171,15 +151,12 @@ def previous_findings(config: GateConfig, token: str, current_id: str,
     return []
 
 
+# Pydoc — objetivo: aplicar a política determinística ao resultado da análise.
+# Parâmetros: config contém repositório/SHA; result é o JSON atual;
+# baseline contém findings da execução anterior.
+# Retorno: resumo seguro com decisão, contagens e localizações mínimas.
+# Exceções: GateFailure quando origem, SHA, estado ou cobertura são inválidos.
 def evaluate(config: GateConfig, result: dict[str, Any], baseline: list[dict[str, Any]]) -> dict[str, Any]:
-    """Aplica a política determinística ao resultado da análise.
-
-    :param config: configuração com repositório e SHA esperados.
-    :param result: resultado JSON da análise atual.
-    :param baseline: findings da execução concluída anterior.
-    :return: resumo seguro com decisão, contagens e localizações mínimas.
-    :raises GateFailure: quando origem, SHA, estado ou cobertura são inválidos.
-    """
     _, _, expected_repository = normalize_repository(config.repository_url)
     if result.get("repositoryUrl") != expected_repository:
         raise GateFailure("analysis repository does not match the requested repository")
@@ -213,13 +190,11 @@ def evaluate(config: GateConfig, result: dict[str, Any], baseline: list[dict[str
     }
 
 
+# Pydoc — objetivo: executar autenticação, análise, polling, baseline e decisão.
+# Parâmetros: config é a configuração completa do Security Gate.
+# Retorno: zero para aprovação ou um para bloqueio por Critical novo.
+# Exceções: GateFailure quando a análise ou a política não é validada.
 def run(config: GateConfig) -> int:
-    """Executa autenticação, análise, polling, baseline e decisão do gate.
-
-    :param config: configuração completa da execução do Security Gate.
-    :return: zero para aprovação ou um para bloqueio por Critical novo.
-    :raises GateFailure: quando a análise ou a política não pode ser validada.
-    """
     policy = json.loads(config.policy_path.read_text(encoding="utf-8"))
     if policy.get("blocking", {}).get("newCriticalDeterministic") is not True:
         raise GateFailure("gate policy does not enable deterministic Critical blocking")
@@ -235,12 +210,11 @@ def run(config: GateConfig) -> int:
     return 1 if summary["status"] == "FAIL" else 0
 
 
+# Pydoc — objetivo: ler argumentos de linha de comando e montar a configuração.
+# Parâmetros: nenhum parâmetro explícito; os valores vêm de sys.argv.
+# Retorno: configuração validada para executar o Security Gate.
+# Exceções: SystemExit quando argumento obrigatório é inválido ou ausente.
 def parse_args() -> GateConfig:
-    """Lê argumentos de linha de comando e monta a configuração do gate.
-
-    :return: configuração validada para a execução do Security Gate.
-    :raises SystemExit: quando um argumento obrigatório é inválido ou ausente.
-    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--api-url", required=True)
     parser.add_argument("--repository-url", required=True)
