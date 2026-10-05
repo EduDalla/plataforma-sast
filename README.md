@@ -78,6 +78,8 @@ Se `src/backend/target` não estiver gravável pelo usuário atual, execute o Ma
 ## Documentação
 
 - [Regras gerais do sistema](REGRAS.MD) e [instruções para agentes](AGENTS.md).
-- [Parser, regras e arquitetura inicial](docs/CP1-Implementacao-Fundacao-e-Parsers.md) e [autenticação e frontend](docs/CP1-Autenticacao-e-Frontend.md).
-- [Taint analysis](docs/CP2-Taint-Analysis.md), [IA local e processamento assíncrono](docs/CP2-IA-Local.md) e [decisão arquitetural sobre análise semântica](docs/adr/ADR-001-ia-e-analise-semantica.md).
-- [Boas práticas Java e desempenho do backend](docs/Boas-praticas-Java-e-desempenho.md).
+- [Matriz de requisitos da entrega final](docs/Matriz-de-requisitos-CP3.md): estado atual, lacunas e decisões de escopo.
+- [Plano de adequação](docs/Plano-de-adequacao-CP3.md): ordem de implementação e critérios de aceite.
+- [Critérios de aceite e defesa](docs/Criterios-de-aceite-e-defesa.md): verificações, evidências e roteiro de apresentação.
+
+Esses três documentos registram trabalho planejado. As funcionalidades marcadas como pendentes ainda não estão implementadas.
