@@ -6,13 +6,13 @@ Demonstração de **8 minutos (480 segundos)**, com preparação fora do tempo d
 
 | Papel | Nome | Preparação |
 |---|---|---|
-| Arquitetura e escopo | A preencher pelo grupo | Abrir C4, decisões D-01 e matriz RF/RNF; conhecer limitações e perguntas da orientação. |
-| Operação e segurança | A preencher pelo grupo | Subir ambiente pelo manual, conferir seis health checks, preparar duas contas de teste e análises autorizadas. |
-| Engine e qualidade | A preencher pelo grupo | Abrir testes do fixture oficial, trace de taint, corpus, estados consultivos e evidências sem dados sensíveis. |
-| Interface e CI | A preencher pelo grupo | Preparar dashboard/histórico, tabela de tendência e resultados dos seis testes locais do gate. |
-| Registro e tempo | A preencher pelo grupo | Cronometrar, registrar data/revisão, verificar links e anotar o que foi efetivamente demonstrado. |
+| Arquitetura e escopo | Eduardo Dallabella — confirmar pelo grupo | Abrir C4, decisões D-01 e matriz RF/RNF; conhecer limitações e perguntas da orientação. |
+| Operação e segurança | Eduardo Dallabella — confirmar pelo grupo | Subir ambiente pelo manual, conferir seis health checks, preparar duas contas de teste e análises autorizadas. |
+| Engine e qualidade | Mariana N. Dourado — confirmar pelo grupo | Apresentar taint intraprocedural, fixture oficial, rastreabilidade e limites de cobertura. |
+| Interface e CI | Eduardo Dallabella — confirmar pelo grupo | Preparar dashboard/histórico, tabela de tendência e resultados dos seis testes locais do gate. |
+| Registro e tempo | Eduardo Dallabella — confirmar pelo grupo | Cronometrar, registrar data/revisão, verificar links e anotar o que foi efetivamente demonstrado. |
 
-Uma pessoa pode acumular papéis. Não atribuir nomes ou contribuições sem confirmação do grupo. A validação do escopo foi confirmada; a divisão nominal permanece pendente.
+Os nomes e contribuições acima foram extraídos do histórico Git do checkout (`git shortlog -sne` e commits associados) e ainda precisam de confirmação do grupo para a versão acadêmica final. Uma pessoa pode acumular papéis. A validação do escopo foi confirmada.
 
 1. Seguir o [manual de instalação](Manual-tecnico-e-api.md), preservando o `.env` existente. Executar os comandos de verificação abaixo e guardar apenas resultados derivados.
 2. Usar somente origens públicas autorizadas. O ensaio O-01 usou este próprio projeto e o SHA registrado; repetir com outro SHA produz nova evidência, não substitui silenciosamente o registro antigo.
@@ -49,14 +49,14 @@ docker compose config --quiet
 
 Instalar as dependências do frontend com `npm --prefix src/frontend ci` quando necessário. O ajuste de Maven permite o agente Mockito no JDK deste ambiente. O verify executa apenas o produto e seus fixtures; Testcontainers cria dependências de teste. Os cenários opcionais de Ollama não são habilitados por padrão. Reprodução live e falhas provocadas têm procedimentos próprios em Q-01/O-01.
 
-## Ata de demonstração — preenchimento posterior
+## Ata de demonstração — registro da preparação e preenchimento da sessão
 
-Vinculada aos cenários manuais BDD-E-M01–M03. Esta tabela é um modelo; não constitui evidência de execução.
+Vinculada aos cenários manuais BDD-E-M01–M03. O registro abaixo separa o que foi preparado ou comprovado por teste do que ainda exige uma sessão visual com o grupo.
 
 | Data e responsável | Bloco / cenário | Revisão e origem autorizada | Resultado efetivo | Evidência sanitizada / pendência |
 |---|---|---|---|---|
-| A preencher | M01: demonstração visual | A preencher | Não executado nesta etapa | Capturas revisadas ou descrição objetiva de estados/contagens. |
-| A preencher | M02: PR seguro e bloqueado | URLs de PR, SHA e checks | Pendente | Configuração de proteção e resultado real, sem secrets. |
-| A preencher | M03: aceite da orientação | Decisões D-01 | Pendente | Ata, mensagem ou rubrica validada. |
+| 07/10/2026 — Eduardo, registro documental | Preparação M01: demonstração visual | HEAD `ca15314`; origem pública autorizada registrada em O-01 | Roteiro dividido em 8 blocos/480 s; testes locais e evidências alternativas separados | Falta executar a sessão visual integrada e registrar contagens/capturas revisadas. |
+| 07/10/2026 — Eduardo, registro documental | Preparação M02: PR seguro e bloqueado | Workflow, política local e testes sintéticos | Política local aprovada; PR real, checks externos e proteção da branch não demonstrados | Registrar URLs, SHA, checks e configuração administrativa sem secrets. |
+| 07/10/2026 — grupo | M03: aceite da orientação | Decisões D-01 | Escopo confirmado pelo grupo nesta conversa | Anexar ata, mensagem ou rubrica da orientação quando disponível. |
 
-Não anexar fonte integral de terceiros, archives, credenciais ou dados pessoais das contas de teste. O [registro E-01](evidencias/E-01-2026-10-07.md) contém a verificação local efetivamente executada, separada desta ata.
+Não anexar fonte integral de terceiros, archives, credenciais ou dados pessoais das contas de teste. O [registro E-01](evidencias/E-01-2026-10-07.md) contém a verificação local efetivamente executada, separada desta ata. A TASK-10 só deve ser marcada como integralmente concluída depois da sessão visual, confirmação nominal e registro do resultado efetivamente demonstrado.

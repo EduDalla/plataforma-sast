@@ -46,8 +46,8 @@ Definições Given/When/Then, fixtures e métodos estão em [Rastreabilidade BDD
 - [x] Cenários BDD e identificadores dos testes reconciliados.
 - [x] Roteiro de 480 segundos, responsabilidades por papel e evidências alternativas.
 - [x] Verificações locais executadas e resultados desta etapa registrados.
-- [ ] Nomes dos integrantes e contribuições confirmados pelo grupo.
-- [ ] Demonstração visual integrada e ata M01 registradas.
+- [ ] Nomes dos integrantes e contribuições confirmados pelo grupo (divisão preliminar baseada no Git em [`docs-entrega/CONTRIBUICOES-E-RESPONSABILIDADES.md`](../docs-entrega/CONTRIBUICOES-E-RESPONSABILIDADES.md)).
+- [ ] Demonstração visual integrada e ata M01 registradas (roteiro e ata preparados em [`docs-entrega/ROTEIRO-E-ATA-DA-DEFESA.md`](../docs-entrega/ROTEIRO-E-ATA-DA-DEFESA.md)).
 - [ ] PRs seguro/inseguro, execução externa de CI e proteção da branch comprovados.
 - [x] Revisão qualitativa das seis remediações e demais lacunas Q-01 concluídas; impacto da IA sobre falsos positivos explicitamente não comprovado.
 - [x] Validação do escopo D-01 confirmada pelo grupo e registrada.
