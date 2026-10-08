@@ -7,17 +7,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JavaParserSourceParser implements JavaSourceParser {
-    private final JavaParser parser;
-
-    /** Configura o JavaParser para aceitar sintaxe de Java 21. */
-    public JavaParserSourceParser() {
-        var config = new ParserConfiguration()
-                .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
-        parser = new JavaParser(config);
-    }
-
     @Override
     public CompilationUnit parse(String source) {
+        // O serviço é singleton; o estado mutável do parser pertence somente a esta chamada.
+        var parser = new JavaParser(new ParserConfiguration()
+                .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21));
         var result = parser.parse(source);
         if (!result.isSuccessful() || result.getResult().isEmpty()) {
             Problem problem = result.getProblems().stream().findFirst()

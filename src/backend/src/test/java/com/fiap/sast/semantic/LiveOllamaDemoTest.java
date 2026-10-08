@@ -71,6 +71,28 @@ class LiveOllamaDemoTest {
         assertEquals(1, result.assessments().size());
     }
 
+    /** BDD-IA-04: seis findings rotulados recebem avaliação real do modelo local. */
+    @Test
+    @org.junit.jupiter.api.DisplayName("BDD-IA-04: seis findings recebem avaliações reais do modelo local")
+    void sixLabeledFindingsReceiveRealAssessments() {
+        var firstSourceFindings = engine.analyze(VULNERABLE_SOURCE, "InMemoryVulnerable.java");
+        var secondSource = "class Commands {\n"
+                + "  void a() throws Exception { Runtime.getRuntime().exec(\"a\"); }\n"
+                + "  void b() throws Exception { Runtime.getRuntime().exec(\"b\"); }\n"
+                + "  void c() throws Exception { Runtime.getRuntime().exec(\"c\"); }\n"
+                + "}";
+        var secondSourceFindings = engine.analyze(secondSource, "Commands.java");
+        var candidates = java.util.stream.Stream.concat(
+                        firstSourceFindings.stream().map(f -> new SemanticAnalysisService.Candidate(UUID.randomUUID(), f, VULNERABLE_SOURCE)),
+                        secondSourceFindings.stream().map(f -> new SemanticAnalysisService.Candidate(UUID.randomUUID(), f, secondSource)))
+                .limit(6)
+                .toList();
+        assertEquals(6, candidates.size());
+        var result = semantic.enrich(candidates);
+        assertEquals("COMPLETED", result.status());
+        assertEquals(6, result.assessments().size());
+    }
+
     /** Demonstra uma hipótese de N+1 sem criar finding determinístico. */
     @Test
     void loopedRepositoryLookupProducesConsultiveSuggestion() {

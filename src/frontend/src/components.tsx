@@ -498,7 +498,7 @@ export function DashboardPrompt({
         <button className="modal-close" type="button" aria-label="Fechar" onClick={onClose}>×</button>
         <span className="modal-icon" aria-hidden="true"><Shield /></span>
         <h2 id="dashboard-modal-title">Cadastre um sistema primeiro</h2>
-        <p>Conclua uma análise de repositório para visualizar o Dashboard e identificar vulnerabilidades.</p>
+        <p>Cadastre um sistema para acompanhar o processamento e identificar vulnerabilidades no Dashboard.</p>
         <div className="modal-actions">
           <button ref={actionRef} type="button" onClick={onNew}>Cadastrar novo</button>
           <button className="secondary" type="button" onClick={onClose}>Fechar</button>
@@ -630,7 +630,7 @@ function SystemCards({ data, onOpenSystem, onPage }: { data: SystemsPage; onOpen
           <h3>{system.repositoryName}</h3>
           <p>{system.owner}/{system.repositoryName}</p>
         </div>
-        <div className="system-latest"><span>Última análise</span><strong>{dateLabel(system.latest.createdAt)}</strong><small>{system.latest.reference || "Branch padrão"} · {system.latest.resultSummary?.total ?? system.latest.findings} vulnerabilidade(s)/melhoria(s)</small><small>Maior prioridade: {system.latest.resultSummary?.highestPriority ? priorityLabels[system.latest.resultSummary.highestPriority] : "Sem prioridade"}</small></div>
+        <div className="system-latest"><span>Última análise</span><strong>{dateLabel(system.latest.createdAt)}</strong>{system.latest.status === "PROCESSING" ? <small role="status">Em processamento · {system.latest.stage || "na fila"}</small> : system.latest.status === "FAILED" ? <small role="status">Falha no processamento</small> : <><small>{system.latest.reference || "Branch padrão"} · {system.latest.resultSummary?.total ?? system.latest.findings} vulnerabilidade(s)/melhoria(s)</small><small>Maior prioridade: {system.latest.resultSummary?.highestPriority ? priorityLabels[system.latest.resultSummary.highestPriority] : "Sem prioridade"}</small></>}</div>
         <span className="system-open">Abrir dashboard <span aria-hidden="true">→</span></span>
       </button>;
     })}</div>
@@ -661,7 +661,7 @@ export function SystemDashboard({
   onOpen: () => void;
   onNavigate?: (href: string) => void;
 }) {
-  const chronologicalHistory = [...history].reverse();
+  const chronologicalHistory = history.filter((entry) => !entry.status || entry.status === "COMPLETED" || entry.status === "Completed").slice().reverse();
   const coverageLabel = (status?: string) => status === "CONFIRMED" ? "Confirmada" : status === "FAILED" ? "Falha" : "Parcial";
   const variationLabel = (index: number, entry: HistoryEntry) => {
     if (entry.coverageStatus && entry.coverageStatus !== "CONFIRMED") return "Não comparável";
@@ -682,7 +682,7 @@ export function SystemDashboard({
           <small>{totalHistory} execução{totalHistory === 1 ? "" : "ões"} · mais recente à direita</small>
         </div>
         <div className="system-history-list">
-          {history.map((entry) => <button key={entry.analysisId} type="button" className={entry.analysisId === data.analysisId ? "selected" : ""} onClick={() => onSelect(entry.analysisId)} disabled={loading || entry.analysisId === data.analysisId} aria-current={entry.analysisId === data.analysisId ? "page" : undefined}>{dateLabel(entry.createdAt)} · {entry.reference || "padrão"} · {entry.findings} vulnerabilidade(s) · {entry.resultSummary?.highestPriority ? priorityLabels[entry.resultSummary.highestPriority] : "Sem prioridade"}</button>)}
+          {history.map((entry) => <button key={entry.analysisId} type="button" className={entry.analysisId === data.analysisId ? "selected" : ""} onClick={() => onSelect(entry.analysisId)} disabled={loading || entry.analysisId === data.analysisId} aria-current={entry.analysisId === data.analysisId ? "page" : undefined}>{dateLabel(entry.createdAt)} · {entry.reference || "padrão"} · {entry.status === "PROCESSING" ? `Em processamento (${entry.stage || "na fila"})` : entry.status === "FAILED" ? "Falha" : `${entry.findings} vulnerabilidade(s) · ${entry.resultSummary?.highestPriority ? priorityLabels[entry.resultSummary.highestPriority] : "Sem prioridade"}`}</button>)}
           {hasMore && <button type="button" onClick={onMore} disabled={loading}>{loading ? "Carregando…" : "Carregar anteriores"}</button>}
         </div>
       </div>

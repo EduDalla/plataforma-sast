@@ -2,6 +2,7 @@ package com.fiap.sast.taint;
 
 import com.fiap.sast.parsing.JavaParserSourceParser;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -10,6 +11,7 @@ class TaintAnalysisEngineTest {
     private final TaintAnalysisEngine engine = new TaintAnalysisEngine();
 
     @Test
+    @DisplayName("BDD-TAINT-01: entrada HTTP concatenada chega ao Runtime.exec com trace")
     void parametroHttpConcatenadoAtingindoRuntimeExecGeraFindingComTraceCompleto() {
         var source = "class Controller {\n"
                 + "  void run(@org.springframework.web.bind.annotation.RequestParam String cmd) throws Exception {\n"
@@ -32,6 +34,7 @@ class TaintAnalysisEngineTest {
     }
 
     @Test
+    @DisplayName("BDD-TAINT-05: valor constante não contaminado não gera finding")
     void valorConstanteNaoContaminadoNaoGeraFinding() {
         var source = "class Controller {\n"
                 + "  void run() throws Exception {\n"
@@ -45,6 +48,7 @@ class TaintAnalysisEngineTest {
     }
 
     @Test
+    @DisplayName("BDD-TAINT-02: replaceAll interrompe o rastro conforme catálogo atual")
     void sanitizadorReplaceAllQuebraORastroDeTaint() {
         var source = "class Controller {\n"
                 + "  void run(@org.springframework.web.bind.annotation.RequestParam String cmd) throws Exception {\n"
@@ -59,6 +63,7 @@ class TaintAnalysisEngineTest {
     }
 
     @Test
+    @DisplayName("BDD-TAINT-03: fluxo entre métodos permanece fora da cobertura")
     void fluxoInterproceduralNaoEhRastreado() {
         var source = "class Controller {\n"
                 + "  void run(@org.springframework.web.bind.annotation.RequestParam String cmd) throws Exception {\n"

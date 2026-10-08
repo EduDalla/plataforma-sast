@@ -2,6 +2,8 @@
 
 Este plano transforma as lacunas da [matriz](Matriz-de-requisitos-CP3.md) em tarefas verificáveis. Os estados descrevem o checkout atual; nenhuma tarefa abaixo está implementada apenas por constar deste documento. O fluxo vigente permanece URL pública do GitHub → API → PostgreSQL/outbox → RabbitMQ → worker → JavaParser/regras/IA local → resultados HTTP → frontend.
 
+O checklist operacional consolidado das pendências está em [Tasks pendentes](Tasks-pendentes.md). Ele inclui situação, dependências, responsável, critério de aceite e as tarefas condicionais à validação formal do escopo.
+
 ## Ordem de execução sugerida
 
 | Ordem | Pacote | Dependência | Resultado de aceite |
@@ -25,7 +27,7 @@ Este plano transforma as lacunas da [matriz](Matriz-de-requisitos-CP3.md) em tar
 
 ## S-01 — Melhorar a precisão do motor
 
-- Revisar `SastEngine`: a chave atual de deduplicação é `(arquivo, linha)` e uma regra substitui outra. Definir identidade por regra, arquivo, linha, coluna e localização do nó; não eliminar vulnerabilidades distintas.
+- A implementação atual preserva ocorrências distintas e deduplica ocorrências idênticas; os cenários BDD-E-03 documentam os testes de regras/nós na mesma linha. A substituição por `(arquivo, linha)` é o problema histórico que motivou S-01, não o comportamento atual.
 - Expandir fixtures com dois achados na mesma linha, duplicata da mesma regra, arquivo inválido, casos seguros parecidos com vulneráveis e exemplos para as três regras.
 - Medir precisão e recall em corpus pequeno, rotulado e autorizado; registrar falsos positivos/falsos negativos por regra e versão do conjunto de teste.
 - Preservar o fixture atual de exatamente três findings e o teste que prova a não execução de um inicializador Java.
@@ -61,7 +63,7 @@ Este plano transforma as lacunas da [matriz](Matriz-de-requisitos-CP3.md) em tar
 - Decidir formato do relatório exportável com a orientação. Se exigido, exportar dados derivados autorizados, sem fonte integral ou segredo, identificando escopo, data, SHA, regras, severidades, limitações e estado da IA.
 - Atualizar API, tipos TypeScript, frontend, testes e documentação em conjunto. Se houver dados persistentes novos, usar nova migração Flyway.
 
-**Aceite:** testes com pelo menos três execuções mostram alta, queda e estabilidade; dois usuários não veem séries um do outro; estado parcial não é tratado como ausência de falhas.
+**Aceite:** testes com pelo menos três execuções mostram alta, queda e estabilidade; dois usuários não veem séries um do outro; a criticidade considera as vulnerabilidades; os dois botões exibem seus respectivos itens mantendo as tags existentes; estado parcial não é tratado como ausência de falhas.
 
 ## Q-01 — Taint e IA com evidência de qualidade
 
@@ -70,7 +72,7 @@ Este plano transforma as lacunas da [matriz](Matriz-de-requisitos-CP3.md) em tar
 - Avaliar IA local em exemplos rotulados: severidade sugerida, provável falso positivo, qualidade de remediação, respostas inválidas, timeout e indisponibilidade. Registrar modelo, versão do prompt e custo/tempo de execução.
 - Manter findings e severidade determinísticos independentes da IA; o gate usa somente evidência determinística enquanto avaliações consultivas não tiverem política e validação próprias.
 
-**Aceite:** relatório mostra tamanho do corpus, critérios de rotulagem, contagens de acertos/erros, limites e exemplo de operação degradada sem perda de findings.
+**Aceite:** [Qualidade-taint-e-IA.md](Qualidade-taint-e-IA.md) registra corpus de 14 casos, critérios de rotulagem, TP=8, FP=0, TN=4, FN=2, limites, cenários BDD rastreáveis, ensaio real de seis findings e operação degradada sem perda de findings. A revisão qualitativa manual das remediações ainda deve ser anexada; não há alegação de cobertura universal.
 
 ## O-01 — Operação e escalabilidade
 
@@ -79,14 +81,14 @@ Este plano transforma as lacunas da [matriz](Matriz-de-requisitos-CP3.md) em tar
 - Verificar isolamento JWT, logs sem segredos/código, snapshot em memória, recusa de URL malformada e archive perigoso. Manter o token GitHub opcional apenas no backend.
 - Registrar limites da demonstração: uma máquina Compose demonstra separação e escalabilidade possível, não capacidade comprovada em produção.
 
-**Aceite:** checklist de [validação](Criterios-de-aceite-e-defesa.md) preenchido com evidências e comandos reproduzíveis, sem dados sensíveis.
+**Aceite verificado em 07/10/2026:** testes de operação com PostgreSQL/RabbitMQ reais e ensaio Compose isolado cobrem concorrência, duplicação, queda do broker, retomada de lease, falha transitória de origem e isolamento JWT. Quatro análises do mesmo SHA público concluíram com duas tentativas ativas nos consumidores de um único serviço worker e findings preservados sob IA `DEGRADED`. BDD, medições e limites estão em [Operação e escalabilidade](Operacao-e-escalabilidade.md) e no [registro derivado](evidencias/O-01-2026-10-07.json). O checklist de [validação](Criterios-de-aceite-e-defesa.md) separa esta carga observada de capacidade de produção.
 
 ## E-01 — Documentação e defesa
 
-- Produzir diagramas C4 de contexto e contêineres coerentes com o Compose, mostrando fronteiras de confiança e fluxo assíncrono. **Documentado em `docs/Arquitetura-e-fluxos.md`.**
-- Completar documentação técnica de API, autenticação, estados, regras/CWE, taint, IA, limites e operação. **Documentado em `docs/Manual-tecnico-e-api.md`; modelo de dados detalhado continua dependente das migrações e da evolução do contrato.**
-- Preparar roteiro de demonstração: submissão autorizada, AST e três violações, trace de taint, IA consultiva, dashboard/tendência, PR seguro e PR bloqueado, além de falha de Ollama. **Roteiro e matriz de evidências em `docs/Evidencias-e-roteiro-de-defesa.md`; CI, gate e tendência permanecem explicitamente pendentes.**
-- Registrar a interpretação atual da rubrica e os pontos que exigem confirmação da orientação em `docs/Decisoes-de-escopo.md`.
-- Dividir responsáveis no grupo e guardar evidências de execução e decisões, sem copiar repositórios de terceiros para o material público.
+- Diagramas C4 de contexto e contêineres conferidos contra Compose, redes, protocolos, fronteiras, engine no worker e outbox no banco: [Arquitetura](Arquitetura-e-fluxos.md).
+- Instalação, autenticação, contratos HTTP, estados/falhas, regras, limites, retenção e modelo de dados V1–V11 consolidados no [Manual](Manual-tecnico-e-api.md).
+- [Roteiro](Evidencias-e-roteiro-de-defesa.md) de exatamente 480 segundos com papéis, preparação e evidências alternativas. CI, gate e tendência implementados; PRs reais, proteção administrativa e demonstração visual integrada continuam pendentes.
+- [Rastreabilidade BDD](Rastreabilidade-BDD.md) cobre RF01–RF18 e RNF01–RNF08, ligando cenário, fixture, teste, evidência e limitações; IDs de Q-01 foram reconciliados com os testes existentes.
+- [Decisões D-01](Decisoes-de-escopo.md) preservam a necessidade de validação da orientação. Nomes e contribuições devem ser preenchidos pelo grupo; não são inferidos pelo agente.
 
-**Aceite documental:** outra pessoa consegue instalar, verificar e repetir a parte implementada da demonstração a partir dos documentos; cada RF/RNF aponta para evidência de código, teste ou decisão registrada. A aceitação integral da entrega continua condicionada às lacunas técnicas listadas na matriz.
+**Aceite documental concluído em 07/10/2026:** instalação e reprodução documentadas, todos os RF/RNF rastreáveis, verificações locais registradas em [E-01](evidencias/E-01-2026-10-07.md) e roteiro com evidências alternativas. Não houve ensaio de usabilidade com outra pessoa nesta etapa. Aceitação integral continua condicionada às lacunas técnicas e externas da [matriz](Matriz-de-requisitos-CP3.md), incluindo revisão qualitativa Q-01 e aceite da orientação.

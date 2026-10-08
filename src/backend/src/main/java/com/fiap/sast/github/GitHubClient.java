@@ -137,6 +137,9 @@ public class GitHubClient {
                 var entry = iterator.nextElement();
                 if (++entries > 10000) throw new LimitException();
                 String name = entry.getName();
+                // ZipFile pode normalizar barras Windows: valide também o nome original do archive.
+                String rawName = new String(entry.getRawName(), StandardCharsets.UTF_8);
+                if (rawName.contains("\\")) throw new SecurityException();
                 if (name.startsWith("/") || name.contains("\\") || Arrays.asList(name.split("/")).contains(".."))
                     throw new SecurityException();
                 // Contabiliza inclusive conteúdo ignorado para limitar bombas ZIP.

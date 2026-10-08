@@ -28,6 +28,7 @@ public class BootstrapUser implements ApplicationRunner {
 
     @Override @Transactional
     public void run(ApplicationArguments args) {
+        users.acquireBootstrapLock();
         if (users.count() > 0) return;
         if (!email.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+") || email.length() > 254
                 || password.length() < 12 || password.getBytes(StandardCharsets.UTF_8).length > 72) {

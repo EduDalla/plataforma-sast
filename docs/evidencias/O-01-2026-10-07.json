@@ -1,0 +1,95 @@
+{
+  "started_at": "2026-10-07T23:37:32.928426+00:00",
+  "status": "PASSED",
+  "repository_url": "https://github.com/EduDalla/plataforma-sast",
+  "commit_sha": "f1a32e2e315acb1cc7b56377151f98a3635a58eb",
+  "ollama_version": "0.34.4",
+  "services": [
+    "db",
+    "rabbitmq",
+    "api",
+    "worker",
+    "web",
+    "ollama"
+  ],
+  "http_invalid_origins": 3,
+  "health": "UP",
+  "samples": 6,
+  "memory_peak_observed_bytes": {
+    "api": 631452467,
+    "worker": 698771046
+  },
+  "queue_peak_ready": 4,
+  "active_attempts_peak": 2,
+  "limits": {
+    "archive_bytes": 104857600,
+    "java_files": 1000,
+    "file_bytes": 2097152,
+    "extracted_bytes": 524288000,
+    "entries": 10000
+  },
+  "host": {
+    "architecture": "x86_64",
+    "cpus": 16
+  },
+  "ai_budget": {
+    "candidates": 1,
+    "total_seconds": 2,
+    "suggestion_methods": 1,
+    "suggestion_seconds": 2
+  },
+  "outbox_attempts_during_outage": 1,
+  "analyses": [
+    {
+      "analysis_id": "a26d2d7f-5147-4a52-9647-6b30b7a4fca6",
+      "status": "COMPLETED",
+      "semantic_status": "DEGRADED",
+      "suggestion_status": "DEGRADED",
+      "files_processed": 66,
+      "files_total": 66,
+      "findings": 1,
+      "attempts": 1,
+      "elapsed_seconds": 37.434
+    },
+    {
+      "analysis_id": "29099474-e552-4b50-b70d-d901548cac18",
+      "status": "COMPLETED",
+      "semantic_status": "DEGRADED",
+      "suggestion_status": "DEGRADED",
+      "files_processed": 66,
+      "files_total": 66,
+      "findings": 1,
+      "attempts": 1,
+      "elapsed_seconds": 23.565
+    },
+    {
+      "analysis_id": "04f9ba27-d829-4b7d-96d0-7b70fa60a1f8",
+      "status": "COMPLETED",
+      "semantic_status": "DEGRADED",
+      "suggestion_status": "DEGRADED",
+      "files_processed": 66,
+      "files_total": 66,
+      "findings": 1,
+      "attempts": 1,
+      "elapsed_seconds": 27.139
+    },
+    {
+      "analysis_id": "f66840c9-a509-4cc5-9da0-0e12e4dc6ff1",
+      "status": "COMPLETED",
+      "semantic_status": "DEGRADED",
+      "suggestion_status": "DEGRADED",
+      "files_processed": 66,
+      "files_total": 66,
+      "findings": 1,
+      "attempts": 2,
+      "elapsed_seconds": 23.672
+    }
+  ],
+  "logs_sensitive_values_detected": 0,
+  "jwt_isolation": "passed",
+  "duplicates": "no_extra_attempt_or_findings",
+  "lease_recovery": "passed",
+  "ollama_restored": true,
+  "isolated_project_removed": true,
+  "finished_at": "2026-10-07T23:39:08.592758+00:00"
+}

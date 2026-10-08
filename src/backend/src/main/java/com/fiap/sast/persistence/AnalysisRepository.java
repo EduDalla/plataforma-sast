@@ -9,7 +9,7 @@ public interface AnalysisRepository extends JpaRepository<Analysis,UUID> {
     java.util.List<Analysis> findByUserIdOrderByCreatedAtDescIdDesc(UUID userId);
 
     /**
-     * Carrega apenas execuções concluídas para compor a central do usuário.
+     * Carrega execuções concluídas para calcular os indicadores da central.
      *
      * @param userId identificador do usuário proprietário
      * @return execuções concluídas em ordem decrescente de criação
@@ -17,6 +17,17 @@ public interface AnalysisRepository extends JpaRepository<Analysis,UUID> {
     @Query("select a from Analysis a where a.userId = :userId and a.status in ('COMPLETED', 'Completed') "
             + "order by a.createdAt desc, a.id desc")
     java.util.List<Analysis> findCompletedByUser(@Param("userId") UUID userId);
+
+    /**
+     * Carrega todas as execuções visíveis para que sistemas recém-cadastrados
+     * apareçam antes da conclusão do worker.
+     *
+     * @param userId identificador do usuário proprietário
+     * @return execuções do usuário em ordem decrescente de criação
+     */
+    @Query("select a from Analysis a where a.userId = :userId "
+            + "order by a.createdAt desc, a.id desc")
+    java.util.List<Analysis> findVisibleSystems(@Param("userId") UUID userId);
 
     /**
      * Carrega execuções concluídas de um repositório pertencente ao usuário.
@@ -30,6 +41,19 @@ public interface AnalysisRepository extends JpaRepository<Analysis,UUID> {
             + "and a.repositoryName = :repository and a.status in ('COMPLETED', 'Completed') "
             + "order by a.createdAt desc, a.id desc")
     java.util.List<Analysis> findCompletedHistory(@Param("userId") UUID userId,
+            @Param("owner") String owner, @Param("repository") String repository);
+
+    /**
+     * Carrega o histórico do sistema, incluindo processamento e falhas.
+     *
+     * @param userId identificador do usuário proprietário
+     * @param owner proprietário do repositório no GitHub
+     * @param repository nome do repositório no GitHub
+     * @return execuções visíveis em ordem decrescente de criação
+     */
+    @Query("select a from Analysis a where a.userId = :userId and a.repositoryOwner = :owner "
+            + "and a.repositoryName = :repository order by a.createdAt desc, a.id desc")
+    java.util.List<Analysis> findVisibleHistory(@Param("userId") UUID userId,
             @Param("owner") String owner, @Param("repository") String repository);
 
     /**

@@ -203,7 +203,8 @@ public class AnalysisController {
 
     public record HistoryEntry(UUID analysisId, String reference, Instant createdAt, int filesAnalyzed,
             int findings, ResultSummary resultSummary, int suggestions, String commitSha,
-            String coverageStatus, String semanticStatus, String suggestionStatus) {}
+            String coverageStatus, String semanticStatus, String suggestionStatus,
+            String status, String stage) {}
     public record SystemCard(String owner, String repositoryName, String repositoryUrl,
             Instant latestCreatedAt, int totalAnalyses, HistoryEntry latest) {}
     public record SystemsPage(List<SystemCard> systems, int page, int size, int totalSystems,
@@ -218,7 +219,7 @@ public class AnalysisController {
     private static HistoryEntry history(Analysis a) {
         return new HistoryEntry(a.id, a.reference, a.createdAt, a.filesAnalyzed, a.findings.size(),
                 summarizeFindings(a.findings), a.suggestions.size(), a.commitSha, coverageStatus(a),
-                a.semanticStatus, a.suggestionStatus);
+                a.semanticStatus, a.suggestionStatus, a.status, a.stage);
     }
 
     /**
@@ -344,6 +345,22 @@ public class AnalysisController {
                 + analysis.suggestionStatus)).toList();
     }
 
+    /** Mantém execuções em aberto no sistema, deduplicando somente as concluídas. */
+    private static List<Analysis> distinctVisibleExecutions(List<Analysis> analyses) {
+        var completed = new HashSet<String>();
+        return analyses.stream().filter(analysis -> {
+            if (!"COMPLETED".equalsIgnoreCase(analysis.status)) {
+                return true;
+            }
+            return completed.add(analysis.repositoryOwner + "\u001d"
+                    + analysis.repositoryName + "\u001d" + String.valueOf(analysis.reference) + "\u001d"
+                    + findingsFingerprint(analysis) + "\u001d" + analysis.semanticStatus + "\u001d"
+                    + analysis.semanticModel + "\u001d" + analysis.promptVersion + "\u001d"
+                    + analysis.snapshotHash + "\u001d" + analysis.commitSha + "\u001d"
+                    + analysis.suggestionStatus);
+        }).toList();
+    }
+
     private static String snapshotHash(List<GitHubClient.File> files) {
         try {
             var digest = MessageDigest.getInstance("SHA-256");
@@ -360,7 +377,7 @@ public class AnalysisController {
     }
 
     /**
-     * Monta a página de sistemas concluídos e o resumo global do usuário autenticado.
+     * Monta a página de sistemas visíveis e o resumo global de execuções concluídas.
      *
      * @param page índice da página solicitado
      * @param size quantidade solicitada de sistemas por página
@@ -375,7 +392,8 @@ public class AnalysisController {
         page = Math.max(0, page);
         size = Math.min(20, Math.max(1, size));
 
-        var analyses = distinctExecutions(repo.findCompletedByUser(owner.id));
+        var analyses = distinctVisibleExecutions(repo.findVisibleSystems(owner.id));
+        var completed = distinctExecutions(repo.findCompletedByUser(owner.id));
         var grouped = new LinkedHashMap<String, List<Analysis>>();
         analyses.forEach(a -> grouped.computeIfAbsent(a.repositoryOwner + "/" + a.repositoryName,
                 ignored -> new ArrayList<>()).add(a));
@@ -388,13 +406,13 @@ public class AnalysisController {
 
         var from = Math.min(page * size, cards.size());
         var to = Math.min(from + size, cards.size());
-        return new SystemsPage(cards.subList(from, to), page, size, cards.size(), analyses.size(),
-                analyses.stream().mapToInt(analysis -> analysis.findings.size()).sum(),
-                analyses.stream().flatMap(analysis -> analysis.findings.stream())
+        return new SystemsPage(cards.subList(from, to), page, size, cards.size(), completed.size(),
+                completed.stream().mapToInt(analysis -> analysis.findings.size()).sum(),
+                completed.stream().flatMap(analysis -> analysis.findings.stream())
                         .mapToInt(finding -> "Critical".equals(finding.severity) ? 1 : 0)
                         .sum(),
-                analyses.stream().mapToInt(a -> a.filesAnalyzed).sum(),
-                summarize(analyses.stream().flatMap(analysis -> {
+                completed.stream().mapToInt(a -> a.filesAnalyzed).sum(),
+                summarize(completed.stream().flatMap(analysis -> {
                     var priorities = new ArrayList<String>();
                     analysis.findings.forEach(finding -> priorities.add(finding.severity));
                     analysis.suggestions.forEach(suggestion -> priorities.add(suggestion.severity));
@@ -403,7 +421,7 @@ public class AnalysisController {
     }
 
     /**
-     * Lista o histórico concluído de um repositório pertencente ao usuário.
+     * Lista o histórico de um repositório, incluindo execuções em processamento e falhas.
      *
      * @param owner proprietário do repositório no GitHub
      * @param repository nome do repositório no GitHub
@@ -421,7 +439,7 @@ public class AnalysisController {
         page = Math.max(0, page);
         size = Math.min(20, Math.max(1, size));
 
-        var all = distinctExecutions(repo.findCompletedHistory(user.id, owner, repository));
+        var all = distinctVisibleExecutions(repo.findVisibleHistory(user.id, owner, repository));
         var from = Math.min(page * size, all.size());
         var to = Math.min(from + size, all.size());
         return new HistoryPage(owner, repository,

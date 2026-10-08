@@ -159,6 +159,21 @@ describe("fluxo autenticado da análise", () => {
     expect(location.pathname).toBe("/systems/acme/demo");
     expect(await screen.findByText("DASHBOARD DO SISTEMA")).toBeInTheDocument();
   });
+  it("exibe no dashboard o primeiro sistema enquanto a análise processa", async () => {
+    const processing = { ...sample, status: "PROCESSING" as const, stage: "DOWNLOADING" as const, findings: [], filesProcessed: 0, filesTotal: 0 };
+    vi.mocked(api.systems).mockResolvedValue({
+      systems: [{ owner: "acme", repositoryName: "demo", repositoryUrl: sample.repositoryUrl, latestCreatedAt: sample.createdAt, totalAnalyses: 0, latest: { analysisId: "analysis-1", reference: "main", createdAt: sample.createdAt, filesAnalyzed: 0, findings: 0, status: "PROCESSING", stage: "DOWNLOADING" } }],
+      page: 0, size: 20, totalSystems: 1, totalAnalyses: 0, totalFindings: 0, totalCritical: 0, totalFiles: 0,
+    });
+    vi.mocked(api.history).mockResolvedValue({ owner: "acme", repositoryName: "demo", page: 0, size: 20, total: 1, history: [{ analysisId: "analysis-1", reference: "main", createdAt: sample.createdAt, filesAnalyzed: 0, findings: 0, status: "PROCESSING", stage: "DOWNLOADING" }] });
+    vi.mocked(api.analysis).mockResolvedValue(processing);
+    history.replaceState(null, "", "/dashboard");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Histórico de aplicações" })).toBeInTheDocument();
+    expect(screen.getByText(/Em processamento · DOWNLOADING/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Abrir dashboard de demo" }));
+    expect(await screen.findByText("Verificações em processamento; os totais podem mudar.")).toBeInTheDocument();
+  });
   it("mantém o dashboard do sistema visível ao trocar uma execução do histórico", async () => {
     const older = { ...sample, analysisId: "analysis-2", reference: "release", createdAt: "2026-09-05T12:00:00Z", findings: [] };
     vi.mocked(api.history).mockResolvedValue({ owner: "acme", repositoryName: "demo", page: 0, size: 20, total: 2, history: [
@@ -204,7 +219,7 @@ describe("fluxo autenticado da análise", () => {
     expect(location.pathname).toBe("/analyses/new");
     expect(localStorage.length).toBe(0);
   });
-  it("permite cadastrar uma conta e entra automaticamente", async () => {
+  it("BDD-E-06: cadastra a conta e solicita login sem autenticar automaticamente", async () => {
     vi.mocked(api.session).mockRejectedValue(new ApiError(401, "Sessão expirada"));
     vi.mocked(api.register).mockResolvedValue({ email: "new@example.com" });
     render(<App />);
@@ -379,7 +394,7 @@ describe("fluxo autenticado da análise", () => {
     expect(screen.queryByRole("dialog", { name: "Ocorreu um erro ao analisar" })).not.toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("Não foi possível acessar o repositório");
   });
-  it("restaura análise pela URL e encerra sessão", async () => {
+  it("BDD-E-07: restaura análise pela URL e encerra sessão", async () => {
     history.replaceState(null, "", "/analyses/analysis-1");
     vi.mocked(api.analysis).mockResolvedValue(sample);
     vi.mocked(api.logout).mockResolvedValue();
@@ -424,7 +439,7 @@ describe("fluxo autenticado da análise", () => {
     expect(screen.getByText("Entrada HTTP")).toBeInTheDocument();
     expect(screen.getByText("Execução de comando")).toBeInTheDocument();
   });
-  it("remove resultados e retorna ao login quando a sessão expira", async () => {
+  it("BDD-E-07: remove resultados e retorna ao login quando a sessão expira", async () => {
     vi.mocked(api.create).mockRejectedValue(
       new ApiError(401, "Sessão ausente ou expirada"),
     );

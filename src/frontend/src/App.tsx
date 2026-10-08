@@ -311,6 +311,7 @@ export function App() {
         dismissNotification("analysis-submission");
         setResult(data);
         storeLastAnalysisId(data.analysisId);
+        if (typeof api.systems === "function") loadSystems().catch(() => undefined);
         navigate(`/analyses/${data.analysisId}`);
       }
     } catch (e) {
@@ -334,6 +335,9 @@ export function App() {
       try {
         const tasks = await api.tasks();
         if (!active) return;
+        const systemMatch = window.location.pathname.match(/^\/systems\/([^/]+)\/([^/]+)$/);
+        const systemOwner = systemMatch ? decodeURIComponent(systemMatch[1]) : undefined;
+        const systemRepository = systemMatch ? decodeURIComponent(systemMatch[2]) : undefined;
         for (const task of tasks) {
           dismissNotification("analysis-submission");
           if (task.status === "PROCESSING") {
@@ -343,12 +347,26 @@ export function App() {
               message: `Acompanhando análise de ${task.repositoryUrl.replace("https://github.com/", "")}…`,
               tone: "progress",
             });
-               if (window.location.pathname.endsWith(task.analysisId)) setResult(await api.analysis(task.analysisId));
+            if (window.location.pathname.endsWith(task.analysisId)) setResult(await api.analysis(task.analysisId));
+            if (systemOwner && systemRepository && task.repositoryUrl === `https://github.com/${systemOwner}/${systemRepository}`) {
+              const systemPage = await api.history(systemOwner, systemRepository);
+              if (!active) return;
+              setSystemHistory(systemPage.history);
+              setSystemHistoryTotal(systemPage.total);
+              setResult(await api.analysis(task.analysisId));
+            }
             continue;
           }
           const completed = await api.analysis(task.analysisId);
           if (!active) return;
-             if (window.location.pathname.endsWith(task.analysisId)) setResult(completed);
+          if (window.location.pathname.endsWith(task.analysisId)) setResult(completed);
+          if (systemOwner && systemRepository && task.repositoryUrl === `https://github.com/${systemOwner}/${systemRepository}`) {
+            const systemPage = await api.history(systemOwner, systemRepository);
+            if (!active) return;
+            setSystemHistory(systemPage.history);
+            setSystemHistoryTotal(systemPage.total);
+            setResult(completed);
+          }
           const summary = completed.resultSummary ?? task.resultSummary;
           const highest = summary?.highestPriority ? priorityLabels[summary.highestPriority] : "Sem classificação";
           const message = task.status === "FAILED"

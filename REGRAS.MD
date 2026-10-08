@@ -12,7 +12,7 @@ Este documento reúne os fluxos, processos e limites arquiteturais da plataforma
 
 ## Acesso e isolamento
 
-- Cadastro e login são rotas públicas; rotas de análise, tarefas, sistemas, histórico e sessão exigem JWT Bearer válido. O bootstrap por ambiente cria um usuário inicial quando necessário e não substitui contas existentes.
+- Cadastro e login são rotas públicas; rotas de análise, tarefas, sistemas, histórico e sessão exigem JWT Bearer válido. O bootstrap por ambiente cria um usuário inicial quando necessário e não substitui contas existentes; um lock transacional PostgreSQL serializa a inicialização concorrente da API e do worker.
 - Senhas são armazenadas apenas como hash BCrypt. O access token fica na `sessionStorage` da aba do frontend, é enviado no cabeçalho `Authorization` e é descartado no logout ou quando a API responde `401`.
 - Toda leitura ou alteração de uma análise deve considerar seu usuário proprietário, inclusive a consulta de tarefas e sua confirmação. Um identificador conhecido não autoriza acesso aos dados de outra pessoa.
 
@@ -32,7 +32,7 @@ Este documento reúne os fluxos, processos e limites arquiteturais da plataforma
 - Sugestões de IA são itens próprios, com origem de segurança ou desempenho e prioridade própria. O resumo unificado conta findings e sugestões persistidos; uma avaliação aninhada não conta como item adicional.
 - O andamento pode passar por `QUEUED`, `DOWNLOADING`, `DETERMINISTIC`, `SEMANTIC`, `SUGGESTIONS` e `COMPLETED`. Falhas finais levam a `FAILED`. Estados consultivos como `DEGRADED` indicam avaliação ou cobertura parcial; zero itens nessa condição não comprova ausência de problemas.
 - Falhas transitórias de publicação ou processamento podem ser retomadas pela outbox, pela reconciliação da tarefa e pelas tentativas previstas no backend. Uma falha de Ollama não deve apagar achados determinísticos já obtidos. Mensagens ao usuário devem ser seguras e não revelar segredos nem código-fonte.
-- A central de sistemas e o histórico usam execuções do próprio usuário. O dashboard e a página de resultados devem preservar a origem e a prioridade de cada item e distinguir conclusão sem achados, processamento, cobertura parcial e falha.
+- A central de sistemas e o histórico usam execuções do próprio usuário. Sistemas aparecem assim que a primeira análise é aceita, inclusive durante processamento ou após falha; o dashboard e a página de resultados devem preservar a origem e a prioridade de cada item e distinguir conclusão sem achados, processamento, cobertura parcial e falha. Os totais globais de resultados consideram somente execuções concluídas e distintas.
 
 ## Dados e segurança da origem
 
@@ -44,8 +44,10 @@ Este documento reúne os fluxos, processos e limites arquiteturais da plataforma
 ## Evolução e verificação
 
 - O código Java da plataforma é verificado pelo [teste de qualidade do backend](src/backend/src/test/java/com/fiap/sast/quality/BackendQualityTest.java), que usa uma baseline versionada. JavaDoc de funções principais descreve o objetivo e os parâmetros. O gate de estilo, documentação e padrões de desempenho integra o `mvn verify`.
-- O worker pode reutilizar ASTs apenas durante a tentativa em memória. A API mantém por até 15 minutos somente resultados concluídos em cache local limitado e isolado por usuário; central, histórico e tarefas consultam o banco para refletir novas conclusões imediatamente.
+- O worker pode reutilizar ASTs apenas durante a tentativa em memória. Cada chamada cria uma instância própria de JavaParser para evitar interferência entre consumidores concorrentes. A API mantém por até 15 minutos somente resultados concluídos em cache local limitado e isolado por usuário; central, histórico e tarefas consultam o banco para refletir novas conclusões imediatamente.
 - Alterações nos contratos HTTP exigem atualização coordenada da API, do frontend, dos testes e da documentação. Mudanças no banco devem ser feitas por novas migrações Flyway.
 - Novas regras determinísticas implementam `SecurityRule`; parser e engine não devem depender de transporte HTTP, GitHub ou JPA. A IA não deve alterar findings gerados por regras.
 - Os testes devem cobrir autenticação e isolamento, validação da origem, fila e retomada, parser e regras, estados degradados, persistência e apresentação dos resultados. O fixture Java vulnerável em memória deve continuar produzindo exatamente três findings, sem executar o código analisado.
 - Antes de concluir alterações, executar na raiz os comandos de verificação de `AGENTS.md` e conferir o resultado contra o comportamento atual da aplicação.
+- Os ensaios de operação e suas evidências BDD estão em [Operação e escalabilidade](docs/Operacao-e-escalabilidade.md). Falhas provocadas e limpeza automática devem atingir somente o projeto Compose temporário criado para o ensaio.
+- A [rastreabilidade BDD](docs/Rastreabilidade-BDD.md) liga requisitos, cenários e testes existentes. A documentação deve distinguir asserções automatizadas, ensaios reais e validações externas pendentes; IDs devem permanecer coerentes com nomes de teste, sem criar testes duplicados por motivo documental.

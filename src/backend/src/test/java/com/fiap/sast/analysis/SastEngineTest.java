@@ -29,6 +29,7 @@ class SastEngineTest {
             + "}";
 
     @Test
+    @org.junit.jupiter.api.DisplayName("BDD-OP-07: fixture em memória produz exatamente três findings")
     void fixtureVulneravelProduzTresFindingsComTodosOsCampos() {
         var engine = new SastEngine(new JavaParserSourceParser(), List.of(
                 new HardcodedCredentialRule(), new RuntimeExecRule(), new DeserializationRule(),
@@ -72,6 +73,7 @@ class SastEngineTest {
     }
 
     @Test
+    @org.junit.jupiter.api.DisplayName("BDD-E-03: regras distintas na mesma linha são preservadas")
     void preservaAchadosDeRegrasDiferentesNaMesmaLinha() {
         var source = "class Example { void run() throws Exception { String password = \"x\"; Runtime.getRuntime().exec(\"x\"); } }";
         var findings = new SastEngine(new JavaParserSourceParser(), List.of(
@@ -83,6 +85,7 @@ class SastEngineTest {
     }
 
     @Test
+    @org.junit.jupiter.api.DisplayName("BDD-E-03: nós distintos da mesma regra são preservados")
     void preservaDoisAchadosDaMesmaRegraNaMesmaLinha() {
         var source = "class Example { void run() { String password = \"x\", token = \"y\"; } }";
         var findings = new SastEngine(new JavaParserSourceParser(), List.of(new HardcodedCredentialRule()))
@@ -95,6 +98,7 @@ class SastEngineTest {
     }
 
     @Test
+    @org.junit.jupiter.api.DisplayName("BDD-E-03: ocorrência idêntica é deduplicada")
     void deduplicaAmesmaOcorrenciaEmitidaMaisDeUmaVez() {
         var duplicate = new SecurityRule() {
             @Override
@@ -140,6 +144,7 @@ class SastEngineTest {
     }
 
     @Test
+    @org.junit.jupiter.api.DisplayName("BDD-OP-07: análise estática não executa o inicializador Java")
     void analiseNaoExecutaInicializadorDoCodigoFonte() throws Exception {
         var marker = Path.of(System.getProperty("java.io.tmpdir"),
                 "sast-source-must-not-run-" + System.nanoTime());

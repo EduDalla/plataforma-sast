@@ -57,7 +57,11 @@ class AnalysisReadRepositoryIntegrationTest {
 
         assertEquals(Set.of(completed.id, legacy.id), analyses.findCompletedByUser(owner.id).stream()
                 .map(value -> value.id).collect(java.util.stream.Collectors.toSet()));
+        assertEquals(Set.of(completed.id, legacy.id, processing.id, failed.id), analyses.findVisibleSystems(owner.id).stream()
+                .map(value -> value.id).collect(java.util.stream.Collectors.toSet()));
         assertEquals(Set.of(completed.id), analyses.findCompletedHistory(owner.id, "acme", "demo")
+                .stream().map(value -> value.id).collect(java.util.stream.Collectors.toSet()));
+        assertEquals(Set.of(completed.id, processing.id, failed.id), analyses.findVisibleHistory(owner.id, "acme", "demo")
                 .stream().map(value -> value.id).collect(java.util.stream.Collectors.toSet()));
         assertEquals(2, analyses.findVisibleTasks(owner.id).size());
         assertTrue(analyses.findVisibleTasks(owner.id).stream()

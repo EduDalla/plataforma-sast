@@ -103,6 +103,8 @@ export interface HistoryEntry {
   coverageStatus?: "CONFIRMED" | "PARTIAL" | "FAILED" | "PROCESSING" | string;
   semanticStatus?: Analysis["semanticStatus"];
   suggestionStatus?: Analysis["suggestionStatus"];
+  status?: Analysis["status"];
+  stage?: Analysis["stage"];
 }
 export interface SystemCard {
   owner: string;

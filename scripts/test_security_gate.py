@@ -45,11 +45,13 @@ class SecurityGateTest(unittest.TestCase):
             Path(".sast/security-gate.json"))
 
     def test_blocks_new_deterministic_critical(self):
+        """BDD-E-08: Critical determinístico novo bloqueia a política local."""
         summary = gate.evaluate(self.config, result([finding("Critical")]), [])
         self.assertEqual("FAIL", summary["status"])
         self.assertEqual(1, summary["newCritical"])
 
     def test_existing_critical_does_not_block_and_high_is_report_only(self):
+        """BDD-E-09: Critical existente e High não bloqueiam a política local."""
         critical = finding("Critical", line=11)
         summary = gate.evaluate(self.config, result([critical, finding("High")]), [critical])
         self.assertEqual("PASS", summary["status"])
@@ -58,21 +60,25 @@ class SecurityGateTest(unittest.TestCase):
         self.assertEqual("DEGRADED", summary["semanticStatus"])
 
     def test_ai_degradation_does_not_hide_deterministic_result(self):
+        """BDD-E-10: IA degradada não muda a decisão determinística."""
         summary = gate.evaluate(self.config, result([finding("Low")]), [])
         self.assertEqual("PASS", summary["status"])
         self.assertEqual("DEGRADED", summary["suggestionStatus"])
 
     def test_fails_without_deterministic_coverage(self):
+        """BDD-E-11: cobertura determinística incompleta impede aprovação."""
         with self.assertRaises(gate.GateFailure):
             gate.evaluate(self.config, result([], filesProcessed=1), [])
 
     def test_fails_when_commit_or_repository_does_not_match(self):
+        """BDD-E-12: resultado de outra origem ou SHA impede aprovação."""
         with self.assertRaises(gate.GateFailure):
             gate.evaluate(self.config, result([], commitSha="b" * 40), [])
         with self.assertRaises(gate.GateFailure):
             gate.evaluate(self.config, result([], repositoryUrl="https://github.com/other/demo"), [])
 
     def test_policy_keeps_ai_out_of_the_gate(self):
+        """BDD-E-10: política versionada mantém a IA fora da decisão."""
         policy = json.loads(Path(".sast/security-gate.json").read_text(encoding="utf-8"))
         self.assertTrue(policy["blocking"]["newCriticalDeterministic"])
         self.assertFalse(policy["ai"]["severityAffectsGate"])

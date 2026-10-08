@@ -87,6 +87,8 @@ class AnalysisResultSummaryTest {
         when(analyses.findByIdAndUserId(analysis.id, user.id)).thenReturn(Optional.of(analysis));
         when(analyses.findCompletedByUser(user.id)).thenReturn(List.of(analysis));
         when(analyses.findCompletedHistory(user.id, "acme", "demo")).thenReturn(List.of(analysis));
+        when(analyses.findVisibleSystems(user.id)).thenReturn(List.of(analysis));
+        when(analyses.findVisibleHistory(user.id, "acme", "demo")).thenReturn(List.of(analysis));
         var users = mock(UserRepository.class);
         when(users.findByEmail(user.email)).thenReturn(Optional.of(user));
         var controller = controller(analyses, users);
@@ -106,7 +108,7 @@ class AnalysisResultSummaryTest {
         var systems = controller.systems(0, 20, principal);
         assertSummary(systems.resultSummary(), 3, 1, 1, 0, 0, 1, "Critical");
         assertSummary(systems.systems().get(0).latest().resultSummary(), 1, 1, 0, 0, 0, 0, "Critical");
-        verify(analyses).findCompletedHistory(user.id, "acme", "demo");
+        verify(analyses).findVisibleHistory(user.id, "acme", "demo");
         verify(analyses).findCompletedByUser(user.id);
         verify(analyses, never()).findByUserIdOrderByCreatedAtDescIdDesc(user.id);
     }
@@ -129,6 +131,7 @@ class AnalysisResultSummaryTest {
         second.findings.add(finding);
         var analyses = mock(AnalysisRepository.class);
         when(analyses.findCompletedByUser(user.id)).thenReturn(List.of(first, second));
+        when(analyses.findVisibleSystems(user.id)).thenReturn(List.of(first, second));
         var users = mock(UserRepository.class);
         when(users.findByEmail(user.email)).thenReturn(Optional.of(user));
 
@@ -137,6 +140,33 @@ class AnalysisResultSummaryTest {
         assertEquals(2, page.totalSystems());
         assertEquals(2, page.totalAnalyses());
         assertSummary(page.resultSummary(), 2, 1, 1, 0, 0, 0, "Critical");
+    }
+
+    @Test
+    void sistemaEmProcessamentoApareceSemEntrarNosTotaisConcluidos() {
+        var user = new AppUser();
+        user.id = java.util.UUID.randomUUID();
+        user.email = "processing@example.com";
+        var processing = completedAnalysis(user.id, "running");
+        processing.status = "PROCESSING";
+        processing.stage = "DOWNLOADING";
+        var analyses = mock(AnalysisRepository.class);
+        when(analyses.findVisibleSystems(user.id)).thenReturn(List.of(processing));
+        when(analyses.findCompletedByUser(user.id)).thenReturn(List.of());
+        when(analyses.findVisibleHistory(user.id, "acme", "running")).thenReturn(List.of(processing));
+        var users = mock(UserRepository.class);
+        when(users.findByEmail(user.email)).thenReturn(Optional.of(user));
+        var controller = controller(analyses, users);
+
+        var systems = controller.systems(0, 20, user.email::toString);
+        assertEquals(1, systems.totalSystems());
+        assertEquals(0, systems.totalAnalyses());
+        assertEquals("PROCESSING", systems.systems().get(0).latest().status());
+        assertEquals("DOWNLOADING", systems.systems().get(0).latest().stage());
+
+        var history = controller.history("acme", "running", 0, 20, user.email::toString);
+        assertEquals(1, history.total());
+        assertEquals("PROCESSING", history.history().get(0).status());
     }
 
     private static Analysis completedAnalysis(java.util.UUID userId, String repository) {

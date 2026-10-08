@@ -8,7 +8,8 @@ Monorepo de uma plataforma de análise estática de segurança para arquivos Jav
 - Análise assíncrona com acompanhamento das etapas e dos resultados parciais.
 - Regras para credencial hardcoded (CWE-798), `Runtime.exec()` (CWE-78), `ObjectInputStream.readObject()` (CWE-502) e taint analysis intraprocedural para injeção de comando.
 - Avaliação consultiva dos achados e sugestões independentes de segurança ou desempenho pelo Ollama local. A IA não altera os achados nem suas severidades determinísticas.
-- Central de sistemas, dashboard por repositório, histórico de execuções e página de resultados com origem e prioridade dos itens.
+- Central de sistemas, dashboard por repositório, tendência determinística por execução, histórico e resultados com origem e prioridade dos itens.
+- Workflow GitHub Actions e política local de Security Gate implementados; execução externa e proteção da branch exigem evidência própria.
 
 ## Como funciona
 
@@ -32,9 +33,9 @@ Worker → PostgreSQL → API → frontend (consulta periódica)
 Com Docker e Docker Compose disponíveis, execute na raiz do monorepo:
 
 ```bash
-cp .env.example .env
+test -f .env || cp .env.example .env
 # Configure no .env: SAST_BOOTSTRAP_EMAIL, SAST_BOOTSTRAP_PASSWORD e SAST_JWT_SECRET.
-docker compose up --build -d
+docker compose up --build -d --wait
 docker compose exec ollama ollama pull llama3.2:3b
 ```
 
@@ -68,10 +69,11 @@ Com JDK 21, Maven, Node.js e Docker disponíveis, execute na raiz:
 mvn --file src/backend/pom.xml verify
 npm --prefix src/frontend run build
 npm --prefix src/frontend run test -- --run
-docker compose config
+python3 -m unittest discover -s scripts -p 'test_security_gate.py' -v
+docker compose config --quiet
 ```
 
-Os testes de integração usam PostgreSQL descartável pelo Testcontainers. O fixture Java vulnerável em memória deve produzir exatamente três findings; seu código é lido como texto e não é executado.
+Os testes de integração usam PostgreSQL e RabbitMQ descartáveis pelo Testcontainers. O fixture Java vulnerável em memória deve produzir exatamente três findings; seu código é lido como texto e não é executado. No JDK deste ambiente, use `MAVEN_OPTS='-Djdk.attach.allowAttachSelf=true'` antes do comando Maven para habilitar o agente Mockito. Instale dependências do frontend com `npm --prefix src/frontend ci` quando necessário. Não publique a saída expandida de Compose nem o conteúdo do `.env`.
 
 Se `src/backend/target` não estiver gravável pelo usuário atual, execute o Maven com `-Dsast.build.directory=/tmp/cp1-cyber-build`. Use JDK 21 para o backend.
 
@@ -86,5 +88,8 @@ Se `src/backend/target` não estiver gravável pelo usuário atual, execute o Ma
 - [Evidências e roteiro de defesa](docs/Evidencias-e-roteiro-de-defesa.md): comandos, demonstração e situação por tema.
 - [Decisões de escopo](docs/Decisoes-de-escopo.md): contrato D-01, justificativas e registro da validação da orientação.
 - [CI e operação](docs/CI-e-operacao.md): workflow, verificações automatizadas e limite entre CI e Security Gate.
+- [Rastreabilidade BDD](docs/Rastreabilidade-BDD.md): requisitos, cenários, fixtures, testes e evidências.
+- [Qualidade do taint e da IA](docs/Qualidade-taint-e-IA.md) e [Operação e escalabilidade](docs/Operacao-e-escalabilidade.md): evidências Q-01/O-01 e limites.
+- [Registro E-01](docs/evidencias/E-01-2026-10-07.md): revisão, ambiente e resultados desta verificação documental.
 
-Esses documentos registram a implementação, as evidências e o trabalho planejado. As funcionalidades marcadas como pendentes ainda não estão implementadas.
+Esses documentos distinguem implementação, testes locais e evidências externas. Uma validação externa pendente não significa que a funcionalidade esteja ausente do código; observe a situação específica de cada requisito.

@@ -22,7 +22,7 @@ function count(label: string, expected: string) {
   expect(within(screen.getByText(label).parentElement!).getByText(expected, { selector: "strong" })).toBeInTheDocument();
 }
 describe("dashboard unificado do sistema", () => {
-  it("mostra tendência de alta, queda, estabilidade e não compara cobertura parcial", () => {
+  it("BDD-E-04: mostra tendência de alta, queda, estabilidade e não compara cobertura parcial", () => {
     const summary = (total: number) => ({ total, critical: total > 1 ? 2 : 1, high: 0, medium: 0, low: 0, unclassified: 0, highestPriority: "Critical" as const });
     render(<SystemDashboard data={analysis} history={[
       { analysisId: "r5", reference: "main", createdAt: "2026-09-10T12:00:00Z", filesAnalyzed: 46, findings: 2, resultSummary: summary(2), coverageStatus: "CONFIRMED" },
@@ -56,7 +56,7 @@ describe("dashboard unificado do sistema", () => {
     expect(screen.getByText("Sem classificação")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Possível consulta em laço/ })).toBeInTheDocument();
   });
-  it("não apresenta a ausência de itens durante processamento, falha ou resultado parcial", () => {
+  it("BDD-E-05: não apresenta ausência confirmada durante processamento ou IA degradada", () => {
     show({ ...analysis, findings: [], suggestions: [], status: "PROCESSING", suggestionStatus: "RUNNING" });
     expect(screen.getByText("Verificações em processamento; os totais podem mudar.")).toBeInTheDocument();
     cleanup();

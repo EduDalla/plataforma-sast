@@ -76,6 +76,7 @@ class OllamaClientTest {
      * Confirma que o timeout de rede pode ser repetido dentro do orçamento.
      */
     @Test
+    @org.junit.jupiter.api.DisplayName("BDD-IA-03: timeout HTTP permite retentativa")
     void timeoutIsRetryable() throws Exception {
         var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/api/generate", exchange -> {

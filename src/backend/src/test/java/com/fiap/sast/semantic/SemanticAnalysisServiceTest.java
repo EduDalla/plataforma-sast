@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import tools.jackson.databind.ObjectMapper;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -41,6 +42,7 @@ class SemanticAnalysisServiceTest {
      * Confirma que a avaliação válida não altera a severidade determinada pela regra.
      */
     @Test
+    @DisplayName("BDD-IA-01: avaliação consultiva não altera severidade determinística")
     void acceptsValidAssessmentWithoutChangingFinding() {
         var finding = candidate();
         var result = service((prompt, timeout) -> {
@@ -58,6 +60,7 @@ class SemanticAnalysisServiceTest {
      * Confirma que somente falhas transitórias recebem uma segunda tentativa.
      */
     @Test
+    @DisplayName("BDD-IA-03: falha transitória tenta novamente e degrada ao esgotar orçamento")
     void retriesOnlyTransientFailures() {
         var attempts = new AtomicInteger();
         var result = service((prompt, timeout) -> {
@@ -79,6 +82,7 @@ class SemanticAnalysisServiceTest {
      * Confirma degradação segura para JSON inválido e modelo indisponível.
      */
     @Test
+    @DisplayName("BDD-IA-02: JSON inválido ou modelo indisponível produz DEGRADED")
     void degradesForInvalidJsonExtraFieldAndUnavailableModel() {
         for (String response : List.of("not json", VALID.replace("}", ",\"extra\":1}"),
                 VALID.replace("\"High\"", "\"Extreme\""))) {

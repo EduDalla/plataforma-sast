@@ -15,6 +15,7 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:sast}
     password: ${SPRING_RABBITMQ_PASSWORD:change-me}
+    connection-timeout: 5s
     publisher-confirm-type: correlated
     publisher-returns: true
     listener:
