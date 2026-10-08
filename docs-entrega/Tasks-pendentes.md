@@ -16,7 +16,7 @@ Este arquivo transforma as lacunas identificadas na auditoria do checkout atual 
 | TASK-08 | P1 | Concluída — nove cenários migrados e executados | Fluxo assíncrono estabilizado | Migrar os nove testes HTTP legados desabilitados para o fluxo assíncrono. | Cenários relevantes executam com criação, polling, resultados e isolamento por usuário, sem depender do contrato síncrono antigo. | A definir pelo grupo |
 | TASK-09 | P1 | Concluída — procedimento local temporário documentado e verificado | Ambiente local e permissões do checkout | Corrigir a reprodução local do Maven quando `target` tiver permissões incompatíveis. | Procedimento seguro documentado e verificável sem sobrescrever arquivos do usuário nem exigir execução como root. | A definir pelo grupo |
 | TASK-10 | P1 | Preparação documental concluída — ensaio visual pendente | TASK-01; roteiro de defesa | Registrar a demonstração integrada e concluir a preparação da defesa. | Cadastro, análise, resultados, tendência e IA degradada demonstrados; integrantes e contribuições preenchidos; roteiro ensaiado. | Eduardo Dallabella e Mariana N. Dourado — confirmar pelo grupo |
-| TASK-11 | P1 | Pendente | Repositórios e fixtures escolhidos | Registrar autorização ou licença das origens usadas nas demonstrações. | Evidências de uso permitido identificadas; nenhum código integral ou segredo incluído na documentação. | A definir pelo grupo |
+| TASK-11 | P1 | Concluída — origens demonstrativas e limites registrados; confirmação nominal do grupo pendente se exigida | Repositórios e fixtures escolhidos | Registrar autorização ou licença das origens usadas nas demonstrações. | Evidências de uso permitido identificadas; nenhum código integral ou segredo incluído na documentação. | A definir pelo grupo |
 | TASK-12 | P2 | Pendente | Compose; instrumentação operacional | Medir capacidade com carga maior e múltiplas réplicas de worker. | Relatório informa carga, throughput, latências, memória, fila e recuperação; avalia perda de lease sem escrita indevida pelo worker antigo. | A definir pelo grupo |
 
 ## Tarefas condicionais à definição de escopo
@@ -41,6 +41,8 @@ Esta lista foi baseada na auditoria do checkout atual e deve ser atualizada quan
 - testes TASK-04 cobrem baseline confiável explícito e bloqueio de proveniência não atestada;
 - `docker compose config --quiet` aprovado;
 - fixture Java oficial produzindo exatamente três findings e sem executar o código analisado.
+
+O registro da TASK-11 está em [Autorização e licença das origens](Autorizacao-de-origens.md). A matriz distingue o próprio repositório público usado no O-01 dos fixtures sintéticos autorais; a visibilidade pública não foi tratada como licença ampla.
 
 As evidências de execução externa, proteção administrativa da branch e ensaio visual integrado continuam pendentes. A preparação documental da TASK-10 está organizada em [`docs-entrega/`](../docs-entrega/), mas a tarefa só deve ser marcada como concluída após a sessão e a confirmação nominal do grupo. A validação de escopo da orientação foi confirmada pelo grupo e está registrada no D-01.
 

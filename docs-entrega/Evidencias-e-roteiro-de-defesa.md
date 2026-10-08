@@ -16,6 +16,7 @@ Os nomes e contribuições acima foram extraídos do histórico Git do checkout 
 
 1. Seguir o [manual de instalação](Manual-tecnico-e-api.md), preservando o `.env` existente. Executar os comandos de verificação abaixo e guardar apenas resultados derivados.
 2. Usar somente origens públicas autorizadas. O ensaio O-01 usou este próprio projeto e o SHA registrado; repetir com outro SHA produz nova evidência, não substitui silenciosamente o registro antigo.
+   A autorização, a ausência de licença explícita e os limites de redistribuição estão registrados em [Autorização e licença das origens](Autorizacao-de-origens.md).
 3. Preparar duas sessões de navegador independentes para isolamento. Criar análises antecipadamente: IA local e falhas provocadas podem ultrapassar oito minutos. Levar o registro D-01 e a confirmação do grupo na defesa.
 4. Preparar histórico real de execuções autorizadas que exibam variação, quando disponível. Se não houver, demonstrar a tabela com o teste de componente BDD-E-04, identificando-o como fixture simulado.
 5. Abrir o fixture oficial em seu teste local. Ele permanece em memória e gera três findings; não é um repositório de demonstração publicado. A análise pública do O-01 gerou **um** finding por execução.
