@@ -71,7 +71,9 @@ jobs:
   security-gate:
     name: Security Gate
     needs: verify
-    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    # A API do gate pode permanecer local durante o desenvolvimento.
+    # O job só é habilitado quando a API estiver acessível pelo runner do GitHub.
+    if: ${{ (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && vars.SAST_GATE_ENABLED == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
