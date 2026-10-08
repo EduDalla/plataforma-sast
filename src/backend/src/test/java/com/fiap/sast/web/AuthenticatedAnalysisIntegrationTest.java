@@ -4,11 +4,22 @@ import com.fiap.sast.auth.*;
 import com.fiap.sast.github.GitHubClient;
 import com.fiap.sast.persistence.*;
 import com.fiap.sast.semantic.OllamaGateway;
+import com.fiap.sast.analysis.AnalysisJobService;
+import com.fiap.sast.messaging.AnalysisLeaseReconciler;
+import com.fiap.sast.messaging.AnalysisOutboxPublisher;
+import com.fiap.sast.messaging.AnalysisWorkerListener;
+import com.fiap.sast.messaging.RabbitTopology;
 import com.jayway.jsonpath.JsonPath;
+import java.time.Duration;
 import org.junit.jupiter.api.*;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -16,15 +27,19 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import static org.awaitility.Awaitility.await;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(properties = {"sast.bootstrap.email=first@example.com", "sast.bootstrap.password=integration-test-password"})
+@SpringBootTest(properties = {"sast.bootstrap.email=first@example.com", "sast.bootstrap.password=integration-test-password",
+        "sast.jwt.secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="})
 @AutoConfigureMockMvc
-@Disabled("Os cenários legados síncronos serão substituídos pelos testes de polling da análise assíncrona")
+@Import(AuthenticatedAnalysisIntegrationTest.WorkerConfiguration.class)
 class AuthenticatedAnalysisIntegrationTest {
     private static final String VULNERABLE_SOURCE = "import java.io.InputStream;\n"
             + "import java.io.ObjectInputStream;\n"
@@ -38,22 +53,52 @@ class AuthenticatedAnalysisIntegrationTest {
             + "}";
 
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18-alpine");
+    static final GenericContainer<?> rabbit = new GenericContainer<>("rabbitmq:4-management-alpine")
+            .withExposedPorts(5672).waitingFor(Wait.forLogMessage(".*Server startup complete.*", 1));
     @DynamicPropertySource static void database(DynamicPropertyRegistry registry) {
         postgres.start();
+        rabbit.start();
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.rabbitmq.host", rabbit::getHost);
+        registry.add("spring.rabbitmq.port", () -> rabbit.getMappedPort(5672));
+        registry.add("spring.rabbitmq.username", () -> "guest");
+        registry.add("spring.rabbitmq.password", () -> "guest");
+        registry.add("sast.rabbit.publisher-delay-ms", () -> "600000");
+        registry.add("sast.rabbit.reconciler-delay-ms", () -> "600000");
+        registry.add("spring.rabbitmq.listener.simple.auto-startup", () -> "false");
     }
-    @AfterAll static void stop() { postgres.stop(); }
+    @AfterAll static void stop(@Autowired RabbitListenerEndpointRegistry listeners) {
+        listeners.stop();
+        rabbit.stop();
+        postgres.stop();
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class WorkerConfiguration {
+        @Bean AnalysisWorkerListener listener(AnalysisJobService jobs) { return new AnalysisWorkerListener(jobs); }
+        @Bean AnalysisLeaseReconciler reconciler(AnalysisRepository analyses, AnalysisOutboxRepository events) {
+            return new AnalysisLeaseReconciler(analyses, events);
+        }
+    }
     @Autowired MockMvc mvc;
     @Autowired UserRepository users;
     @Autowired AnalysisRepository analyses;
     @Autowired PasswordEncoder passwords;
     @Autowired JdbcTemplate jdbc;
+    @Autowired AnalysisOutboxPublisher publisher;
+    @Autowired AnalysisLeaseReconciler reconciler;
+    @Autowired RabbitTemplate rabbitTemplate;
+    @Autowired RabbitListenerEndpointRegistry listeners;
     @MockitoBean GitHubClient github;
     @MockitoBean OllamaGateway ollama;
 
     @BeforeEach void snapshot() throws Exception {
+        listeners.stop();
+        rabbitTemplate.execute(channel -> { channel.queuePurge(RabbitTopology.QUEUE); return null; });
+        jdbc.execute("TRUNCATE analysis_outbox, analyses, app_users CASCADE");
+        new BootstrapUser(users, passwords, "first@example.com", "integration-test-password").run(null);
         when(ollama.generate(any(), any())).thenReturn("{\"confidence\":0.8,\"suggestedSeverity\":\"High\",\"likelyFalsePositive\":false,\"rationale\":\"Risco contextual\",\"remediation\":\"Use entrada validada.\",\"risk\":\"Risco real\",\"evidence\":[\"linha 2\"],\"falsePositiveReason\":\"Nenhum\",\"limitations\":\"Sem resolução externa\",\"recommendations\":[\"Valide\"]}");
         when(ollama.generateSuggestions(any(), any())).thenReturn("{\"suggestions\":[]}");
         when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot(
@@ -68,20 +113,22 @@ class AuthenticatedAnalysisIntegrationTest {
                 "class Orders {\n  void load(java.util.List<Long> ids) {\n"
                         + "    for (Long id : ids) { repository.findById(id); }\n  }\n}"))));
         when(ollama.generateSuggestions(any(), any())).thenReturn("{\"suggestions\":[{"
-                + "\"category\":\"PERFORMANCE\",\"title\":\"Possível N+1\","
+                + "\"category\":\"PERFORMANCE\",\"severity\":\"High\",\"title\":\"Possível N+1\","
                 + "\"rationale\":\"Consulta no loop\","
                 + "\"confidence\":0.8,\"recommendation\":\"Buscar em lote\","
                 + "\"limitations\":\"Confirmar no banco\"}]}");
         var created = mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token)
                         .contentType("application/json")
                         .content("{\"repositoryUrl\":\"https://github.com/acme/orders\",\"reference\":\"main\"}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.findings.length()").value(0))
-                .andExpect(jsonPath("$.semanticStatus").value("NOT_APPLICABLE"))
-                .andExpect(jsonPath("$.suggestionStatus").value("COMPLETED"))
-                .andExpect(jsonPath("$.suggestions[0].title").value("Possível N+1"))
+                .andExpect(status().isAccepted()).andExpect(jsonPath("$.stage").value("QUEUED"))
                 .andReturn();
         String id = JsonPath.read(created.getResponse().getContentAsString(), "$.analysisId");
+        complete(UUID.fromString(id), token);
+        mvc.perform(get("/api/analyses/" + id).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.findings.length()").value(0))
+                .andExpect(jsonPath("$.semanticStatus").value("NOT_APPLICABLE"))
+                .andExpect(jsonPath("$.suggestionStatus").value("COMPLETED"))
+                .andExpect(jsonPath("$.suggestions[0].title").value("Possível N+1"));
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM ai_suggestions WHERE analysis_id = ?",
                 Integer.class, UUID.fromString(id)));
         mvc.perform(get("/api/analyses/" + id).header("Authorization", "Bearer " + token))
@@ -101,17 +148,15 @@ class AuthenticatedAnalysisIntegrationTest {
                 "https://github.com/acme/changed-source", "main",
                 List.of(new GitHubClient.File("Safe.java", "class Safe { void run() { } }"))));
         String request = "{\"repositoryUrl\":\"https://github.com/acme/changed-source\",\"reference\":\"main\"}";
-        var first = mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token)
-                        .contentType("application/json").content(request))
-                .andExpect(status().isCreated()).andReturn();
+        var first = submit(request, token);
         String firstId = JsonPath.read(first.getResponse().getContentAsString(), "$.analysisId");
+        complete(UUID.fromString(firstId), token);
         when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot("acme", "changed-source",
                 "https://github.com/acme/changed-source", "main",
                 List.of(new GitHubClient.File("Safe.java", "class Safe { void run() { int count = 1; } }"))));
-        var second = mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token)
-                        .contentType("application/json").content(request))
-                .andExpect(status().isCreated()).andReturn();
+        var second = submit(request, token);
         String secondId = JsonPath.read(second.getResponse().getContentAsString(), "$.analysisId");
+        complete(UUID.fromString(secondId), token);
         assertNotEquals(firstId, secondId);
     }
 
@@ -166,9 +211,12 @@ class AuthenticatedAnalysisIntegrationTest {
 
     @Test void createsPersistsRetrievesThreeFindingsAndIsolatesOwners() throws Exception {
         var token = login("first@example.com", "integration-test-password");
-        var created = mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token).contentType("application/json")
-                .content("{\"repositoryUrl\":\"https://github.com/acme/demo\",\"reference\":\"main\"}"))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.findings.length()").value(3))
+        var created = submit("{\"repositoryUrl\":\"https://github.com/acme/demo\",\"reference\":\"main\"}", token);
+        String body = created.getResponse().getContentAsString();
+        String id = JsonPath.read(body, "$.analysisId");
+        complete(UUID.fromString(id), token);
+        var result = mvc.perform(get("/api/analyses/" + id).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.findings.length()").value(3))
                 .andExpect(jsonPath("$.findings[0].cwe").value("CWE-798"))
                 .andExpect(jsonPath("$.findings[1].cwe").value("CWE-78"))
                 .andExpect(jsonPath("$.findings[2].cwe").value("CWE-502"))
@@ -177,15 +225,15 @@ class AuthenticatedAnalysisIntegrationTest {
                 .andExpect(jsonPath("$.userId").doesNotExist()).andExpect(jsonPath("$.passwordHash").doesNotExist())
                 .andExpect(jsonPath("$.archive").doesNotExist()).andExpect(jsonPath("$.sourceCode").doesNotExist())
                 .andExpect(jsonPath("$.ast").doesNotExist()).andReturn();
-        String body = created.getResponse().getContentAsString();
-        String id = JsonPath.read(body, "$.analysisId");
         String location = "/api/analyses/" + id;
         assertEquals(location, created.getResponse().getHeader("Location"));
         assertEquals(3, jdbc.queryForObject("SELECT count(*) FROM findings WHERE analysis_id = ?", Integer.class, UUID.fromString(id)));
         assertEquals(3, jdbc.queryForObject("SELECT count(*) FROM ai_assessments WHERE finding_id IN (SELECT id FROM findings WHERE analysis_id = ?)", Integer.class, UUID.fromString(id)));
         assertEquals(users.findByEmail("first@example.com").orElseThrow().id,
                 analyses.findById(UUID.fromString(id)).orElseThrow().userId);
-        mvc.perform(get(location).header("Authorization", "Bearer " + token)).andExpect(status().isOk()).andExpect(content().json(body));
+        mvc.perform(get(location).header("Authorization", "Bearer " + token)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.findings.length()").value(3));
         var second = users.findByEmail("second@example.com").orElseGet(() -> {
             var user = new AppUser(); user.email = "second@example.com";
             user.passwordHash = passwords.encode("second-test-password"); return users.save(user);
@@ -204,24 +252,33 @@ class AuthenticatedAnalysisIntegrationTest {
         var token = login("first@example.com", "integration-test-password");
         when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot("acme", "demo",
                 "https://github.com/acme/demo", null, List.of(new GitHubClient.File("Safe.java", "class Safe {}"))));
-        mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token).contentType("application/json")
-                .content("{\"repositoryUrl\":\"https://github.com/acme/demo\"}"))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.findings.length()").value(0))
+        var empty = submit("{\"repositoryUrl\":\"https://github.com/acme/demo\"}", token);
+        UUID emptyId = UUID.fromString(JsonPath.read(empty.getResponse().getContentAsString(), "$.analysisId"));
+        complete(emptyId, token);
+        mvc.perform(get("/api/analyses/" + emptyId)
+                .header("Authorization", "Bearer " + token)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.findings.length()").value(0))
                 .andExpect(jsonPath("$.semanticStatus").value("NOT_APPLICABLE"));
         mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token).contentType("application/json").content("{}"))
                 .andExpect(status().isBadRequest());
         var failures = List.of(new IllegalArgumentException(), new NoSuchElementException(),
                 new GitHubClient.LimitException(), new AnalysisController.Unprocessable(),
                 new GitHubClient.RateLimitException(), new GitHubClient.UnavailableException());
-        int[] statuses = {400, 404, 413, 422, 429, 502};
         long before = analyses.count();
         for (int i = 0; i < failures.size(); i++) {
-            reset(github); when(github.download(any(), any())).thenThrow(failures.get(i));
-            mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token).contentType("application/json")
-                    .content("{\"repositoryUrl\":\"https://github.com/acme/demo\"}"))
-                    .andExpect(status().is(statuses[i])).andExpect(jsonPath("$.detail").isString());
+            reset(github);
+            var failure = failures.get(i);
+            if (failure instanceof GitHubClient.RateLimitException || failure instanceof GitHubClient.UnavailableException) {
+                when(github.download(any(), any())).thenThrow(failure).thenThrow(new IllegalStateException("falha final"));
+            } else {
+                when(github.download(any(), any())).thenThrow(failure);
+            }
+            var response = submit("{\"repositoryUrl\":\"https://github.com/acme/error" + i + "\"}", token);
+            UUID id = UUID.fromString(JsonPath.read(response.getResponse().getContentAsString(), "$.analysisId"));
+            failed(id, failure instanceof GitHubClient.RateLimitException
+                    || failure instanceof GitHubClient.UnavailableException);
         }
-        assertEquals(before, analyses.count());
+        assertEquals(before + failures.size(), analyses.count());
     }
 
     @Test void taintTraceRoundTripsThroughJsonAndDatabase() throws Exception {
@@ -234,15 +291,16 @@ class AuthenticatedAnalysisIntegrationTest {
                         + "  }\n"
                         + "}"))));
 
-        var created = mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token).contentType("application/json")
-                        .content("{\"repositoryUrl\":\"https://github.com/acme/taint\",\"reference\":\"main\"}"))
-                .andExpect(status().isCreated())
+        var created = submit("{\"repositoryUrl\":\"https://github.com/acme/taint\",\"reference\":\"main\"}", token);
+        String id = JsonPath.read(created.getResponse().getContentAsString(), "$.analysisId");
+        complete(UUID.fromString(id), token);
+        var completed = mvc.perform(get("/api/analyses/" + id).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.findings[1].ruleId").value("TAINT-CMDI-001"))
                 .andExpect(jsonPath("$.findings[1].taintTrace.source.kind").value("http_param"))
                 .andExpect(jsonPath("$.findings[1].taintTrace.sink.kind").value("sink"))
                 .andExpect(jsonPath("$.findings[1].aiAssessment.rationale").value("Risco contextual"))
                 .andReturn();
-        String id = JsonPath.read(created.getResponse().getContentAsString(), "$.analysisId");
 
         assertNotNull(jdbc.queryForObject("SELECT taint_trace FROM findings WHERE analysis_id = ? AND taint_trace IS NOT NULL",
                 String.class, UUID.fromString(id)));
@@ -256,16 +314,15 @@ class AuthenticatedAnalysisIntegrationTest {
         when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot("acme", "dedupe",
                 "https://github.com/acme/dedupe", "main", List.of(new GitHubClient.File("Example.java",
                 "class Example { String password = \"x\"; }"))));
-        var first = mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token).contentType("application/json")
-                        .content("{\"repositoryUrl\":\"https://github.com/acme/dedupe\",\"reference\":\"main\"}"))
-                .andExpect(status().isCreated()).andReturn();
+        var first = submit("{\"repositoryUrl\":\"https://github.com/acme/dedupe\",\"reference\":\"main\"}", token);
         var firstId = JsonPath.read(first.getResponse().getContentAsString(), "$.analysisId").toString();
+        complete(UUID.fromString(firstId), token);
 
-        var repeated = mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token).contentType("application/json")
-                        .content("{\"repositoryUrl\":\"https://github.com/acme/dedupe\",\"reference\":\"main\"}"))
-                .andExpect(status().isOk()).andReturn();
-        assertEquals(firstId, JsonPath.read(repeated.getResponse().getContentAsString(), "$.analysisId").toString());
-        assertEquals(1, analyses.findByUserIdOrderByCreatedAtDescIdDesc(
+        var repeated = submit("{\"repositoryUrl\":\"https://github.com/acme/dedupe\",\"reference\":\"main\"}", token);
+        var repeatedId = JsonPath.read(repeated.getResponse().getContentAsString(), "$.analysisId").toString();
+        complete(UUID.fromString(repeatedId), token);
+        assertNotEquals(firstId, repeatedId);
+        assertEquals(2, analyses.findByUserIdOrderByCreatedAtDescIdDesc(
                 users.findByEmail("first@example.com").orElseThrow().id).stream()
                 .filter(analysis -> "dedupe".equals(analysis.repositoryName)).count());
     }
@@ -276,21 +333,55 @@ class AuthenticatedAnalysisIntegrationTest {
                 "https://github.com/acme/retry", "main", List.of(new GitHubClient.File("Example.java",
                 "class Example { String password = \"x\"; }"))));
         when(ollama.generate(any(), any())).thenThrow(new OllamaGateway.OllamaFailure(false));
-        var degraded = mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token)
-                        .contentType("application/json")
-                        .content("{\"repositoryUrl\":\"https://github.com/acme/retry\",\"reference\":\"main\"}"))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.semanticStatus").value("DEGRADED"))
+        var degraded = submit("{\"repositoryUrl\":\"https://github.com/acme/retry\",\"reference\":\"main\"}", token);
+        String degradedId = JsonPath.read(degraded.getResponse().getContentAsString(), "$.analysisId");
+        complete(UUID.fromString(degradedId), token);
+        var degradedResult = mvc.perform(get("/api/analyses/" + degradedId).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.semanticStatus").value("DEGRADED"))
                 .andExpect(jsonPath("$.findings.length()").value(1))
                 .andExpect(jsonPath("$.findings[0].aiAssessment").isEmpty()).andReturn();
         doReturn("{\"confidence\":0.8,\"suggestedSeverity\":\"High\",\"likelyFalsePositive\":false,\"rationale\":\"Risco\",\"remediation\":\"Corrija\",\"risk\":\"Risco real\",\"evidence\":[\"linha 2\"],\"falsePositiveReason\":\"Nenhum\",\"limitations\":\"Limitado\",\"recommendations\":[\"Corrija\"]}")
                 .when(ollama).generate(any(), any());
-        var completed = mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token)
-                        .contentType("application/json")
-                        .content("{\"repositoryUrl\":\"https://github.com/acme/retry\",\"reference\":\"main\"}"))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.semanticStatus").value("COMPLETED"))
+        var completed = submit("{\"repositoryUrl\":\"https://github.com/acme/retry\",\"reference\":\"main\"}", token);
+        String completedId = JsonPath.read(completed.getResponse().getContentAsString(), "$.analysisId");
+        complete(UUID.fromString(completedId), token);
+        mvc.perform(get("/api/analyses/" + completedId).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.semanticStatus").value("COMPLETED"))
                 .andExpect(jsonPath("$.findings[0].aiAssessment.model").value("llama3.2:3b"))
                 .andReturn();
-        assertNotEquals(JsonPath.read(degraded.getResponse().getContentAsString(), "$.analysisId").toString(),
-                JsonPath.read(completed.getResponse().getContentAsString(), "$.analysisId").toString());
+        assertNotEquals(degradedId, completedId);
+    }
+
+    private org.springframework.test.web.servlet.MvcResult submit(String body, String token) throws Exception {
+        return mvc.perform(post("/api/analyses").header("Authorization", "Bearer " + token)
+                .contentType("application/json").content(body))
+                .andExpect(status().isAccepted()).andExpect(header().exists("Location")).andReturn();
+    }
+
+    private void complete(UUID id, String token) throws Exception {
+        publisher.publishReady();
+        listeners.start();
+        await().atMost(Duration.ofSeconds(20)).until(() -> !"PROCESSING".equals(
+                jdbc.queryForObject("SELECT status FROM analyses WHERE id=?", String.class, id)));
+        mvc.perform(get("/api/analyses/" + id).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("COMPLETED"));
+    }
+
+    private void failed(UUID id, boolean retryable) throws Exception {
+        publisher.publishReady();
+        listeners.start();
+        if (retryable) {
+            await().atMost(Duration.ofSeconds(20)).until(() -> jdbc.queryForObject(
+                    "SELECT next_attempt_at IS NOT NULL FROM analyses WHERE id=?", Boolean.class, id));
+            listeners.stop();
+            jdbc.update("UPDATE analyses SET lease_until=now()-interval '1 second', "
+                    + "next_attempt_at=now()-interval '1 second' WHERE id=?", id);
+            reconciler.reconcile();
+            publisher.publishReady();
+            listeners.start();
+        }
+        await().atMost(Duration.ofSeconds(20)).until(() -> !"PROCESSING".equals(
+                jdbc.queryForObject("SELECT status FROM analyses WHERE id=?", String.class, id)));
+        assertEquals("FAILED", jdbc.queryForObject("SELECT status FROM analyses WHERE id=?", String.class, id));
     }
 }
