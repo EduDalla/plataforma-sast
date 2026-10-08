@@ -75,9 +75,15 @@ python3 -m unittest discover -s scripts -p 'test_security_gate.py' -v
 docker compose config --quiet
 ```
 
-Os testes de integração usam PostgreSQL e RabbitMQ descartáveis pelo Testcontainers. O fixture Java vulnerável em memória deve produzir exatamente três findings; seu código é lido como texto e não é executado. No JDK deste ambiente, use `MAVEN_OPTS='-Djdk.attach.allowAttachSelf=true'` antes do comando Maven para habilitar o agente Mockito. Instale dependências do frontend com `npm --prefix src/frontend ci` quando necessário. Não publique a saída expandida de Compose nem o conteúdo do `.env`.
+Os testes de integração usam PostgreSQL e RabbitMQ descartáveis pelo Testcontainers. O fixture Java vulnerável em memória deve produzir exatamente três findings; seu código é lido como texto e não é executado. Instale dependências do frontend com `npm --prefix src/frontend ci` quando necessário. Não publique a saída expandida de Compose nem o conteúdo do `.env`.
 
-Se `src/backend/target` não estiver gravável pelo usuário atual, execute o Maven com `-Dsast.build.directory=/tmp/cp1-cyber-build`. Use JDK 21 para o backend.
+Se `src/backend/target` não estiver gravável pelo usuário atual (por exemplo, depois de uma execução em contêiner que criou arquivos pertencentes a outro usuário), não use `sudo`, `chown` nem remova o conteúdo do checkout. Execute o procedimento seguro, que cria um diretório temporário pertencente ao usuário atual, direciona todo o build do Maven para ele e o remove ao terminar:
+
+```bash
+bash scripts/maven_local_verify.sh
+```
+
+O procedimento usa JDK 21 e `MAVEN_OPTS='-Djdk.attach.allowAttachSelf=true'` por padrão e garante a limpeza do diretório temporário.
 
 ## Documentação
 

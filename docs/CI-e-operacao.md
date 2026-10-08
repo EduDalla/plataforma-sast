@@ -16,6 +16,16 @@ npm --prefix src/frontend run test -- --run
 
 O Maven usa um diretório temporário do runner para não persistir artefatos no checkout. O Docker disponível no runner é usado pelos testes de integração que dependem do Testcontainers. O workflow não baixa, compila, testa ou executa o repositório que eventualmente será analisado pela plataforma; o checkout é somente o código do próprio produto.
 
+## Reprodução local com `target` incompatível
+
+Uma execução anterior em contêiner pode deixar `src/backend/target` pertencente a outro usuário. Nesse caso, a reprodução local não deve tentar corrigir a posse com `sudo`, `chown` ou remoção de arquivos do checkout. O procedimento versionado abaixo cria um diretório temporário gravável pelo usuário atual, passa esse caminho em `sast.build.directory`, executa o mesmo `verify` e remove somente o diretório temporário ao terminar:
+
+```bash
+bash scripts/maven_local_verify.sh
+```
+
+Esse caminho não sobrescreve nem precisa ler os artefatos existentes em `src/backend/target`. A verificação é considerada válida quando o Maven termina com `BUILD SUCCESS`, o `git status --short` permanece inalterado e não é necessário executar como root. O script falha antes do Maven se não conseguir gravar no diretório temporário.
+
 O resumo do job contém texto fixo sobre versões e verificações e roda com `if: always()`: esse texto não prova sucesso de cada comando. Consultar o estado real dos steps/checks antes de registrar aprovação. Não devem ser adicionados ao workflow tokens, conteúdo de `.env`, archives, código-fonte, snippets, prompts ou respostas brutas da IA.
 
 ## Proteção da branch
