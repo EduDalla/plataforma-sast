@@ -2,6 +2,8 @@
 
 Monorepo de uma plataforma de análise estática de segurança para arquivos Java de repositórios públicos do GitHub. A plataforma baixa um snapshot, inspeciona o código sem executá-lo e apresenta achados de regras determinísticas, rastros de taint e avaliações consultivas por IA local. Cada pessoa acompanha suas análises, sistemas e histórico pelo frontend.
 
+O contrato técnico desta versão é: entrada por URL HTTPS de repositório público do GitHub, análise exclusiva de Java, stack equivalente baseado em JavaParser/Spring Boot/PostgreSQL/RabbitMQ/React/Docker/Ollama e relatório por dashboard HTTP, resumo, histórico e tendência. A interpretação está alinhada ao registro D-01, à matriz e ao roteiro de defesa, e foi confirmada pelo grupo.
+
 ## Funcionalidades
 
 - Cadastro, login e análises isoladas por usuário com JWT Bearer.

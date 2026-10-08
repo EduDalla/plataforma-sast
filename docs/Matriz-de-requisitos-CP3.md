@@ -1,6 +1,6 @@
 # Matriz de requisitos para a entrega final
 
-Esta matriz compara o checkout atual com o pedido de adequação e com o arquivo original `CP - Cyber - Documentação de Desenvolvimento.docx`. O contrato técnico adotado para esta versão está em [Decisões de escopo](Decisoes-de-escopo.md); a validação formal da orientação ainda está pendente. A rastreabilidade por requisito, com cenário, fixture, teste e evidência, está em [BDD da entrega](Rastreabilidade-BDD.md). A verificação local atual está no [registro E-01](evidencias/E-01-2026-10-07.md); pendências externas não são tratadas como capacidades ausentes do código.
+Esta matriz compara o checkout atual com o pedido de adequação e com o arquivo original `CP - Cyber - Documentação de Desenvolvimento.docx`. O contrato técnico adotado para esta versão está em [Decisões de escopo](Decisoes-de-escopo.md) e foi confirmado pelo grupo. A rastreabilidade por requisito, com cenário, fixture, teste e evidência, está em [BDD da entrega](Rastreabilidade-BDD.md). A verificação local atual está no [registro E-01](evidencias/E-01-2026-10-07.md); pendências externas não são tratadas como capacidades ausentes do código.
 
 **Legenda:** atendido = há implementação e teste localizado; parcial = há implementação com limite relevante; pendente = não há implementação demonstrável; decisão = as duas descrições do trabalho exigem alinhamento antes de mudar a arquitetura.
 
@@ -60,4 +60,4 @@ O stack atual é **JavaParser + Spring Boot + PostgreSQL + RabbitMQ + React + Do
 3. Stack: o contrato usa equivalência técnica e mantém o stack implementado.
 4. Relatórios: o contrato desta versão usa dashboard HTTP, resumo e histórico analítico; exportações permanecem fora do escopo implementado.
 
-Essas decisões aguardam validação formal da orientação e não autorizam acesso a repositórios privados, execução de código recebido, armazenamento integral da fonte nem alteração de arquitetura sem revisão explícita.
+Essas decisões estão alinhadas ao README, ao roteiro de defesa e ao registro D-01, e foram confirmadas pelo grupo. Elas não autorizam acesso a repositórios privados, execução de código recebido, armazenamento integral da fonte nem alteração de arquitetura sem revisão explícita.

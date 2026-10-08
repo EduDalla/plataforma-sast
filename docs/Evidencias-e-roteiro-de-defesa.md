@@ -12,11 +12,11 @@ Demonstração de **8 minutos (480 segundos)**, com preparação fora do tempo d
 | Interface e CI | A preencher pelo grupo | Preparar dashboard/histórico, tabela de tendência e resultados dos seis testes locais do gate. |
 | Registro e tempo | A preencher pelo grupo | Cronometrar, registrar data/revisão, verificar links e anotar o que foi efetivamente demonstrado. |
 
-Uma pessoa pode acumular papéis. Não atribuir nomes ou contribuições sem confirmação do grupo. Validação da orientação e divisão nominal permanecem pendentes.
+Uma pessoa pode acumular papéis. Não atribuir nomes ou contribuições sem confirmação do grupo. A validação do escopo foi confirmada; a divisão nominal permanece pendente.
 
 1. Seguir o [manual de instalação](Manual-tecnico-e-api.md), preservando o `.env` existente. Executar os comandos de verificação abaixo e guardar apenas resultados derivados.
 2. Usar somente origens públicas autorizadas. O ensaio O-01 usou este próprio projeto e o SHA registrado; repetir com outro SHA produz nova evidência, não substitui silenciosamente o registro antigo.
-3. Preparar duas sessões de navegador independentes para isolamento. Criar análises antecipadamente: IA local e falhas provocadas podem ultrapassar oito minutos.
+3. Preparar duas sessões de navegador independentes para isolamento. Criar análises antecipadamente: IA local e falhas provocadas podem ultrapassar oito minutos. Levar o registro D-01 e a confirmação do grupo na defesa.
 4. Preparar histórico real de execuções autorizadas que exibam variação, quando disponível. Se não houver, demonstrar a tabela com o teste de componente BDD-E-04, identificando-o como fixture simulado.
 5. Abrir o fixture oficial em seu teste local. Ele permanece em memória e gera três findings; não é um repositório de demonstração publicado. A análise pública do O-01 gerou **um** finding por execução.
 6. Para degradação, usar resultado registrado O-01 ou executar previamente o script isolado. Não interromper serviços da instância de desenvolvimento durante a defesa.
@@ -33,7 +33,7 @@ Uma pessoa pode acumular papéis. Não atribuir nomes ou contribuições sem con
 | 04:15–05:15 / 60 s | Engine e qualidade | Distinguir finding, avaliação e sugestão. Mostrar análise com IA DEGRADED e findings preservados; informar que notas de qualidade da remediação estão pendentes. | OP-10, IA-01–04; relato live histórico sem tratá-lo como nova execução. |
 | 05:15–06:15 / 60 s | Interface e CI | Mostrar tendência, referência/SHA, severidades, arquivos e histórico. Explicar resumo unificado versus tendência determinística e cobertura parcial. | E-04/05 em Vitest, explicitamente simulado se não houver histórico real preparado. |
 | 06:15–07:15 / 60 s | Interface e CI | Mostrar workflow e dois resultados da política local: Critical novo bloqueia; Critical histórico/High permite. Informar que PR real e proteção da branch ainda não foram comprovados. | E-08–12, política versionada e seis testes Python; não chamar PASS local de PR aprovado. |
-| 07:15–08:00 / 45 s | Arquitetura e escopo | Encerrar com limites intraprocedurais, amostra pequena, operação em uma máquina, retenção e validações externas pendentes. | Matriz RF/RNF, limitações Q-01/O-01 e decisões D-01. |
+| 07:15–08:00 / 45 s | Arquitetura e escopo | Encerrar com limites intraprocedurais, amostra pequena, operação em uma máquina e retenção; mencionar que o escopo D-01 foi confirmado pelo grupo. | Matriz RF/RNF, limitações Q-01/O-01 e decisões D-01. |
 
 A apresentação não depende de concluir um novo download ou uma chamada live de IA durante o cronômetro. Se a demonstração falhar, registrar a falha e usar a evidência alternativa datada; não apresentá-la como resultado da sessão atual.
 

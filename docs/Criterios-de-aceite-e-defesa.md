@@ -50,7 +50,7 @@ Definições Given/When/Then, fixtures e métodos estão em [Rastreabilidade BDD
 - [ ] Demonstração visual integrada e ata M01 registradas.
 - [ ] PRs seguro/inseguro, execução externa de CI e proteção da branch comprovados.
 - [ ] Revisão qualitativa das seis remediações e demais lacunas Q-01 concluídas.
-- [ ] Validação formal da orientação para D-01 anexada.
+- [x] Validação do escopo D-01 confirmada pelo grupo e registrada.
 
 O pacote documental está concluído no escopo E-01; os itens externos pendentes não são declarados concluídos. Capacidade de produção, exportação PDF/CSV/SARIF, multilinguagem, upload e repositórios privados não são capacidades entregues por esta etapa.
 
