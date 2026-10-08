@@ -4,6 +4,15 @@ Monorepo de uma plataforma de análise estática de segurança para arquivos Jav
 
 O contrato técnico desta versão é: entrada por URL HTTPS de repositório público do GitHub, análise exclusiva de Java, stack equivalente baseado em JavaParser/Spring Boot/PostgreSQL/RabbitMQ/React/Docker/Ollama e relatório por dashboard HTTP, resumo, histórico e tendência. A interpretação está alinhada ao registro D-01, à matriz e ao roteiro de defesa, e foi confirmada pelo grupo.
 
+## Integrantes do projeto
+
+- Mariana Neugebauer — RM550494
+- Heloísa Real — RM554535
+- Fernando Luiz Silva Antonio — RM555201
+- Abner de Paiva Barbosa — RM558468
+- Beatriz Vieira de Novais — RM554746
+- Eduardo Dallabella Lima — RM556803
+
 ## Funcionalidades
 
 - Cadastro, login e análises isoladas por usuário com JWT Bearer.
