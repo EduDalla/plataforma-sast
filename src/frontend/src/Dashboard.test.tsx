@@ -2,6 +2,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it } from "vitest";
 import { SystemDashboard } from "./components";
+import { rankCriticalFiles } from "./resultModel";
 import type { Analysis } from "./types";
 
 afterEach(cleanup);
@@ -22,6 +23,19 @@ function count(label: string, expected: string) {
   expect(within(screen.getByText(label).parentElement!).getByText(expected, { selector: "strong" })).toBeInTheDocument();
 }
 describe("dashboard unificado do sistema", () => {
+  it("ordena arquivos pela severidade determinística, quantidade e nome estável", () => {
+    const finding = (fileName: string, severity: "Critical" | "High" | "Medium" | "Low") => ({
+      ruleId: `${fileName}-${severity}`, title: severity, severity, cwe: "CWE-78", description: "Revisar",
+      fileName, line: 1, column: 1, snippet: "sample",
+    });
+    const ranking = rankCriticalFiles([
+      finding("zeta/Service.java", "High"), finding("alpha/Service.java", "Critical"),
+      finding("alpha/Service.java", "High"), finding("beta/Service.java", "High"),
+    ]);
+    expect(ranking.map((file) => file.fileName)).toEqual(["alpha/Service.java", "beta/Service.java", "zeta/Service.java"]);
+    expect(ranking[0]).toMatchObject({ critical: 1, high: 1, total: 2, highestSeverity: "Critical" });
+  });
+
   it("BDD-E-04: mostra tendência de alta, queda, estabilidade e não compara cobertura parcial", () => {
     const summary = (total: number) => ({ total, critical: total > 1 ? 2 : 1, high: 0, medium: 0, low: 0, unclassified: 0, highestPriority: "Critical" as const });
     render(<SystemDashboard data={analysis} history={[
@@ -46,7 +60,10 @@ describe("dashboard unificado do sistema", () => {
     count("Críticas", "1");
     count("Arquivos analisados", "46");
     expect(screen.getByText(/Prioridade dos itens/)).toBeInTheDocument();
-    expect(screen.getByText(/Itens de maior prioridade/)).toBeInTheDocument();
+    expect(screen.getByText(/Findings determinísticos prioritários/)).toBeInTheDocument();
+    expect(screen.getByText(/Arquivos críticos/)).toBeInTheDocument();
+    expect(screen.getByText(/Sugestões consultivas/)).toBeInTheDocument();
+    expect(screen.getByText(/Não alteram o ranking/)).toBeInTheDocument();
     expect(screen.getByText(/Desempenho/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Possível consulta em laço/ })).toBeInTheDocument();
   });

@@ -39,6 +39,13 @@ Feature: Apresentação e acesso no frontend
     Then informa processamento ou cobertura parcial
     And não confirma ausência de problemas
 
+Scenario: BDD-E-12 Ranking estável de arquivos críticos
+  Given findings determinísticos de severidades e quantidades diferentes em arquivos Java
+  When o dashboard monta o ranking de arquivos críticos
+  Then compara primeiro a distribuição de severidades, depois a quantidade de findings
+  And usa o nome do arquivo como desempate estável
+  And exibe sugestões consultivas em uma seção separada sem alterar o ranking
+
   Scenario: BDD-E-06 Cadastro solicita login pela interface
     Given o formulário de cadastro e respostas HTTP simuladas
     When a pessoa envia os dados válidos
@@ -110,7 +117,7 @@ M01–M03 são cenários manuais pendentes. A conclusão documental E-01 não os
 |---|---|---|---|
 | BDD-E-01/02 | Classes Example válidas/inválidas em memória | [JavaParserSourceParserTest](../src/backend/src/test/java/com/fiap/sast/parsing/JavaParserSourceParserTest.java): `geraAstComLocalizacaoParaJavaValido`, `rejeitaJavaInvalidoMesmoQuandoHaAstParcial` | JUnit E-01, aprovado. |
 | BDD-E-03 | Regras distintas, dois nós e regra duplicada | [SastEngineTest](../src/backend/src/test/java/com/fiap/sast/analysis/SastEngineTest.java): `preservaAchadosDeRegrasDiferentesNaMesmaLinha`, `preservaDoisAchadosDaMesmaRegraNaMesmaLinha`, `deduplicaAmesmaOcorrenciaEmitidaMaisDeUmaVez` | JUnit E-01, aprovado. |
-| BDD-E-04/05 | Histórico de cinco entradas e resultados parciais | [Dashboard.test.tsx](../src/frontend/src/Dashboard.test.tsx), testes com esses IDs | Vitest E-01, aprovado; sem comprovar histórico real ponta a ponta. |
+| BDD-E-04/05/12 | Histórico de cinco entradas, resultados parciais e ranking estável de arquivos | [Dashboard.test.tsx](../src/frontend/src/Dashboard.test.tsx), testes com esses IDs e teste de `rankCriticalFiles` | Vitest E-01, aprovado; sem comprovar histórico real ponta a ponta. |
 | BDD-E-06/07 | Respostas da API simuladas e interação de formulário | [main.test.tsx](../src/frontend/src/main.test.tsx), três testes com esses IDs | Vitest E-01, aprovado; isolamento real vem do OP-01. |
 | BDD-E-08 | Resultado Critical novo e baseline vazio | [SecurityGateTest](../scripts/test_security_gate.py).`test_blocks_new_deterministic_critical` | unittest E-01, aprovado; política local. |
 | BDD-E-09 | Critical existente e High novo | [SecurityGateTest](../scripts/test_security_gate.py).`test_existing_critical_does_not_block_and_high_is_report_only` | unittest E-01, aprovado; política local. |

@@ -4,7 +4,7 @@ import Prism from "prismjs";
 import "prismjs/components/prism-java";
 import { api } from "./api";
 import type { Analysis, HistoryEntry, SystemsPage } from "./types";
-import { priorityLabels, summarizeResults, unifiedResults } from "./resultModel";
+import { priorityLabels, rankCriticalFiles, sortConsultiveSuggestions, summarizeResults, unifiedResults } from "./resultModel";
 
 function renderJavaTokens(tokens: (Prism.Token | string)[]): ReactNode[] {
   return tokens.map((token, index) => {
@@ -538,13 +538,8 @@ export function Dashboard({
   const suggestions = data?.suggestions ?? [];
   const items = unifiedResults(findings, suggestions);
   const summary = systems?.resultSummary ?? data?.resultSummary ?? summarizeResults(items);
-  const files = [...new Set(items.map((item) => item.fileName))]
-    .map((fileName) => ({
-      fileName,
-      count: items.filter((item) => item.fileName === fileName).length,
-    }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
+  const files = rankCriticalFiles(findings).slice(0, 5);
+  const consultiveSuggestions = sortConsultiveSuggestions(suggestions).slice(0, 4);
   const suggestionCoverage = data?.suggestionStatus === "COMPLETED"
     ? "Métodos candidatos avaliados. A varredura consultiva não cobre todo o repositório."
     : data?.suggestionStatus === "DEGRADED"
@@ -565,7 +560,7 @@ export function Dashboard({
   const firstEnd = chartTotal ? summary.critical / chartTotal * 100 : 0;
   const secondEnd = chartTotal ? (summary.critical + summary.high) / chartTotal * 100 : 0;
   const thirdEnd = chartTotal ? (summary.critical + summary.high + summary.medium) / chartTotal * 100 : 0;
-  const topItems = items.slice(0, 4);
+  const topItems = unifiedResults(findings).slice(0, 4);
 
   return (
     <section className="dashboard-page">
@@ -590,14 +585,15 @@ export function Dashboard({
           {chartTotal ? <div className="severity-chart-row"><div className="severity-donut" style={{ background: `conic-gradient(#f04444 0 ${firstEnd}%, #ff761c ${firstEnd}% ${secondEnd}%, #ffcc19 ${secondEnd}% ${thirdEnd}%, #3d82f4 ${thirdEnd}% ${summary.unclassified ? (summary.critical + summary.high + summary.medium + summary.low) / chartTotal * 100 : 100}%, #94a3b8 ${summary.unclassified ? (summary.critical + summary.high + summary.medium + summary.low) / chartTotal * 100 : 100}% 100%)` }}><span>{chartTotal}</span></div><div className="severity-legend"><span><i className="legend-critical"/>Crítica <b>{summary.critical}</b></span><span><i className="legend-high"/>Alta <b>{summary.high}</b></span><span><i className="legend-medium"/>Média <b>{summary.medium}</b></span><span><i className="legend-low"/>Baixa <b>{summary.low}</b></span><span>Sem classificação <b>{summary.unclassified}</b></span></div></div> : <div className="dashboard-empty"><span>{data?.status === "FAILED" ? "!" : data?.status === "PROCESSING" || data?.suggestionStatus === "RUNNING" ? "…" : "✓"}</span><p>{dashboardEmptyMessage}</p></div>}
         </article>
         <article className="dashboard-card detected-card">
-          <h2>Itens de maior prioridade</h2>
+          <h2>Findings determinísticos prioritários</h2>
           {topItems.length ? <ul>{topItems.map((item) => <li key={item.key}>
             <i className={item.priority.toLowerCase()} />
             <div><button className="dashboard-result-link" type="button" onClick={onOpen}><strong>{priorityLabels[item.priority]} · {item.title}</strong></button>
               <p>{item.source} · {item.fileName}:{item.line}</p></div>
           </li>)}</ul> : <div className="dashboard-list-empty">Nenhum item disponível para ordenar por prioridade.</div>}
         </article>
-        <article className="dashboard-card files-card"><h2><span className="chart-icon">☷</span> Arquivos com mais itens</h2>{files.length ? <ul>{files.map((file) => <li key={file.fileName}><span>{file.fileName}</span><b>{file.count} {file.count === 1 ? "item" : "itens"}</b></li>)}</ul> : <div className="dashboard-list-empty">Nenhum arquivo com itens.</div>}</article>
+        <article className="dashboard-card files-card"><h2><span className="chart-icon">☷</span> Arquivos críticos</h2>{files.length ? <ul>{files.map((file) => <li key={file.fileName}><span>{file.fileName}</span><b>{file.total} {file.total === 1 ? "finding" : "findings"}</b><small>{priorityLabels[file.highestSeverity]}</small></li>)}</ul> : <div className="dashboard-list-empty">Nenhum finding determinístico.</div>}</article>
+        {consultiveSuggestions.length > 0 && <article className="dashboard-card suggestions-card"><h2>Sugestões consultivas</h2><ul>{consultiveSuggestions.map((suggestion, index) => <li key={`${suggestion.fileName}:${suggestion.line}:${suggestion.title}:${index}`}><button className="dashboard-result-link" type="button" onClick={onOpen}><strong>{suggestion.title}</strong></button><p>{suggestion.fileName}:{suggestion.line} · {suggestion.category === "PERFORMANCE" ? "Desempenho" : "Segurança"}</p></li>)}</ul><small className="dashboard-card-note">Não alteram o ranking dos findings determinísticos.</small></article>}
       </div>
       {data && <button className="dashboard-last" onClick={onOpen}>Ver mais detalhes <span aria-hidden="true">↗</span></button>}
     </section>

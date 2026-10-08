@@ -100,6 +100,8 @@ O resumo do resultado conta findings e sugestões independentes. Avaliação ani
 
 Cada item do histórico contém `analysisId,reference,createdAt,filesAnalyzed,findings,resultSummary,suggestions,commitSha,coverageStatus,semanticStatus,suggestionStatus,status,stage`. Seu resumo conta **somente findings determinísticos**; sugestões têm contagem separada. Sistemas oferecem `owner,repositoryName,repositoryUrl,latestCreatedAt,totalAnalyses,latest`; `latest` inclui também `status` e `stage` para exibir processamento ou falha. Tarefas oferecem ID, status, etapa, URL, data, estados da IA, resumo e `acknowledged`.
 
+No dashboard, o ranking **Arquivos críticos** agrega somente findings determinísticos por arquivo. A ordenação compara, nesta ordem, a quantidade de findings Critical, High, Medium, Low e sem classificação; em seguida compara o total de findings e usa o nome do arquivo em ordem crescente como desempate estável. Sugestões consultivas não entram nessa métrica e são exibidas em uma seção própria, com sua categoria e prioridade sugerida.
+
 Execuções são deduplicadas pela combinação de repositório, referência, fingerprint de findings, metadados consultivos, hash do snapshot e SHA. Não é deduplicação por SHA isolado. A tendência compara totais determinísticos com a execução anterior comparável; cobertura parcial não vira zero confirmado. O estado `CONFIRMED` exige conclusão, total de arquivos positivo e todos processados, independentemente de IA degradada.
 
 ### Estados e falhas

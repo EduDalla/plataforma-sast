@@ -13,7 +13,7 @@ Execução de 07/10/2026 no checkout com alterações locais, identificada em [E
 | Fixture oficial e não execução | OP-07 aprovado: três findings e marcador não criado. |
 | Corpus taint | TAINT-04 aprovado: 14 casos, TP 8, FP 0, TN 4, FN 2; precisão 8/8 e recall 8/10. |
 | Build frontend | TypeScript e Vite aprovados. |
-| Vitest | Cinco arquivos, 40 testes aprovados. |
+| Vitest | Cinco arquivos, 42 testes aprovados. |
 | Política local do gate | Seis testes Python aprovados; não são PRs reais. |
 | Compose | Configuração validada com `--quiet`, sem expor variáveis. |
 

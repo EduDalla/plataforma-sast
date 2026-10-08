@@ -328,6 +328,32 @@
     font-size:11px;
     white-space:nowrap
 }
+.files-card li small {
+    color:#9ca49c;
+    font-size:10px;
+    white-space:nowrap
+}
+.suggestions-card ul {
+    list-style:none;
+    padding:0;
+    margin:0
+}
+.suggestions-card li {
+    border-bottom:1px solid #303330;
+    padding:0 0 11px;
+    margin:0 0 11px
+}
+.suggestions-card li:last-child {
+    border:0;
+    margin-bottom:0
+}
+.dashboard-card-note {
+    color:#89928a;
+    display:block;
+    font-size:10px;
+    line-height:1.5;
+    margin-top:14px
+}
 .dashboard-list-empty {
     color:#89928a;
     font-size:12px;
