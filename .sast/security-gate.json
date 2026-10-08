@@ -10,7 +10,12 @@
   },
   "existingFindings": {
     "identity": "ruleId:fileName:line:column",
-    "baseline": "latest-previous-completed-analysis-of-same-repository",
+    "baseline": "explicit-trusted-artifact-only",
+    "automaticHistory": "never",
+    "trustedArtifact": {
+      "source": "trusted-gate",
+      "requiredFields": ["source", "repositoryUrl", "findings"]
+    },
     "movedOrRelocated": "treated-as-new"
   },
   "exceptions": {

@@ -71,9 +71,9 @@ jobs:
   security-gate:
     name: Security Gate
     needs: verify
-    # A API do gate pode permanecer local durante o desenvolvimento.
-    # O job só é habilitado quando a API estiver acessível pelo runner do GitHub.
-    if: ${{ (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && vars.SAST_GATE_ENABLED == 'true' }}
+    # Forks entram no job, mas nunca recebem secrets: a etapa específica falha
+    # com segurança e exige uma execução confiável de maintainer.
+    if: ${{ vars.SAST_GATE_ENABLED == 'true' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -92,6 +92,7 @@ jobs:
         run: python -m unittest discover -s scripts -p 'test_security_gate.py' -v
 
       - name: Consultar análise fixa e aplicar política
+        if: ${{ vars.SAST_GATE_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         env:
           SAST_GATE_API_URL: ${{ secrets.SAST_GATE_API_URL }}
           SAST_GATE_EMAIL: ${{ secrets.SAST_GATE_EMAIL }}
@@ -106,6 +107,13 @@ jobs:
           --email "$SAST_GATE_EMAIL"
           --password "$SAST_GATE_PASSWORD"
           --policy .sast/security-gate.json
+
+      - name: Bloquear PR de fork sem execução confiável
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          echo 'PR de fork: secrets não são disponibilizados e o Security Gate não aprova automaticamente este código.'
+          echo 'Um maintainer deve executar o gate a partir de um contexto confiável antes do merge.'
+          exit 1
 
       - name: Publicar resumo do gate
         if: always()

@@ -9,7 +9,7 @@ Este arquivo transforma as lacunas identificadas na auditoria do checkout atual 
 | TASK-01 | P0 | Concluída — confirmação recebida do grupo | Orientação da disciplina | Validar formalmente o escopo Java, a entrada por URL pública, o uso de stack equivalente e o formato do relatório. | Confirmação registrada; `docs/Decisoes-de-escopo.md` atualizado; README, matriz e defesa usam a mesma interpretação. | Grupo do projeto |
 | TASK-02 | P0 | Parcial — reprodução local concluída; evidência do GitHub pendente | Acesso ao GitHub Actions | Comprovar a execução limpa do CI no GitHub e uma execução com falha controlada. | Execução limpa aprovada e falha controlada produzindo check reprovado, com links das execuções e sem dados sensíveis. | A definir pelo grupo |
 | TASK-03 | P0 | Pendente | TASK-02; secrets de serviço; proteção da branch | Validar o Security Gate integrado à API e exigir seus checks na branch protegida. | PR seguro aprovado; Critical novo, análise falha e cobertura incompleta bloqueados; merge impedido pelo check obrigatório. | A definir pelo grupo |
-| TASK-04 | P1 | Pendente | TASK-03 | Revisar a baseline do gate e definir tratamento seguro para PRs de forks. | A política não aceita automaticamente achados de uma execução insegura anterior; forks são documentados e testados sem exposição de secrets. | A definir pelo grupo |
+| TASK-04 | P1 | Concluída — política conservadora e testes locais | TASK-03 | Revisar a baseline do gate e definir tratamento seguro para PRs de forks. | A política não aceita automaticamente achados de uma execução insegura anterior; forks são documentados e testados sem exposição de secrets. | A definir pelo grupo |
 | TASK-05 | P1 | Pendente | Definição de métrica do dashboard | Melhorar o ranking de arquivos críticos. | Ordenação considera severidade dos findings determinísticos, quantidade e desempate estável; sugestões consultivas aparecem separadamente. | A definir pelo grupo |
 | TASK-06 | P1 | Pendente | TASK-01; corpus autorizado | Revisar heurísticas e ampliar a avaliação de precisão do SAST. | Corpus inclui as três regras e taint, casos de `replaceAll` e `ProcessBuilder`, métricas por regra e falsos positivos/negativos documentados. | A definir pelo grupo |
 | TASK-07 | P1 | Pendente | TASK-06; acesso ao modelo local | Concluir a avaliação qualitativa e a reprodutibilidade da IA. | Remediações revisadas; modelo, prompt e checkout identificados; teste com severidade divergente preserva o finding original; impacto sobre falsos positivos medido ou explicitamente não comprovado. | A definir pelo grupo |
@@ -37,7 +37,8 @@ Esta lista foi baseada na auditoria do checkout atual e deve ser atualizada quan
 
 - backend aprovado em diretório temporário, com `BUILD SUCCESS`, 81 testes contabilizados, 68 executados, 13 ignorados e zero falhas;
 - frontend com build aprovado e 41 testes aprovados;
-- seis testes locais do Security Gate aprovados;
+- nove testes locais do Security Gate aprovados;
+- testes TASK-04 cobrem baseline confiável explícito e bloqueio de proveniência não atestada;
 - `docker compose config --quiet` aprovado;
 - fixture Java oficial produzindo exatamente três findings e sem executar o código analisado.
 

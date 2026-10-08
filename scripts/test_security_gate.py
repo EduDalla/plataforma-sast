@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -82,6 +83,43 @@ class SecurityGateTest(unittest.TestCase):
         policy = json.loads(Path(".sast/security-gate.json").read_text(encoding="utf-8"))
         self.assertTrue(policy["blocking"]["newCriticalDeterministic"])
         self.assertFalse(policy["ai"]["severityAffectsGate"])
+
+    def test_history_never_becomes_an_implicit_baseline(self):
+        """TASK-04: execução anterior sem atestado do gate não é baseline."""
+        self.assertEqual([], gate.load_trusted_baseline(self.config))
+        policy = json.loads(Path(".sast/security-gate.json").read_text(encoding="utf-8"))
+        self.assertEqual("explicit-trusted-artifact-only",
+                         policy["existingFindings"]["baseline"])
+        self.assertEqual("never", policy["existingFindings"]["automaticHistory"])
+
+    def test_accepts_only_explicitly_trusted_baseline_artifact(self):
+        """TASK-04: baseline precisa declarar origem confiável e repositório exato."""
+        artifact = {
+            "source": "trusted-gate",
+            "repositoryUrl": "https://github.com/acme/demo",
+            "findings": [finding("Critical")],
+        }
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", encoding="utf-8") as file:
+            json.dump(artifact, file)
+            file.flush()
+            config = gate.GateConfig(
+                self.config.api_url, self.config.repository_url, self.config.commit_sha,
+                self.config.email, self.config.password, self.config.timeout_seconds,
+                self.config.poll_seconds, self.config.policy_path, Path(file.name))
+            self.assertEqual(artifact["findings"], gate.load_trusted_baseline(config))
+
+    def test_rejects_baseline_without_trusted_provenance(self):
+        """TASK-04: histórico sem atestado não pode neutralizar um Critical."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", encoding="utf-8") as file:
+            json.dump({"source": "api-history", "repositoryUrl": self.config.repository_url,
+                       "findings": [finding("Critical")]}, file)
+            file.flush()
+            config = gate.GateConfig(
+                self.config.api_url, self.config.repository_url, self.config.commit_sha,
+                self.config.email, self.config.password, self.config.timeout_seconds,
+                self.config.poll_seconds, self.config.policy_path, Path(file.name))
+            with self.assertRaises(gate.GateFailure):
+                gate.load_trusted_baseline(config)
 
 
 if __name__ == "__main__":

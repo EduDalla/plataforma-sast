@@ -39,6 +39,7 @@ class GateConfig:
     timeout_seconds: int
     poll_seconds: int
     policy_path: Path
+    baseline_path: Path | None = None
 
 
 # Pydoc — objetivo: executar uma requisição JSON autenticada contra a API do SAST.
@@ -130,25 +131,23 @@ def poll_analysis(config: GateConfig, token: str, analysis_id: str) -> dict[str,
     raise GateFailure("SAST analysis timed out before a terminal state")
 
 
-# Pydoc — objetivo: obter findings da execução concluída anterior do repositório.
-# Parâmetros: config é a API; token é o JWT; current_id é o UUID atual;
-# owner e repository identificam o repositório no GitHub.
-# Retorno: findings anteriores ou lista vazia sem baseline.
-# Exceções: GateFailure quando a API não consulta o histórico.
-def previous_findings(config: GateConfig, token: str, current_id: str,
-                      owner: str, repository: str) -> list[dict[str, Any]]:
-    path = f"/api/analyses/systems/{quote(owner, safe='')}/{quote(repository, safe='')}" \
-           "/history?page=0&size=20"
-    _, history = request_json(config.api_url + path, token=token)
-    entries = history.get("history", [])
-    for entry in entries:
-        previous_id = entry.get("analysisId")
-        if previous_id and previous_id != current_id:
-            _, result = request_json(config.api_url + "/api/analyses/" + quote(previous_id, safe=""),
-                                     token=token)
-            if result.get("status") == "COMPLETED":
-                return result.get("findings", [])
-    return []
+# Pydoc — objetivo: carregar somente um baseline explicitamente confiável.
+# Parâmetros: config contém o repositório solicitado e o caminho opcional do artefato.
+# Retorno: findings do artefato ou lista vazia quando não há baseline aprovado.
+# Exceções: GateFailure quando o artefato não prova sua origem e identidade.
+def load_trusted_baseline(config: GateConfig) -> list[dict[str, Any]]:
+    if config.baseline_path is None:
+        return []
+    try:
+        artifact = json.loads(config.baseline_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise GateFailure("trusted baseline artifact could not be read") from error
+    _, _, expected_repository = normalize_repository(config.repository_url)
+    if (artifact.get("source") != "trusted-gate"
+            or artifact.get("repositoryUrl") != expected_repository
+            or not isinstance(artifact.get("findings"), list)):
+        raise GateFailure("baseline artifact is not an explicitly trusted result")
+    return [item for item in artifact["findings"] if isinstance(item, dict)]
 
 
 # Pydoc — objetivo: aplicar a política determinística ao resultado da análise.
@@ -198,13 +197,14 @@ def run(config: GateConfig) -> int:
     policy = json.loads(config.policy_path.read_text(encoding="utf-8"))
     if policy.get("blocking", {}).get("newCriticalDeterministic") is not True:
         raise GateFailure("gate policy does not enable deterministic Critical blocking")
-    owner, repository, _ = normalize_repository(config.repository_url)
+    if policy.get("existingFindings", {}).get("baseline") != "explicit-trusted-artifact-only":
+        raise GateFailure("gate policy permits an untrusted automatic baseline")
     token = login(config)
     analysis_id = create_analysis(config, token)
     result = poll_analysis(config, token, analysis_id)
     if result.get("status") == "FAILED":
         raise GateFailure("analysis finished in FAILED state")
-    baseline = previous_findings(config, token, analysis_id, owner, repository)
+    baseline = load_trusted_baseline(config)
     summary = evaluate(config, result, baseline)
     print(json.dumps(summary, ensure_ascii=False, separators=(",", ":")))
     return 1 if summary["status"] == "FAIL" else 0
@@ -224,12 +224,14 @@ def parse_args() -> GateConfig:
     parser.add_argument("--timeout-seconds", type=int, default=900)
     parser.add_argument("--poll-seconds", type=int, default=10)
     parser.add_argument("--policy", default=".sast/security-gate.json")
+    parser.add_argument("--baseline", type=Path,
+                        help="artefato explícito de baseline aprovado pelo gate")
     args = parser.parse_args()
     if not SHA_PATTERN.fullmatch(args.commit_sha):
         parser.error("--commit-sha must be a 40-character hexadecimal SHA")
     return GateConfig(args.api_url.rstrip("/"), args.repository_url.rstrip("/"), args.commit_sha,
                       args.email, args.password, args.timeout_seconds, args.poll_seconds,
-                      Path(args.policy))
+                      Path(args.policy), args.baseline)
 
 
 if __name__ == "__main__":
