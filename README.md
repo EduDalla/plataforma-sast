@@ -28,7 +28,7 @@ Worker → PostgreSQL → API → frontend (consulta periódica)
 - `src/frontend`: aplicação React, TypeScript e Vite; Nginx serve os arquivos e encaminha `/api` à API.
 - `src/backend`: API e worker Spring Boot, integração com GitHub, JavaParser, regras, taint analysis, persistência e integração com Ollama.
 - `compose.yaml` e `docker/`: ambiente local com frontend, API, worker, PostgreSQL, RabbitMQ e Ollama.
-- `docs/`: decisões e detalhes técnicos; os testes automatizados ficam junto ao backend e ao frontend.
+- `docs-entrega/`: decisões, detalhes técnicos, evidências e materiais da defesa; os testes automatizados ficam junto ao backend e ao frontend.
 
 ## Inicialização
 
@@ -88,17 +88,17 @@ O procedimento usa JDK 21 e `MAVEN_OPTS='-Djdk.attach.allowAttachSelf=true'` por
 ## Documentação
 
 - [Regras gerais do sistema](REGRAS.MD) e [instruções para agentes](AGENTS.md).
-- [Matriz de requisitos da entrega final](docs/Matriz-de-requisitos-CP3.md): estado atual, lacunas e decisões de escopo.
-- [Plano de adequação](docs/Plano-de-adequacao-CP3.md): ordem de implementação e critérios de aceite.
-- [Critérios de aceite e defesa](docs/Criterios-de-aceite-e-defesa.md): verificações, evidências e roteiro de apresentação.
-- [Arquitetura e fluxos](docs/Arquitetura-e-fluxos.md): contexto, contêineres, estados e fronteiras de confiança.
-- [Manual técnico e API](docs/Manual-tecnico-e-api.md): inicialização, autenticação, rotas e limites de origem.
-- [Evidências e roteiro de defesa](docs/Evidencias-e-roteiro-de-defesa.md): comandos, demonstração e situação por tema.
-- [Decisões de escopo](docs/Decisoes-de-escopo.md): contrato D-01, justificativas e registro da validação da orientação.
-- [CI e operação](docs/CI-e-operacao.md): workflow, verificações automatizadas e limite entre CI e Security Gate.
-- [Rastreabilidade BDD](docs/Rastreabilidade-BDD.md): requisitos, cenários, fixtures, testes e evidências.
-- [Qualidade do taint e da IA](docs/Qualidade-taint-e-IA.md) e [Operação e escalabilidade](docs/Operacao-e-escalabilidade.md): evidências Q-01/O-01 e limites.
-- [Registro E-01](docs/evidencias/E-01-2026-10-07.md): revisão, ambiente e resultados desta verificação documental.
+- [Matriz de requisitos da entrega final](docs-entrega/Matriz-de-requisitos-CP3.md): estado atual, lacunas e decisões de escopo.
+- [Plano de adequação](docs-entrega/Plano-de-adequacao-CP3.md): ordem de implementação e critérios de aceite.
+- [Critérios de aceite e defesa](docs-entrega/Criterios-de-aceite-e-defesa.md): verificações, evidências e roteiro de apresentação.
+- [Arquitetura e fluxos](docs-entrega/Arquitetura-e-fluxos.md): contexto, contêineres, estados e fronteiras de confiança.
+- [Manual técnico e API](docs-entrega/Manual-tecnico-e-api.md): inicialização, autenticação, rotas e limites de origem.
+- [Evidências e roteiro de defesa](docs-entrega/Evidencias-e-roteiro-de-defesa.md): comandos, demonstração e situação por tema.
+- [Decisões de escopo](docs-entrega/Decisoes-de-escopo.md): contrato D-01, justificativas e registro da validação da orientação.
+- [CI e operação](docs-entrega/CI-e-operacao.md): workflow, verificações automatizadas e limite entre CI e Security Gate.
+- [Rastreabilidade BDD](docs-entrega/Rastreabilidade-BDD.md): requisitos, cenários, fixtures, testes e evidências.
+- [Qualidade do taint e da IA](docs-entrega/Qualidade-taint-e-IA.md) e [Operação e escalabilidade](docs-entrega/Operacao-e-escalabilidade.md): evidências Q-01/O-01 e limites.
+- [Registro E-01](docs-entrega/evidencias/E-01-2026-10-07.md): revisão, ambiente e resultados desta verificação documental.
 - [Pacote `docs-entrega`](docs-entrega/README.md): índice dos arquivos exigidos, contribuições e ata/roteiro da defesa.
 
 Esses documentos distinguem implementação, testes locais e evidências externas. Uma validação externa pendente não significa que a funcionalidade esteja ausente do código; observe a situação específica de cada requisito.

@@ -8,7 +8,7 @@ O checklist operacional consolidado das pendências está em [Tasks pendentes](T
 
 | Ordem | Pacote | Dependência | Resultado de aceite |
 | --- | --- | --- | --- |
-| 0 | D-01: decisões de escopo | Orientação da disciplina | Contrato técnico registrado em `docs/Decisoes-de-escopo.md`; validação formal externa permanece explícita. |
+| 0 | D-01: decisões de escopo | Orientação da disciplina | Contrato técnico registrado em `docs-entrega/Decisoes-de-escopo.md`; validação formal externa permanece explícita. |
 | 1 | S-01: precisão do SAST | Nenhuma | Findings diferentes na mesma linha são preservados; duplicatas idênticas não inflam totais. |
 | 2 | C-01: CI de testes | JDK 21 e ambiente de integração | PR executa backend, frontend e validação Compose com resultado visível. |
 | 3 | C-02: gate SAST | C-01 e política definida | PR seguro passa; PR com achado crítico novo falha; erro de análise não vira aprovação silenciosa. |
@@ -23,7 +23,7 @@ O checklist operacional consolidado das pendências está em [Tasks pendentes](T
 - Se envio direto de código ou multilinguagem forem obrigatórios, desenhar contrato, segurança da origem, limites de tamanho, isolamento, persistência, migrações e efeitos na API/frontend/worker antes de alterar a implementação. Esta etapa representa mudança arquitetural e exige autorização explícita.
 - Contrato fixado no checkout: URL pública do GitHub, Java único, equivalentes Java para as três regras, stack atual equivalente e dashboard/histórico como relatório da versão apresentada. Não declarar suporte a Python/JS nem exportação formal.
 
-**Aceite:** `docs/Decisoes-de-escopo.md` registra as quatro decisões, justificativas, responsável e data; README, matriz e defesa usam a mesma interpretação. A tarefa fica tecnicamente documentada, mas a aceitação final da rubrica só ocorre após anexar a validação da orientação.
+**Aceite:** `docs-entrega/Decisoes-de-escopo.md` registra as quatro decisões, justificativas, responsável e data; README, matriz e defesa usam a mesma interpretação. A tarefa fica tecnicamente documentada, mas a aceitação final da rubrica só ocorre após anexar a validação da orientação.
 
 ## S-01 — Melhorar a precisão do motor
 

@@ -56,7 +56,7 @@ O stack atual é **JavaParser + Spring Boot + PostgreSQL + RabbitMQ + React + Do
 ## Decisões registradas pelo D-01
 
 1. RF01: o contrato desta versão usa URL HTTPS pública do GitHub; upload não faz parte do escopo.
-2. RF02/RF08: o contrato desta versão usa Java e os três equivalentes Java descritos em `docs/Decisoes-de-escopo.md`.
+2. RF02/RF08: o contrato desta versão usa Java e os três equivalentes Java descritos em `docs-entrega/Decisoes-de-escopo.md`.
 3. Stack: o contrato usa equivalência técnica e mantém o stack implementado.
 4. Relatórios: o contrato desta versão usa dashboard HTTP, resumo e histórico analítico; exportações permanecem fora do escopo implementado.
 

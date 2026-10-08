@@ -1,6 +1,6 @@
 # Pacote `docs-entrega`
 
-Este diretório contém uma cópia completa dos documentos de `docs/` que fazem parte da entrega da plataforma SAST e da defesa final, além dos artefatos de organização deste pacote. A pasta `docs/` continua sendo a fonte de trabalho; antes do envio, conferir se as duas árvores permanecem sincronizadas.
+Este diretório contém todos os documentos necessários para a entrega da plataforma SAST e da defesa final, além dos artefatos de organização deste pacote. Não há uma segunda pasta documental: este é o diretório documental oficial do projeto.
 
 ## Ordem sugerida para a entrega
 

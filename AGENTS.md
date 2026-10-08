@@ -1,6 +1,6 @@
 # Instruções para agentes Codex
 
-Leia este arquivo antes de alterar o monorepo. Estas instruções complementam a solicitação atual, as [regras gerais do sistema](REGRAS.MD) e a documentação técnica em `docs/`.
+Leia este arquivo antes de alterar o monorepo. Estas instruções complementam a solicitação atual, as [regras gerais do sistema](REGRAS.MD) e a documentação técnica em `docs-entrega/`.
 
 ## Antes de prosseguir
 
@@ -59,4 +59,4 @@ Confirme também que o fixture Java vulnerável mantido em memória produz exata
 - Não adicione segredos, tokens, dumps, archives ou `node_modules` ao Git; não exponha valores do `.env` em saídas de comandos.
 - Mantenha comandos executáveis a partir da raiz do monorepo.
 - Use nomes e comentários em português quando isso melhorar a compreensão acadêmica do projeto.
-- Registre decisões arquiteturais relevantes em `docs/` e mantenha `REGRAS.MD` coerente com o comportamento implementado.
+- Registre decisões arquiteturais relevantes em `docs-entrega/` e mantenha `REGRAS.MD` coerente com o comportamento implementado.

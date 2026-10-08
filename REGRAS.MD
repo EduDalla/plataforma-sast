@@ -1,6 +1,6 @@
 # Regras gerais do sistema
 
-Este documento reúne os fluxos, processos e limites arquiteturais da plataforma SAST conforme o comportamento implementado. Para instruções de trabalho de agentes, consulte [AGENTS.md](AGENTS.md); para detalhes operacionais, consulte [README.md](README.md) e `docs/`.
+Este documento reúne os fluxos, processos e limites arquiteturais da plataforma SAST conforme o comportamento implementado. Para instruções de trabalho de agentes, consulte [AGENTS.md](AGENTS.md); para detalhes operacionais, consulte [README.md](README.md) e `docs-entrega/`.
 
 ## Arquitetura e responsabilidades
 
@@ -49,5 +49,5 @@ Este documento reúne os fluxos, processos e limites arquiteturais da plataforma
 - Novas regras determinísticas implementam `SecurityRule`; parser e engine não devem depender de transporte HTTP, GitHub ou JPA. A IA não deve alterar findings gerados por regras.
 - Os testes devem cobrir autenticação e isolamento, validação da origem, fila e retomada, parser e regras, estados degradados, persistência e apresentação dos resultados. O fixture Java vulnerável em memória deve continuar produzindo exatamente três findings, sem executar o código analisado.
 - Antes de concluir alterações, executar na raiz os comandos de verificação de `AGENTS.md` e conferir o resultado contra o comportamento atual da aplicação.
-- Os ensaios de operação e suas evidências BDD estão em [Operação e escalabilidade](docs/Operacao-e-escalabilidade.md). Falhas provocadas e limpeza automática devem atingir somente o projeto Compose temporário criado para o ensaio.
-- A [rastreabilidade BDD](docs/Rastreabilidade-BDD.md) liga requisitos, cenários e testes existentes. A documentação deve distinguir asserções automatizadas, ensaios reais e validações externas pendentes; IDs devem permanecer coerentes com nomes de teste, sem criar testes duplicados por motivo documental.
+- Os ensaios de operação e suas evidências BDD estão em [Operação e escalabilidade](docs-entrega/Operacao-e-escalabilidade.md). Falhas provocadas e limpeza automática devem atingir somente o projeto Compose temporário criado para o ensaio.
+- A [rastreabilidade BDD](docs-entrega/Rastreabilidade-BDD.md) liga requisitos, cenários e testes existentes. A documentação deve distinguir asserções automatizadas, ensaios reais e validações externas pendentes; IDs devem permanecer coerentes com nomes de teste, sem criar testes duplicados por motivo documental.

@@ -6,7 +6,7 @@ Este arquivo transforma as lacunas identificadas na auditoria do checkout atual 
 
 | ID | Prioridade | Situação | Dependências | Ação | Critério de aceite | Responsável |
 | --- | --- | --- | --- | --- | --- | --- |
-| TASK-01 | P0 | Concluída — confirmação recebida do grupo | Orientação da disciplina | Validar formalmente o escopo Java, a entrada por URL pública, o uso de stack equivalente e o formato do relatório. | Confirmação registrada; `docs/Decisoes-de-escopo.md` atualizado; README, matriz e defesa usam a mesma interpretação. | Grupo do projeto |
+| TASK-01 | P0 | Concluída — confirmação recebida do grupo | Orientação da disciplina | Validar formalmente o escopo Java, a entrada por URL pública, o uso de stack equivalente e o formato do relatório. | Confirmação registrada; `docs-entrega/Decisoes-de-escopo.md` atualizado; README, matriz e defesa usam a mesma interpretação. | Grupo do projeto |
 | TASK-02 | P0 | Parcial — reprodução local concluída; evidência do GitHub pendente | Acesso ao GitHub Actions | Comprovar a execução limpa do CI no GitHub e uma execução com falha controlada. | Execução limpa aprovada e falha controlada produzindo check reprovado, com links das execuções e sem dados sensíveis. | A definir pelo grupo |
 | TASK-03 | P0 | Pendente | TASK-02; secrets de serviço; proteção da branch | Validar o Security Gate integrado à API e exigir seus checks na branch protegida. | PR seguro aprovado; Critical novo, análise falha e cobertura incompleta bloqueados; merge impedido pelo check obrigatório. | A definir pelo grupo |
 | TASK-04 | P1 | Concluída — política conservadora e testes locais | TASK-03 | Revisar a baseline do gate e definir tratamento seguro para PRs de forks. | A política não aceita automaticamente achados de uma execução insegura anterior; forks são documentados e testados sem exposição de secrets. | A definir pelo grupo |
@@ -48,7 +48,7 @@ As evidências de execução externa, proteção administrativa da branch e ensa
 
 ## Verificação deste documento
 
-- Conferir cada tarefa contra `docs/Matriz-de-requisitos-CP3.md` e `docs/Criterios-de-aceite-e-defesa.md`.
+- Conferir cada tarefa contra `docs-entrega/Matriz-de-requisitos-CP3.md` e `docs-entrega/Criterios-de-aceite-e-defesa.md`.
 - Manter links e nomes de arquivos coerentes com o checkout atual.
 - Executar `git diff --check` após alterações documentais.
 - Preservar o DOCX original, arquivos existentes, tokens, archives, código-fonte de terceiros e artefatos gerados.
