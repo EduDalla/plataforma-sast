@@ -1,8 +1,32 @@
-# Qualidade do taint e da IA — Q-01
+# Qualidade do SAST, taint e IA — Q-01
 
 Este documento registra a evidência reproduzível do pacote Q-01. O corpus é sintético, autorizado e mantido em memória nos testes; nenhum caso Java é compilado ou executado como código analisado.
 
 ## Método e escopo
+
+O corpus transversal de precisão da TASK-06 está em `SastQualityCorpusTest`. Ele contém 18 casos
+sintéticos e autorizados, mantidos em memória, distribuídos pelas três regras estruturais e pelo
+taint. Cada caso tem rótulo revisado, justificativa e regra-alvo; os denominadores não misturam
+regras diferentes. A avaliação usa apenas parser/AST e não compila nem executa nenhum caso Java.
+
+Na execução local de 07/10/2026, as métricas reproduzíveis por regra foram:
+
+| Regra | Corpus | TP | FP | TN | FN | Precisão | Recall |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| SAST-JAVA-001 — credencial hardcoded | 5 | 2 | 1 | 1 | 1 | 66,7% (2/3) | 66,7% (2/3) |
+| SAST-JAVA-002 — Runtime.exec | 4 | 1 | 0 | 2 | 1 | 100% (1/1) | 50% (1/2) |
+| SAST-JAVA-003 — readObject | 4 | 1 | 0 | 2 | 1 | 100% (1/1) | 50% (1/2) |
+| TAINT-CMDI-001 — taint de comando | 5 | 2 | 0 | 2 | 1 | 100% (2/2) | 66,7% (2/3) |
+
+Os falsos positivos e negativos estão identificados nos próprios casos: `HC-04` é o falso positivo
+de um placeholder chamado `token`; `HC-05` não reconhece `credential`; `RE-03` não acompanha um
+alias de `Runtime`; `DS-03` não indexa uma expressão direta de `ObjectInputStream`; e `TA-04` é interprocedural,
+fora do escopo atual. `TA-03` registra a convenção de que `replaceAll` com dois argumentos quebra
+o rastro; isso não constitui prova de sanitização universal. `TA-02` garante a presença explícita
+de `ProcessBuilder` no corpus.
+
+O teste de aceite transversal é `SastQualityCorpusTest.corpusCalculaMetricasPorRegra`; o corpus
+taint detalhado abaixo permanece como avaliação ampliada, com 14 casos e rastreabilidade própria.
 
 O corpus contém 14 casos rotulados para o `TaintAnalysisEngine`: oito positivos cobertos, dois positivos fora da cobertura atual, quatro negativos. A rotulagem responde à pergunta “uma entrada controlável chega a um sink de execução sem sanitização conhecida?”. O rótulo é independente do resultado do engine.
 
