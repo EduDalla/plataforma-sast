@@ -99,5 +99,6 @@ O procedimento usa JDK 21 e `MAVEN_OPTS='-Djdk.attach.allowAttachSelf=true'` por
 - [Rastreabilidade BDD](docs/Rastreabilidade-BDD.md): requisitos, cenários, fixtures, testes e evidências.
 - [Qualidade do taint e da IA](docs/Qualidade-taint-e-IA.md) e [Operação e escalabilidade](docs/Operacao-e-escalabilidade.md): evidências Q-01/O-01 e limites.
 - [Registro E-01](docs/evidencias/E-01-2026-10-07.md): revisão, ambiente e resultados desta verificação documental.
+- [Pacote `docs-entrega`](docs-entrega/README.md): índice dos arquivos exigidos, contribuições e ata/roteiro da defesa.
 
 Esses documentos distinguem implementação, testes locais e evidências externas. Uma validação externa pendente não significa que a funcionalidade esteja ausente do código; observe a situação específica de cada requisito.
