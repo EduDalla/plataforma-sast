@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ExecutorService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -103,6 +104,7 @@ class OperationIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired AnalysisOutboxPublisher publisher;
+    @Autowired AnalysisJobService jobs;
     @Autowired AnalysisLeaseReconciler reconciler;
     @Autowired RabbitTemplate rabbit;
     @Autowired RabbitListenerEndpointRegistry listeners;
@@ -231,6 +233,46 @@ class OperationIntegrationTest {
         completed(id);
         assertEquals(2, jdbc.queryForObject("SELECT attempt_count FROM analyses WHERE id=?", Integer.class, id));
         verify(github, never()).resolveCommitSha(any(), any());
+    }
+
+    @Test
+    @DisplayName("BDD-OP-13: worker antigo perde a lease e não grava depois do novo proprietário")
+    void staleWorkerIsFencedAfterLeaseLoss() throws Exception {
+        var id = create("fenced");
+        var oldEntered = new CountDownLatch(1);
+        var releaseOld = new CountDownLatch(1);
+        var downloads = new AtomicInteger();
+        when(github.download(any(), any())).thenAnswer(call -> {
+            if (downloads.getAndIncrement() == 0) {
+                oldEntered.countDown();
+                assertTrue(releaseOld.await(15, TimeUnit.SECONDS));
+                return snapshot(call.getArgument(0));
+            }
+            return new GitHubClient.Snapshot("acme", "fixture", call.getArgument(0), SHA,
+                    List.of(new GitHubClient.File("Safe.java", "class Safe {}")));
+        });
+        jdbc.update("UPDATE analysis_outbox SET published_at=now() WHERE analysis_id=?", id);
+        jdbc.update("UPDATE analyses SET lease_owner='worker-antigo', lease_until=now()+interval '1 minute', "
+                + "attempt_count=1 WHERE id=?", id);
+        ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            var old = executor.submit(() -> jobs.processClaimed(id, "worker-antigo"));
+            assertTrue(oldEntered.await(10, TimeUnit.SECONDS), "worker antigo não iniciou o download");
+            jdbc.update("UPDATE analyses SET lease_until=now()-interval '1 second' WHERE id=?", id);
+            assertTrue(jobs.claim(id, "worker-novo"));
+            var fresh = executor.submit(() -> jobs.processClaimed(id, "worker-novo"));
+            await().atMost(Duration.ofSeconds(15)).until(() -> "COMPLETED".equals(
+                    jdbc.queryForObject("SELECT status FROM analyses WHERE id=?", String.class, id)));
+            releaseOld.countDown();
+            old.get(15, TimeUnit.SECONDS);
+            fresh.get(15, TimeUnit.SECONDS);
+            assertEquals(2, jdbc.queryForObject("SELECT attempt_count FROM analyses WHERE id=?", Integer.class, id));
+            assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM findings WHERE analysis_id=?", Integer.class, id));
+            assertEquals("COMPLETED", jdbc.queryForObject("SELECT status FROM analyses WHERE id=?", String.class, id));
+        } finally {
+            releaseOld.countDown();
+            executor.shutdownNow();
+        }
     }
 
     @Test

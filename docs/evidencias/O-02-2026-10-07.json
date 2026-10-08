@@ -1,0 +1,22 @@
+{
+  "task": "TASK-12",
+  "scenario": "O-02 — capacidade Compose com múltiplas réplicas e fencing de lease",
+  "status": "PASSED",
+  "started_at": "2026-10-07T23:12:15-03:00",
+  "finished_at": "2026-10-07T23:13:16-03:00",
+  "repository_url": "https://github.com/EduDalla/plataforma-sast",
+  "reference": "main",
+  "load": {"analyses": 8, "workers": 3, "worker_consumers": 6},
+  "throughput": {"analyses_per_second": 0.874, "wall_seconds": 9.158},
+  "latency_seconds": {"min": 5.779, "mean": 7.426, "p50": 9.004, "p95": 9.158, "p99": 9.158, "max": 9.158},
+  "queue": {"ready_peak": 0, "unacknowledged_peak": 2},
+  "memory_peak_observed_bytes": {"api": 528482304, "worker": 603350630},
+  "samples": 3,
+  "lease_recovery": "BDD-OP-13 stale-worker fencing: passed; no write from old worker after ownership change",
+  "isolated_project_removed": true,
+  "limitations": [
+    "Memória é máximo amostrado por docker stats, não pico absoluto nem heap Java.",
+    "Carga curta em máquina compartilhada; não estabelece SLA ou capacidade de produção.",
+    "Percentis refletem oito observações e polling de um segundo."
+  ]
+}

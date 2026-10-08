@@ -165,6 +165,24 @@ O prazo do evento de outbox é antecipado no banco de teste depois de provar a f
 
 Uma única máquina Compose com duas tentativas ativas comprova separação dos serviços e concorrência nessa carga. Não estabelece throughput, percentis de latência, capacidade de múltiplas réplicas, alta disponibilidade ou limites de produção. O ensaio de lease simula processo morto com concessão expirada; não comprova proteção contra um proprietário antigo que continue executando depois de perder a concessão.
 
+## TASK-12 — capacidade e fencing de lease
+
+O ensaio ampliado fica separado do O-01 para que as medições anteriores permaneçam comparáveis. Ele constrói a mesma imagem do produto em um projeto Compose temporário, sobe múltiplas réplicas do serviço `worker` e submete uma carga maior do repositório público autorizado:
+
+```bash
+python3 scripts/operation_capacity.py \
+  --workers 3 --analyses 8 \
+  --output /tmp/sast-task12-capacity.json
+```
+
+O script registra a carga, quantidade de consumidores (`2 × workers`), throughput, latências mínima/média/p50/p95/p99/máxima, pico de mensagens prontas e não confirmadas, memória amostrada de API e workers, quantidade de amostras e remoção do projeto isolado. O relatório não guarda tokens, respostas HTTP, archive, fonte, prompts, snippets ou logs completos. O SHA/referência é resolvido pela API pública do GitHub antes da submissão; o código recebido continua restrito ao parser do produto e nunca é executado.
+
+A perda de lease é verificada pelo teste `BDD-OP-13` em `OperationIntegrationTest.staleWorkerIsFencedAfterLeaseLoss`. O teste mantém um worker antigo bloqueado durante o download, concede a mesma análise a um novo worker, conclui a nova tentativa e libera o worker antigo. A persistência usa lock pessimista e valida `lease_owner` em cada mutação; portanto, a tentativa antiga não pode gravar findings, estado final ou metadados depois da troca de proprietário. O resultado esperado é uma tentativa final, sem findings herdados do worker antigo e sem escrita indevida.
+
+O throughput e os percentis são observações da máquina local, com polling de um segundo e `docker stats` amostrado; não representam SLA, pico absoluto de memória ou capacidade de produção. A análise de lease e a medição de capacidade são critérios independentes: uma execução de carga bem-sucedida não é usada para inferir fencing.
+
+Na execução registrada em [O-02](evidencias/O-02-2026-10-07.json), oito análises concluíram com três réplicas (seis consumidores), throughput de 0,874 análise/s, latência média de 7,426 s e p95 de 9,158 s. O pico observado foi de duas mensagens não confirmadas; a fila pronta permaneceu em zero na amostragem. A memória máxima amostrada foi 528.482.304 bytes na API e 603.350.630 bytes nos workers. O projeto temporário foi removido ao final. Essa amostra é uma capacidade observada sob carga curta, não um limite de produção.
+
 Os limites impostos pelo cliente são archive de 100 MiB, até 10.000 entradas, até 1.000 arquivos Java, 2 MiB por arquivo Java e 500 MiB extraídos. O conteúdo ignorado também entra no orçamento de extração. Esses valores são limites de segurança configurados; a medição não afirma que análises no teto terminam dentro de um SLA.
 
 Tokens e credenciais do ensaio permanecem transitórios. O script não preserva archives, código integral, prompts, respostas brutas ou logs completos. A auditoria compara segredos gerados e snippets conhecidos; isso não prova ausência de qualquer informação sensível possível.

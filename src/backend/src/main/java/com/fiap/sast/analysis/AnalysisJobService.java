@@ -9,6 +9,8 @@ import com.fiap.sast.persistence.Finding;
 import com.fiap.sast.semantic.SemanticAnalysisService;
 import com.fiap.sast.semantic.SemanticSuggestionService;
 import jakarta.annotation.PreDestroy;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
@@ -38,7 +40,12 @@ public class AnalysisJobService {
     private final SemanticSuggestionService suggestions;
     private final ObjectMapper mapper;
     private final TransactionTemplate transactions;
+    private final EntityManager entityManager;
     private final ScheduledExecutorService renewals = Executors.newScheduledThreadPool(2);
+
+    private static final class LeaseLostException extends RuntimeException {
+        private LeaseLostException() { super("A concessão da tentativa foi perdida"); }
+    }
 
     /**
      * Inicializa o processamento do worker com dependências de análise e persistência.
@@ -50,10 +57,11 @@ public class AnalysisJobService {
      * @param suggestions sugestões consultivas independentes
      * @param mapper serializador dos traces persistidos
      * @param transactionManager gerenciador de transações curtas do worker
+     * @param entityManager acesso transacional para aplicar lock de fencing
      */
     public AnalysisJobService(GitHubClient git, SastEngine engine, AnalysisRepository analyses,
             SemanticAnalysisService semantic, SemanticSuggestionService suggestions, ObjectMapper mapper,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager, EntityManager entityManager) {
         this.git = git;
         this.engine = engine;
         this.analyses = analyses;
@@ -61,6 +69,7 @@ public class AnalysisJobService {
         this.suggestions = suggestions;
         this.mapper = mapper;
         this.transactions = new TransactionTemplate(transactionManager);
+        this.entityManager = entityManager;
     }
 
     /**
@@ -112,27 +121,27 @@ public class AnalysisJobService {
     public void processClaimed(UUID id, String workerId) {
         var renewal = renewals.scheduleAtFixedRate(() -> renewLease(id, workerId), 15, 15, TimeUnit.SECONDS);
         try {
-            run(id);
+            run(id, workerId);
         } finally {
             renewal.cancel(false);
         }
     }
 
-    private void run(UUID id) {
+    private void run(UUID id, String workerId) {
         try (var parseCache = engine.newParseCache()) {
             var a0 = transactions.execute(status -> analyses.findById(id).orElseThrow());
-            update(id, a -> a.stage = "DOWNLOADING");
+            update(id, workerId, a -> a.stage = "DOWNLOADING");
             String sha = a0.commitSha;
             if (sha == null) {
                 sha = git.resolveCommitSha(a0.repositoryUrl, a0.reference);
                 final String fixed = sha;
-                update(id, a -> a.commitSha = fixed);
+                update(id, workerId, a -> a.commitSha = fixed);
             }
             var snapshot = git.download(a0.repositoryUrl, sha);
             if (snapshot.files().isEmpty()) {
                 throw new IllegalStateException("O repositório não contém arquivos Java elegíveis");
             }
-            update(id, a -> {
+            update(id, workerId, a -> {
                 a.filesTotal = snapshot.files().size();
                 a.filesAnalyzed = snapshot.files().size();
                 a.snapshotHash = snapshotHash(snapshot.files());
@@ -142,7 +151,7 @@ public class AnalysisJobService {
             for (var file : snapshot.files()) {
                 var findings = engine.analyze(file.content(), file.path(), parseCache);
                 transactions.executeWithoutResult(status -> {
-                    var a = analyses.findById(id).orElseThrow();
+                    var a = lockedOwned(id, workerId);
                     findings.forEach(value -> {
                         var f = new Finding();
                         f.analysis = a;
@@ -163,13 +172,13 @@ public class AnalysisJobService {
                     analyses.save(a);
                 });
             }
-            update(id, a -> {
+            update(id, workerId, a -> {
                 a.semanticStatus = candidates.isEmpty() ? "NOT_APPLICABLE" : "RUNNING";
                 a.stage = candidates.isEmpty() ? "SUGGESTIONS" : "SEMANTIC";
             });
             var enriched = semantic.enrich(candidates, parseCache);
             transactions.executeWithoutResult(status -> {
-                var a = analyses.findById(id).orElseThrow();
+                var a = lockedOwned(id, workerId);
                 a.semanticStatus = enriched.status();
                 enriched.assessments().forEach((findingId, assessment) -> a.findings.stream()
                         .filter(f -> f.id.equals(findingId)).findFirst()
@@ -182,12 +191,12 @@ public class AnalysisJobService {
                     .map(file -> new SemanticSuggestionService.SourceFile(file.path(), file.content())).toList();
             Consumer<com.fiap.sast.semantic.AiSuggestion> persist = suggestion ->
                     transactions.executeWithoutResult(status -> {
-                        var a = analyses.findById(id).orElseThrow();
+                        var a = lockedOwned(id, workerId);
                         replaceSuggestion(a, suggestion);
                         analyses.save(a);
                     });
             var result = suggestions.scan(sourceFiles, persist, parseCache);
-            update(id, a -> {
+            update(id, workerId, a -> {
                 a.suggestionStatus = result.status();
                 a.status = "COMPLETED";
                 a.stage = "COMPLETED";
@@ -196,13 +205,15 @@ public class AnalysisJobService {
                 a.nextAttemptAt = null;
             });
         } catch (Exception failure) {
-            handleFailure(id, failure);
+            handleFailure(id, workerId, failure);
         }
     }
 
-    private void handleFailure(UUID id, Exception failure) {
+    private void handleFailure(UUID id, String workerId, Exception failure) {
         String message = safeMessage(failure);
-        transactions.executeWithoutResult(status -> analyses.findById(id).ifPresent(a -> {
+        transactions.executeWithoutResult(status -> {
+            var a = locked(id);
+            if (a == null || !workerId.equals(a.leaseOwner)) return;
             boolean retryable = failure instanceof GitHubClient.UnavailableException
                     || failure instanceof GitHubClient.RateLimitException;
             if (!retryable || a.attemptCount >= 3) {
@@ -216,7 +227,7 @@ public class AnalysisJobService {
             a.leaseUntil = a.nextAttemptAt;
             a.failureStage = a.stage;
             a.failureMessage = message;
-        }));
+        });
     }
 
     private void renewLease(UUID id, String owner) {
@@ -228,11 +239,25 @@ public class AnalysisJobService {
         }));
     }
 
-    private void update(UUID id, Consumer<Analysis> change) {
-        transactions.executeWithoutResult(status -> analyses.findById(id).ifPresent(a -> {
+    private void update(UUID id, String workerId, Consumer<Analysis> change) {
+        transactions.executeWithoutResult(status -> {
+            var a = locked(id);
+            if (a == null) return;
+            if (!workerId.equals(a.leaseOwner)) throw new LeaseLostException();
             change.accept(a);
             analyses.save(a);
-        }));
+        });
+    }
+
+    private Analysis lockedOwned(UUID id, String workerId) {
+        var analysis = locked(id);
+        if (analysis == null) throw new IllegalStateException("Análise inexistente");
+        if (!workerId.equals(analysis.leaseOwner)) throw new LeaseLostException();
+        return analysis;
+    }
+
+    private Analysis locked(UUID id) {
+        return entityManager.find(Analysis.class, id, LockModeType.PESSIMISTIC_WRITE);
     }
 
     private static void fail(Analysis analysis, String stage, String message) {
