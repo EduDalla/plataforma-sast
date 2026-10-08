@@ -17,7 +17,7 @@ Execução de 07/10/2026 no checkout com alterações locais, identificada em [E
 | Política local do gate | Seis testes Python aprovados; não são PRs reais. |
 | Compose | Configuração validada com `--quiet`, sem expor variáveis. |
 
-Os 13 ignorados são nove cenários de `AuthenticatedAnalysisIntegrationTest` desabilitados por pressuporem fluxo síncrono legado e quatro cenários opcionais de `LiveOllamaDemoTest`, dependentes de `SAST_RUN_LIVE_OLLAMA=true`. OP-01 acrescenta evidência de polling/isolamento, mas não torna os nove testes legados executados. O build Docker com testes pulados também não substitui verify.
+Os quatro ignorados são os cenários opcionais de `LiveOllamaDemoTest`, dependentes de `SAST_RUN_LIVE_OLLAMA=true`. A TASK-08 migrou os nove cenários de `AuthenticatedAnalysisIntegrationTest` para `202 Accepted`, outbox/RabbitMQ, polling, resultados e isolamento por proprietário; a execução dedicada registrou 9 testes, zero falhas/erros e zero ignorados. O build Docker com testes pulados também não substitui verify.
 
 As falhas ambientais relatadas em 05/10/2026 (Docker indisponível ao Testcontainers e agente Mockito) pertencem ao registro histórico. Nesta execução E-01, essas dependências funcionaram. O relato live Q-01 e o JSON externo O-01 são anteriores e não foram reexecutados como ensaios externos nesta etapa.
 
@@ -29,7 +29,7 @@ As falhas ambientais relatadas em 05/10/2026 (Docker indisponível ao Testcontai
 | Entrada segura e download controlado | OP-05/06 | Recusa antes de criar tarefa e ZIPs em memória; autorização acadêmica do contrato URL ainda depende de D-01. |
 | Parser, AST, regras e localização | E-01/02/03, OP-07 | Três findings no fixture, identidade preservada e não execução. |
 | Taint e métricas | TAINT-01–05 | Intraprocedural, sanitizador heurístico e amostra limitada; sem conclusão universal. |
-| IA consultiva degradável | IA-01–04, OP-10 | Contrato e preservação operacional; comparação de severidades divergentes e qualidade manual ainda têm lacunas em Q-01. |
+| IA consultiva degradável | IA-01–04, OP-10 | Contrato, preservação operacional, comparação divergente e revisão qualitativa 6/6 registrados em Q-01; impacto em falsos positivos não comprovado. |
 | Resultados e tendência | E-04/05, OP-01 | Testes de componente e isolamento aprovados; demonstração visual integrada M01 pendente. |
 | Filas, retentativa e recuperação | OP-01–04/08/09 | Aprovados nos cenários controlados; simulação de lease expirado não comprova todos os casos de worker antigo ativo. |
 | Logs e dados mínimos | OP-11 e O-01 | Nenhum segredo/snippet conhecido encontrado; auditoria não prova ausência de todo dado sensível possível. |
@@ -49,7 +49,7 @@ Definições Given/When/Then, fixtures e métodos estão em [Rastreabilidade BDD
 - [ ] Nomes dos integrantes e contribuições confirmados pelo grupo.
 - [ ] Demonstração visual integrada e ata M01 registradas.
 - [ ] PRs seguro/inseguro, execução externa de CI e proteção da branch comprovados.
-- [ ] Revisão qualitativa das seis remediações e demais lacunas Q-01 concluídas.
+- [x] Revisão qualitativa das seis remediações e demais lacunas Q-01 concluídas; impacto da IA sobre falsos positivos explicitamente não comprovado.
 - [x] Validação do escopo D-01 confirmada pelo grupo e registrada.
 
 O pacote documental está concluído no escopo E-01; os itens externos pendentes não são declarados concluídos. Capacidade de produção, exportação PDF/CSV/SARIF, multilinguagem, upload e repositórios privados não são capacidades entregues por esta etapa.

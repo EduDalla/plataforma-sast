@@ -72,7 +72,7 @@ O checklist operacional consolidado das pendências está em [Tasks pendentes](T
 - Avaliar IA local em exemplos rotulados: severidade sugerida, provável falso positivo, qualidade de remediação, respostas inválidas, timeout e indisponibilidade. Registrar modelo, versão do prompt e custo/tempo de execução.
 - Manter findings e severidade determinísticos independentes da IA; o gate usa somente evidência determinística enquanto avaliações consultivas não tiverem política e validação próprias.
 
-**Aceite:** [Qualidade-taint-e-IA.md](Qualidade-taint-e-IA.md) registra corpus de 14 casos, critérios de rotulagem, TP=8, FP=0, TN=4, FN=2, limites, cenários BDD rastreáveis, ensaio real de seis findings e operação degradada sem perda de findings. A revisão qualitativa manual das remediações ainda deve ser anexada; não há alegação de cobertura universal.
+**Aceite:** [Qualidade-taint-e-IA.md](Qualidade-taint-e-IA.md) registra corpus de 14 casos, critérios de rotulagem, TP=8, FP=0, TN=4, FN=2, limites, cenários BDD rastreáveis, ensaio real de seis findings, revisão qualitativa 6/6 e operação degradada sem perda de findings. O impacto sobre falsos positivos não foi comprovado; não há alegação de cobertura universal.
 
 ## O-01 — Operação e escalabilidade
 
@@ -91,4 +91,4 @@ O checklist operacional consolidado das pendências está em [Tasks pendentes](T
 - [Rastreabilidade BDD](Rastreabilidade-BDD.md) cobre RF01–RF18 e RNF01–RNF08, ligando cenário, fixture, teste, evidência e limitações; IDs de Q-01 foram reconciliados com os testes existentes.
 - [Decisões D-01](Decisoes-de-escopo.md) preservam a necessidade de validação da orientação. Nomes e contribuições devem ser preenchidos pelo grupo; não são inferidos pelo agente.
 
-**Aceite documental concluído em 07/10/2026:** instalação e reprodução documentadas, todos os RF/RNF rastreáveis, verificações locais registradas em [E-01](evidencias/E-01-2026-10-07.md) e roteiro com evidências alternativas. Não houve ensaio de usabilidade com outra pessoa nesta etapa. Aceitação integral continua condicionada às lacunas técnicas e externas da [matriz](Matriz-de-requisitos-CP3.md), incluindo revisão qualitativa Q-01 e aceite da orientação.
+**Aceite documental concluído em 07/10/2026:** instalação e reprodução documentadas, todos os RF/RNF rastreáveis, verificações locais registradas em [E-01](evidencias/E-01-2026-10-07.md) e roteiro com evidências alternativas. Não houve ensaio de usabilidade com outra pessoa nesta etapa. Aceitação integral continua condicionada às lacunas técnicas e externas da [matriz](Matriz-de-requisitos-CP3.md) e ao aceite da orientação.

@@ -57,6 +57,22 @@ class SemanticAnalysisServiceTest {
     }
 
     /**
+     * Prova que uma severidade consultiva divergente não substitui a severidade da regra.
+     */
+    @Test
+    @DisplayName("BDD-IA-01: severidade consultiva divergente preserva o finding original")
+    void divergentSuggestedSeverityDoesNotChangeDeterministicFinding() {
+        var finding = candidate();
+        var divergent = VALID.replace("\"suggestedSeverity\":\"High\"", "\"suggestedSeverity\":\"Low\"");
+        var result = service((prompt, timeout) -> divergent, 10, 90).enrich(List.of(finding));
+
+        assertEquals("COMPLETED", result.status());
+        assertEquals("Low", result.assessments().get(finding.findingId()).suggestedSeverity());
+        assertEquals("High", finding.finding().severity());
+        assertEquals("SAST-JAVA-002", finding.finding().ruleId());
+    }
+
+    /**
      * Confirma que somente falhas transitórias recebem uma segunda tentativa.
      */
     @Test

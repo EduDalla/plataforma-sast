@@ -119,7 +119,7 @@ Rejeições imediatas incluem entrada inválida (400), autenticação ausente/in
 | SAST-JAVA-003 | CWE-502 / High | Chamada estrutural a ObjectInputStream.readObject. |
 | TAINT-CMDI-001 | CWE-78 / Critical | Fonte HTTP até Runtime.exec ou construção de ProcessBuilder, intraprocedural. |
 
-As regras estão em [rules](../src/backend/src/main/java/com/fiap/sast/rules) e [taint](../src/backend/src/main/java/com/fiap/sast/taint). A regra estrutural pode reportar comando constante mesmo sem taint. Ver [Q-01](Qualidade-taint-e-IA.md) para corpus, sanitizador heurístico, métricas e limitações; a revisão qualitativa das remediações reais ainda está pendente.
+As regras estão em [rules](../src/backend/src/main/java/com/fiap/sast/rules) e [taint](../src/backend/src/main/java/com/fiap/sast/taint). A regra estrutural pode reportar comando constante mesmo sem taint. Ver [Q-01](Qualidade-taint-e-IA.md) para corpus, sanitizador heurístico, métricas, limitações e a revisão qualitativa 6/6; o impacto da IA sobre falsos positivos não foi comprovado.
 
 Archive: 100 MiB; até 1.000 arquivos Java; 2 MiB por arquivo; 500 MiB extraídos, inclusive entradas ignoradas; 10.000 entradas ZIP (limite interno). Os quatro primeiros são configuráveis pelas variáveis `SAST_GITHUB_MAX_*` no Compose. Caminhos perigosos são rejeitados; symlinks e diretórios `target,build,out,.gradle,node_modules,vendor` são ignorados. JavaParser está configurado para sintaxe Java 21. Não há execução de fonte analisada.
 

@@ -131,8 +131,8 @@ M01–M03 são cenários manuais pendentes. A conclusão documental E-01 não os
 | BDD-TAINT-01/02/03/05 | HTTP concatenado, replaceAll, fluxo entre métodos e constante | [TaintAnalysisEngineTest](../src/backend/src/test/java/com/fiap/sast/taint/TaintAnalysisEngineTest.java), métodos nomeados em Q-01 | JUnit E-01 aprovado, conforme heurística atual. |
 | BDD-TAINT-04 | Corpus T01–T14 | [TaintQualityCorpusTest](../src/backend/src/test/java/com/fiap/sast/taint/TaintQualityCorpusTest.java).`bddTaintCorpusCalculaMetricasComDenominadoresExplicitos` | JUnit E-01: TP 8, FP 0, TN 4, FN 2. |
 | TASK-06 / SAST-QUALITY-01 | Corpus transversal das três regras e taint, com `replaceAll`, `ProcessBuilder`, FP/FN e métricas por regra | [SastQualityCorpusTest](../src/backend/src/test/java/com/fiap/sast/quality/SastQualityCorpusTest.java).`corpusCalculaMetricasPorRegra` | JUnit: 18 casos em memória; métricas reproduzíveis por regra documentadas em Q-01. |
-| BDD-IA-01/02/03 | Finding High e gateway simulado | [SemanticAnalysisServiceTest](../src/backend/src/test/java/com/fiap/sast/semantic/SemanticAnalysisServiceTest.java), métodos nomeados em Q-01 | JUnit E-01 aprovado; limites das asserções em Q-01. |
-| BDD-IA-04 | Fixture oficial mais três comandos constantes | [LiveOllamaDemoTest](../src/backend/src/test/java/com/fiap/sast/semantic/LiveOllamaDemoTest.java).`sixLabeledFindingsReceiveRealAssessments` | Ensaio anterior relatado em Q-01; ignorado no verify E-01; notas qualitativas pendentes. |
+| BDD-IA-01/02/03 | Finding High, severidade divergente e gateway simulado | [SemanticAnalysisServiceTest](../src/backend/src/test/java/com/fiap/sast/semantic/SemanticAnalysisServiceTest.java), métodos nomeados em Q-01 | JUnit TASK-07 aprovado; finding permanece High quando a IA sugere Low. |
+| BDD-IA-04 | Fixture oficial mais três comandos constantes | [LiveOllamaDemoTest](../src/backend/src/test/java/com/fiap/sast/semantic/LiveOllamaDemoTest.java).`sixLabeledFindingsReceiveRealAssessments` | Ensaio real e manifesto em Q-01; revisão manual 6/6; impacto em FP não comprovado. |
 | BDD-E-M01 | Instância e análises preparadas | [Roteiro de defesa](Evidencias-e-roteiro-de-defesa.md) | Manual; registro visual integrado pendente. |
 | BDD-E-M02 | Dois PRs e branch protegida | [CI e operação](CI-e-operacao.md) | Externo; sem PR/check externo registrado nesta etapa. |
 | BDD-E-M03 | Decisões D-01 | [Registro de escopo](Decisoes-de-escopo.md) | Externo; nomes e validação da orientação pendentes. |
@@ -149,14 +149,14 @@ M01–M03 são cenários manuais pendentes. A conclusão documental E-01 não os
 | RF06 — AST | E-01, OP-01 | JavaParserSourceParserTest | AST e concorrência aprovadas. |
 | RF07 — motor extensível | E-03 | [SecurityRule](../src/backend/src/main/java/com/fiap/sast/rules/SecurityRule.java), SastEngineTest | Identidade e deduplicação aprovadas. |
 | RF08 — violações | OP-07, E-M03 | SastEngineTest, D-01 | Equivalentes Java comprovados; aceite acadêmico pendente. |
-| RF09 — CWE/severidade | OP-07, IA-01 | SastEngineTest e SemanticAnalysisServiceTest | Campos aprovados; sugestão divergente ainda não coberta pelo teste IA-01. |
+| RF09 — CWE/severidade | OP-07, IA-01 | SastEngineTest e SemanticAnalysisServiceTest | Campos aprovados; sugestão divergente preserva a severidade original. |
 | RF10 — localização/trecho | OP-07, E-01/03 | SastEngineTest e parser | Campos e ocorrências distintas aprovados. |
 | RF11 — persistência/histórico | OP-01/04 | OperationIntegrationTest; [migrações](../src/backend/src/main/resources/db/migration) | Persistência/isolamento aprovados; sem expurgo automático. |
 | RF12 — web | E-05/06/07, OP-01, E-M01 | main.test.tsx e OperationIntegrationTest | Testes locais aprovados; demonstração visual pendente. |
 | RF13 — dashboard | E-04/05, E-M01 | Dashboard.test.tsx e AnalysisController | Tendência em fixture aprovada; exportação fora do contrato. |
-| RF14 — IA | IA-01–04, OP-10 | Q-01 e testes semânticos | Contrato/degradação aprovados; redução real de falsos positivos não medida. |
+| RF14 — IA | IA-01–04, OP-10 | Q-01 e testes semânticos | Contrato, divergência, degradação e revisão 6/6 registrados; redução real de falsos positivos não medida. |
 | RF15 — taint | TAINT-01–05 | Corpus e TaintAnalysisEngineTest | Métricas restritas à amostra e à rotulagem adotada. |
-| RF16 — remediação | IA-01/04 | SemanticAnalysisServiceTest e LiveOllamaDemoTest | Resposta estruturada testada; qualidade manual pendente. |
+| RF16 — remediação | IA-01/04 | SemanticAnalysisServiceTest e LiveOllamaDemoTest | Resposta estruturada testada; revisão manual das seis remediações registrada em Q-01. |
 | RF17 — CI | E-08–12, E-M02 | [Workflow](../.github/workflows/ci.yml) | Implementado; execução externa pendente. |
 | RF18 — gate | E-08–12, E-M02 | SecurityGateTest e [política](../.sast/security-gate.json) | Política local aprovada; bloqueio real de merge pendente. |
 | RNF01 — não execução | OP-07 | SastEngineTest | Aprovado no fixture. |
