@@ -3,7 +3,7 @@ import type { FormEvent, ReactNode } from "react";
 import Prism from "prismjs";
 import "prismjs/components/prism-java";
 import { api } from "./api";
-import type { Analysis, HistoryEntry, SystemsPage } from "./types";
+import type { Analysis, HistoryEntry, SystemsPage, VulnerabilityResponse, VulnerabilityStatus } from "./types";
 import { priorityLabels, rankCriticalFiles, sortConsultiveSuggestions, summarizeResults, unifiedResults } from "./resultModel";
 
 function renderJavaTokens(tokens: (Prism.Token | string)[]): ReactNode[] {
@@ -44,6 +44,11 @@ export function Shield() {
       />
     </svg>
   );
+}
+
+/** Ícone oficial da FISAST fornecido pela equipe. */
+export function FisastLogo() {
+  return <span className="fisast-logo" role="img" aria-label="FISAST" />;
 }
 function PasswordVisibilityIcon({ visible }: { visible: boolean }) {
   return (
@@ -122,7 +127,7 @@ export function Processing({ restoring = false }: { restoring?: boolean }) {
   }
   return (
     <section className="panel processing" role="status" aria-live="polite">
-      <span className="eyebrow">PLATAFORMA SAST</span>
+      <span className="eyebrow">FISAST · PLATAFORMA SAST</span>
       <div className="spinner" aria-hidden="true" />
       <h1>Análise em andamento</h1>
       <p>Analisando os arquivos Java do repositório.</p>
@@ -195,9 +200,9 @@ export function Login({
       </aside>
       <section className="login-side">
         <div className="login-card">
-          <div className="login-logo">
-            <Shield />
-            <strong>SAST</strong>
+          <div className="login-logo" role="img" aria-label="FISAST — Plataforma SAST">
+            <FisastLogo />
+            <span>Plataforma SAST</span>
           </div>
           <h2>{registering ? "Crie sua conta" : "Bem-vindo de volta"}</h2>
           <p className="muted">{registering ? "Cadastre-se para analisar seus repositórios." : "Entre para analisar seus repositórios."}</p>
@@ -768,12 +773,68 @@ function SuggestionAssessment({ suggestion }: { suggestion: NonNullable<ReturnTy
   );
 }
 
+const vulnerabilityStatusLabels: Record<VulnerabilityStatus, string> = {
+  OPEN: "Aberta",
+  IN_PROGRESS: "Em correção",
+  FIXED: "Corrigida",
+  VALIDATED: "Validada",
+  FALSE_POSITIVE: "Falso positivo",
+  RISK_ACCEPTED: "Risco aceito",
+};
+
+function VulnerabilityStatusControl({ finding, onUpdated }: {
+  finding: Analysis["findings"][number];
+  onUpdated?: (value: VulnerabilityResponse) => void;
+}) {
+  const code = finding.vulnerabilityCode;
+  const current = finding.vulnerabilityStatus;
+  const [status, setStatus] = useState<VulnerabilityStatus>(current || "OPEN");
+  const [observation, setObservation] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  if (!code || !current) return null;
+  const submit = async () => {
+    if (!observation.trim()) {
+      setError("Informe uma observação para registrar a alteração.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const updated = await api.updateVulnerabilityStatus(code, status, observation.trim(), finding.vulnerabilityVersion);
+      setObservation("");
+      setStatus(updated.status);
+      onUpdated?.(updated);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Não foi possível atualizar o status.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <section className="vulnerability-status" aria-label={`Status da vulnerabilidade ${code}`}>
+      <div className="vulnerability-status-heading"><div><span className="ai-kicker">ACOMPANHAMENTO</span><h5>{code}</h5></div><span className={`status-pill status-${current.toLowerCase()}`}>{vulnerabilityStatusLabels[current]}</span></div>
+      {current === "VALIDATED" && <p className="muted">Validada automaticamente por análise posterior completa.</p>}
+      <div className="vulnerability-status-form">
+        <label>Status<select value={status} onChange={(event) => setStatus(event.target.value as VulnerabilityStatus)} disabled={saving || current === "VALIDATED"}>
+          {(Object.keys(vulnerabilityStatusLabels) as VulnerabilityStatus[]).filter((value) => value !== "VALIDATED").map((value) => <option value={value} key={value}>{vulnerabilityStatusLabels[value]}</option>)}
+        </select></label>
+        <label>Observação / justificativa<textarea value={observation} onChange={(event) => setObservation(event.target.value)} rows={2} maxLength={1000} disabled={saving || current === "VALIDATED"} /></label>
+        <button type="button" onClick={submit} disabled={saving || current === "VALIDATED" || status === current}>{saving ? "Salvando…" : "Registrar alteração"}</button>
+      </div>
+      {error && <p className="vulnerability-status-error" role="alert">{error}</p>}
+    </section>
+  );
+}
+
 export function Results({
   data,
   onNavigate,
+  onVulnerabilityUpdated,
 }: {
   data: Analysis;
   onNavigate?: (href: string) => void;
+  onVulnerabilityUpdated?: (value: VulnerabilityResponse) => void;
 }) {
   const [view, setView] = useState<"security" | "performance">("security");
   const performanceSuggestions = (data.suggestions ?? []).filter((suggestion) => suggestion.category === "PERFORMANCE");
@@ -825,6 +886,7 @@ export function Results({
               {item.finding.taintTrace && <TaintTraceView trace={item.finding.taintTrace} />}
               {item.finding.aiAssessment && <section className="ai-assessment" aria-label="Avaliação consultiva da IA"><div className="ai-assessment-heading"><div><span className="ai-kicker">ANÁLISE SEMÂNTICA</span><h5>Avaliação da IA</h5></div><span className="ai-consultive">Consultiva</span></div><div className="ai-assessment-summary"><div><span>Severidade sugerida:<strong className={`ai-severity ai-severity-${item.finding.aiAssessment.suggestedSeverity.toLowerCase()}`}>{severityNames[item.finding.aiAssessment.suggestedSeverity]}</strong></span></div><div><span>Provável falso positivo:<strong>{item.finding.aiAssessment.likelyFalsePositive ? "Sim" : "Não"}</strong></span></div><div><span>Confiança do modelo:<strong>{Math.round(item.finding.aiAssessment.confidence * 100)}%</strong></span></div></div><div className="ai-assessment-copy">{item.finding.aiAssessment.risk && <div><h6>Risco contextual</h6><p>{item.finding.aiAssessment.risk}</p></div>}<div><h6>Justificativa</h6><p>{item.finding.aiAssessment.rationale}</p></div>{item.finding.aiAssessment.evidence?.length ? <div><h6>Evidências</h6><ul>{item.finding.aiAssessment.evidence.map((evidence, index) => <li key={index}>{evidence}</li>)}</ul></div> : null}{item.finding.aiAssessment.falsePositiveReason && <div><h6>Motivo da avaliação de falso positivo</h6><p>{item.finding.aiAssessment.falsePositiveReason}</p></div>}<div><h6>Remediação sugerida</h6><p>{item.finding.aiAssessment.remediation}</p></div>{item.finding.aiAssessment.recommendations?.length ? <div><h6>Ações recomendadas</h6><ul>{item.finding.aiAssessment.recommendations.map((recommendation, index) => <li key={index}>{recommendation}</li>)}</ul></div> : null}{item.finding.aiAssessment.limitations && <div><h6>Limitações</h6><p>{item.finding.aiAssessment.limitations}</p></div>}</div><small className="ai-assessment-meta">Modelo {item.finding.aiAssessment.model} · A severidade exibida permanece a da regra.</small></section>}
               <span className="muted">Regra {item.finding.ruleId} · {item.finding.fileName}</span>
+              <VulnerabilityStatusControl finding={item.finding} onUpdated={onVulnerabilityUpdated} />
             </> : item.suggestion && <>
               <h5>Descrição</h5><p>Melhoria consultiva de {item.suggestion.category === "PERFORMANCE" ? "desempenho" : "segurança"} identificada durante a análise semântica.</p>
               <JavaCodeBlock code={item.suggestion.evidence} line={item.suggestion.line} />

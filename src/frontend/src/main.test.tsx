@@ -78,6 +78,11 @@ async function submit() {
 }
 
 describe("fluxo autenticado da análise", () => {
+  it("exibe a identidade FISAST no cabeçalho", async () => {
+    render(<App />);
+    expect(await screen.findByRole("img", { name: "FISAST" })).toBeInTheDocument();
+    expect(screen.getByText("Plataforma SAST")).toBeInTheDocument();
+  });
   it("alterna e restaura o tema escuro sem persistir no carregamento inicial", async () => {
     const { unmount } = render(<App />);
     const shell = await screen.findByRole("banner");

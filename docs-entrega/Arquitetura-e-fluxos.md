@@ -7,7 +7,7 @@ Visões C4 de contexto e contêineres, expressas em Mermaid, conferidas contra o
 ```mermaid
 flowchart LR
     pessoa["Pessoa usuária<br/>Submete origem autorizada e consulta resultados"]
-    plataforma["Sistema: Plataforma SAST<br/>Java, análise estática e IA consultiva local"]
+    plataforma["Sistema: FISAST — Plataforma SAST<br/>Java, análise estática e IA consultiva local"]
     github["Sistema externo: GitHub público<br/>REST API e codeload"]
     ci["Sistema externo: GitHub Actions<br/>Cliente autenticado do gate"]
     pessoa -->|"HTTP no Compose local"| plataforma
@@ -63,6 +63,8 @@ Os seis serviços são os contêineres do Compose; engine e outbox são partes i
 4. `DOWNLOADING` → `DETERMINISTIC`: parser, regras e taint geram resultados e progresso. Mensagem duplicada não deve iniciar outra tentativa já assumida.
 5. `SEMANTIC` → `SUGGESTIONS`: enriquecimento consultivo. Falha da IA pode levar a `DEGRADED` sem apagar findings.
 6. Consulta periódica HTTP apresenta `COMPLETED` ou `FAILED`, etapas e contadores. Falhas transitórias podem retornar à fila; o reconciliador retoma leases expirados.
+
+Após uma execução `COMPLETED` com cobertura determinística completa, o worker reconcilia cada finding com uma vulnerabilidade persistente. A ausência só pode validar uma vulnerabilidade `FIXED` quando a análise posterior usa a mesma referência e registra o arquivo e a regra como processados. A alteração manual passa pela API autenticada, usa versão otimista e gera auditoria; a IA não participa da decisão de status.
 
 `status` usa `PROCESSING`, `COMPLETED`, `FAILED`; `stage` usa `QUEUED`, `DOWNLOADING`, `DETERMINISTIC`, `SEMANTIC`, `SUGGESTIONS`, `COMPLETED`, `FAILED`. Os estados consultivos são `PENDING`, `RUNNING`, `COMPLETED`, `DEGRADED`, `NOT_APPLICABLE`. Cobertura determinística confirmada no histórico não significa sucesso da IA nem ausência de vulnerabilidades.
 

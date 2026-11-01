@@ -5,6 +5,8 @@ import com.fiap.sast.persistence.AiAssessmentEntity;
 import com.fiap.sast.persistence.AiSuggestionEntity;
 import com.fiap.sast.persistence.Analysis;
 import com.fiap.sast.persistence.AnalysisRepository;
+import com.fiap.sast.persistence.AnalysisFileCoverage;
+import com.fiap.sast.persistence.AnalysisFileCoverageRepository;
 import com.fiap.sast.persistence.Finding;
 import com.fiap.sast.semantic.SemanticAnalysisService;
 import com.fiap.sast.semantic.SemanticSuggestionService;
@@ -36,6 +38,8 @@ public class AnalysisJobService {
     private final GitHubClient git;
     private final SastEngine engine;
     private final AnalysisRepository analyses;
+    private final AnalysisFileCoverageRepository coverage;
+    private final VulnerabilityLifecycleService vulnerabilities;
     private final SemanticAnalysisService semantic;
     private final SemanticSuggestionService suggestions;
     private final ObjectMapper mapper;
@@ -58,13 +62,18 @@ public class AnalysisJobService {
      * @param mapper serializador dos traces persistidos
      * @param transactionManager gerenciador de transações curtas do worker
      * @param entityManager acesso transacional para aplicar lock de fencing
+     * @param coverage repositório de cobertura por arquivo e regra
+     * @param vulnerabilities serviço de reconciliação do ciclo de vida
      */
     public AnalysisJobService(GitHubClient git, SastEngine engine, AnalysisRepository analyses,
             SemanticAnalysisService semantic, SemanticSuggestionService suggestions, ObjectMapper mapper,
-            PlatformTransactionManager transactionManager, EntityManager entityManager) {
+            PlatformTransactionManager transactionManager, EntityManager entityManager,
+            AnalysisFileCoverageRepository coverage, VulnerabilityLifecycleService vulnerabilities) {
         this.git = git;
         this.engine = engine;
         this.analyses = analyses;
+        this.coverage = coverage;
+        this.vulnerabilities = vulnerabilities;
         this.semantic = semantic;
         this.suggestions = suggestions;
         this.mapper = mapper;
@@ -99,6 +108,7 @@ public class AnalysisJobService {
             // Cada tentativa substitui findings e sugestões parciais da tentativa anterior.
             a.findings.clear();
             a.suggestions.clear();
+            coverage.deleteByAnalysisId(a.id);
             a.filesProcessed = 0;
             a.filesTotal = 0;
             a.snapshotHash = null;
@@ -165,10 +175,20 @@ public class AnalysisJobService {
                         f.column = value.column();
                         f.snippet = value.snippet();
                         f.taintTrace = writeTrace(value.taintTrace());
+                        f.contextSignature = value.contextSignature();
+                        f.expressionHash = value.expressionHash();
                         a.findings.add(f);
                         candidates.add(new SemanticAnalysisService.Candidate(f.id, value, file.content()));
                     });
                     a.filesProcessed++;
+                    engine.ruleIds().forEach(ruleId -> {
+                        var item = new AnalysisFileCoverage();
+                        item.analysisId = a.id;
+                        item.fileName = file.path();
+                        item.ruleId = ruleId;
+                        item.processed = true;
+                        coverage.save(item);
+                    });
                     analyses.save(a);
                 });
             }
@@ -204,6 +224,7 @@ public class AnalysisJobService {
                 a.leaseUntil = null;
                 a.nextAttemptAt = null;
             });
+            vulnerabilities.reconcileCompleted(id);
         } catch (Exception failure) {
             handleFailure(id, workerId, failure);
         }

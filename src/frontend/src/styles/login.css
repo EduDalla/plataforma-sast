@@ -4,7 +4,7 @@
   grid-template-columns: 1fr 1fr;
 }
 .login-intro {
-  background: #202923;
+  background: #000;
   color: #fff;
   position: relative;
   overflow: hidden;
@@ -27,16 +27,16 @@
   position: absolute;
   width: 500px;
   height: 500px;
-  border: 1px solid #b3cbb718;
+  border: 1px solid #ed145b2b;
   border-radius: 50%;
   bottom: -280px;
   right: -240px;
   box-shadow:
-    0 0 0 55px #b3cbb707,
-    0 0 0 110px #b3cbb705;
+    0 0 0 55px #ed145b12,
+    0 0 0 110px #ed145b0a;
 }
 .login-intro .eyebrow {
-  color: #aabdaf;
+  color: #ff9cc0;
 }
 .login-intro h1 {
   font-size: clamp(38px, 4.4vw, 68px);
@@ -47,10 +47,10 @@
   z-index: 1;
 }
 .login-intro h1 span {
-  color: #b8cbb8;
+  color: #ff5c91;
 }
 .login-intro > p {
-  color: #a7b3aa;
+  color: #e4e4e4;
   max-width: 345px;
   line-height: 1.8;
   font-size: 14px;
@@ -59,7 +59,7 @@
 .intro-foot {
   position: absolute;
   bottom: 44px;
-  color: #a7b3aa;
+  color: #e4e4e4;
   font-size: 11px;
   display: flex;
   gap: 9px;
@@ -69,11 +69,11 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #aacaad;
+  background: #ed145b;
 }
 .login-side {
   position: relative;
-  background: #fff;
+  background: var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -85,18 +85,21 @@
 }
 .login-logo {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
   margin-bottom: 42px;
 }
-.login-logo svg {
-  width: 33px;
-  height: 38px;
+.login-logo .fisast-logo {
+  width: 46px;
+  height: 46px;
 }
-.login-logo strong {
+.login-logo > span {
   font-family: Manrope, sans-serif;
-  font-size: 27px;
-  letter-spacing: -1px;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
 }
 .login-card h2 {
   font-size: 25px;
@@ -129,7 +132,7 @@
   padding: 0;
   border: 0;
   background: transparent !important;
-  color: #66736a;
+  color: var(--text-muted);
   font-size: 18px;
   line-height: 1;
   gap: 0;
@@ -138,7 +141,7 @@
 }
 .login-card .password-toggle:hover:not(:disabled) {
   background: transparent !important;
-  color: #314d3c;
+  color: var(--accent);
 }
 .password-toggle svg {
   width: 19px;
@@ -157,13 +160,13 @@
 }
 .login-note {
   text-align: center;
-  color: #939994;
+  color: var(--text-muted);
   font-size: 11px;
   margin-top: 23px;
 }
 .auth-switch {
   display: inline;
-  color: #425d49;
+  color: var(--accent);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -175,5 +178,5 @@
   bottom: 35px;
   font-size: 9px;
   letter-spacing: 1.8px;
-  color: #a2aaa4;
+  color: var(--text-muted);
 }

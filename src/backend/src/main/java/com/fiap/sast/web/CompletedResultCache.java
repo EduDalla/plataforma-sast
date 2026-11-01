@@ -72,6 +72,18 @@ public final class CompletedResultCache {
         weight += estimate;
     }
 
+    /** Remove respostas concluídas do usuário após uma mudança de status de vulnerabilidade.
+     *
+     * @param userId identificador do proprietário a invalidar
+     */
+    public synchronized void invalidateUser(UUID userId) {
+        entries.entrySet().removeIf(entry -> {
+            if (!entry.getKey().userId.equals(userId)) return false;
+            weight -= entry.getValue().weight;
+            return true;
+        });
+    }
+
     private void purgeExpired() {
         long now = ticker.getAsLong();
         Iterator<Entry> iterator = entries.values().iterator();

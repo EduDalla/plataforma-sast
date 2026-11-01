@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import com.fiap.sast.analysis.VulnerabilityLifecycleService.VulnerabilityConflictException;
 
 import java.util.NoSuchElementException;
 import org.slf4j.Logger;
@@ -35,6 +36,12 @@ public class ApiExceptionHandler {
     ProblemDetail missing(Exception exception) {
         expected("resource_not_found", exception);
         return problem(HttpStatus.NOT_FOUND, "Recurso não encontrado");
+    }
+
+    @ExceptionHandler(VulnerabilityConflictException.class)
+    ProblemDetail conflict(Exception exception) {
+        expected("vulnerability_conflict", exception);
+        return problem(HttpStatus.CONFLICT, exception.getMessage());
     }
 
     @ExceptionHandler(GitHubClient.RateLimitException.class)

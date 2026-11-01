@@ -16,24 +16,17 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   text-decoration: none;
 }
-.brand svg {
-  width: 25px;
-  height: 29px;
-}
-.brand strong {
-  font-family: Manrope, sans-serif;
-  font-size: 23px;
-  letter-spacing: -0.7px;
+.brand .fisast-logo {
+  width: 24px;
+  height: 24px;
 }
 .brand > span {
   font-size: 11px;
   color: #909793;
-  border-left: 1px solid #dce0dd;
-  margin-left: 12px;
-  padding-left: 22px;
+  margin-left: 8px;
 }
 .account {
   display: flex;

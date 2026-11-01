@@ -35,6 +35,40 @@ export interface Finding {
   snippet: string;
   taintTrace?: TaintTrace | null;
   aiAssessment?: AiAssessment | null;
+  findingId?: string | null;
+  vulnerabilityCode?: string | null;
+  vulnerabilityStatus?: VulnerabilityStatus | null;
+  vulnerabilityVersion?: number;
+}
+export type VulnerabilityStatus = "OPEN" | "IN_PROGRESS" | "FIXED" | "VALIDATED" | "FALSE_POSITIVE" | "RISK_ACCEPTED";
+export interface VulnerabilityAudit {
+  id: string;
+  changedAt: string;
+  previousStatus?: VulnerabilityStatus | null;
+  newStatus: VulnerabilityStatus;
+  previousStatusLabel?: string | null;
+  newStatusLabel: string;
+  actorEmail: string;
+  observation: string;
+}
+export interface VulnerabilityResponse {
+  id: string;
+  code: string;
+  repositoryOwner: string;
+  repositoryName: string;
+  ruleId: string;
+  cwe: string;
+  fileName: string;
+  title: string;
+  description: string;
+  severity: string;
+  status: VulnerabilityStatus;
+  statusLabel: string;
+  version: number;
+  firstIdentifiedAt: string;
+  lastDetectedAt: string;
+  correctionDeclaredAt?: string | null;
+  audit: VulnerabilityAudit[];
 }
 export interface AiSuggestion {
   category: "SECURITY" | "PERFORMANCE";

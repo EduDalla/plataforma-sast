@@ -395,6 +395,37 @@
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+.vulnerability-status {
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid #dce5d8;
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+.vulnerability-status-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.vulnerability-status-heading h5 { margin: 3px 0 0; }
+.status-pill {
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #e5eee1;
+  color: #31543a;
+}
+.status-fixed, .status-validated { background: #dcefe2; color: #27613a; }
+.status-false_positive, .status-risk_accepted { background: #f3ead1; color: #755a18; }
+.vulnerability-status-form { display: grid; grid-template-columns: minmax(130px, .45fr) minmax(220px, 1fr) auto; align-items: end; gap: 10px; margin-top: 14px; }
+.vulnerability-status-form label { display: grid; gap: 5px; font-size: 11px; font-weight: 700; color: #63705f; }
+.vulnerability-status-form select, .vulnerability-status-form textarea { width: 100%; border: 1px solid #ccd8c8; border-radius: 5px; padding: 8px; font: inherit; font-size: 12px; background: #fff; }
+.vulnerability-status-form textarea { resize: vertical; }
+.vulnerability-status-form button { border: 0; border-radius: 5px; padding: 9px 12px; background: #354134; color: #fff; font-size: 11px; font-weight: 700; cursor: pointer; }
+.vulnerability-status-form button:disabled { opacity: .5; cursor: default; }
+.vulnerability-status-error { margin: 9px 0 0; color: #ad3a30; font-size: 12px; }
 .line-number {
   color: #a4ae9a;
   display: inline-block;

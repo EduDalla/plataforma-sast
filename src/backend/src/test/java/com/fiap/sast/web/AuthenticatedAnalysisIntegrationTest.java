@@ -160,6 +160,64 @@ class AuthenticatedAnalysisIntegrationTest {
         assertNotEquals(firstId, secondId);
     }
 
+    @Test void tracksStatusAuditsValidatesOnlyAfterCompleteAnalysisAndReopensOnRecurrence() throws Exception {
+        var token = login("first@example.com", "integration-test-password");
+        var vulnerable = new GitHubClient.Snapshot("acme", "lifecycle", "https://github.com/acme/lifecycle", "main",
+                List.of(new GitHubClient.File("Example.java", "class Example { String password = \"x\"; }")));
+        when(github.download(any(), any())).thenReturn(vulnerable);
+        var created = submit("{\"repositoryUrl\":\"https://github.com/acme/lifecycle\",\"reference\":\"main\"}", token);
+        String id = JsonPath.read(created.getResponse().getContentAsString(), "$.analysisId");
+        complete(UUID.fromString(id), token);
+        var result = mvc.perform(get("/api/analyses/" + id).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.findings[0].vulnerabilityCode").isNotEmpty())
+                .andExpect(jsonPath("$.findings[0].vulnerabilityStatus").value("OPEN")).andReturn();
+        String code = JsonPath.read(result.getResponse().getContentAsString(), "$.findings[0].vulnerabilityCode");
+        Number version = JsonPath.read(result.getResponse().getContentAsString(), "$.findings[0].vulnerabilityVersion");
+
+        mvc.perform(patch("/api/vulnerabilities/" + code + "/status").header("Authorization", "Bearer " + token)
+                        .contentType("application/json").content("{\"status\":\"FALSE_POSITIVE\",\"observation\":\"\",\"version\":" + version + "}"))
+                .andExpect(status().isBadRequest());
+        var inProgress = changeStatus(code, "IN_PROGRESS", "Triagem de segurança", version.longValue(), token);
+        var fixed = changeStatus(code, "FIXED", "Correção aplicada no branch main", inProgress, token);
+        mvc.perform(patch("/api/vulnerabilities/" + code + "/status").header("Authorization", "Bearer " + token)
+                        .contentType("application/json").content("{\"status\":\"VALIDATED\",\"observation\":\"não pode ser manual\",\"version\":" + fixed + "}"))
+                .andExpect(status().isBadRequest());
+
+        var safe = new GitHubClient.Snapshot("acme", "lifecycle", "https://github.com/acme/lifecycle", "main",
+                List.of(new GitHubClient.File("Example.java", "class Example { void run() {} }")));
+        when(github.download(any(), any())).thenReturn(safe);
+        var second = submit("{\"repositoryUrl\":\"https://github.com/acme/lifecycle\",\"reference\":\"main\"}", token);
+        String secondId = JsonPath.read(second.getResponse().getContentAsString(), "$.analysisId");
+        complete(UUID.fromString(secondId), token);
+        mvc.perform(get("/api/vulnerabilities/" + code).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("VALIDATED"))
+                .andExpect(jsonPath("$.audit.length()").value(4));
+
+        when(github.download(any(), any())).thenReturn(vulnerable);
+        var third = submit("{\"repositoryUrl\":\"https://github.com/acme/lifecycle\",\"reference\":\"main\"}", token);
+        String thirdId = JsonPath.read(third.getResponse().getContentAsString(), "$.analysisId");
+        complete(UUID.fromString(thirdId), token);
+        mvc.perform(get("/api/vulnerabilities/" + code).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("OPEN"));
+
+        var other = users.findByEmail("second@example.com").orElseGet(() -> {
+            var user = new AppUser(); user.email = "second@example.com";
+            user.passwordHash = passwords.encode("second-test-password"); return users.save(user);
+        });
+        mvc.perform(get("/api/vulnerabilities/" + code)
+                        .header("Authorization", "Bearer " + login(other.email, "second-test-password")))
+                .andExpect(status().isNotFound());
+    }
+
+    private long changeStatus(String code, String status, String observation, long version, String token) throws Exception {
+        var response = mvc.perform(patch("/api/vulnerabilities/" + code + "/status").header("Authorization", "Bearer " + token)
+                        .contentType("application/json")
+                        .content("{\"status\":\"" + status + "\",\"observation\":\"" + observation + "\",\"version\":" + version + "}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value(status)).andReturn();
+        Number next = JsonPath.read(response.getResponse().getContentAsString(), "$.version");
+        return next.longValue();
+    }
+
     String login(String email, String password) throws Exception {
         var result = mvc.perform(post("/api/auth/login").contentType("application/json")
                 .content("{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}"))

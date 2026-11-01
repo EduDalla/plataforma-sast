@@ -40,6 +40,7 @@ Este documento reúne os fluxos, processos e limites arquiteturais da plataforma
 - Impor limites configurados ao archive e à extração; rejeitar caminhos perigosos, ignorar links simbólicos e diretórios de build ou dependências. Fechar streams e não deixar cópias do snapshot em disco.
 - Não persistir archive nem código-fonte integral. Persistir somente metadados, hashes, findings, traces, avaliações, sugestões e trechos necessários à apresentação. Tokens, senhas, código, prompts e respostas brutas não devem aparecer em logs.
 - A integração com Ollama é local e consultiva. O contexto enviado ao modelo deve permanecer limitado ao necessário; sua resposta precisa ser validada antes de persistir ou exibir sugestões.
+- Findings determinísticos podem ser associados a vulnerabilidades persistentes `VUL-xxxxxx` para acompanhamento. Status de remediação, auditoria e versão pertencem à vulnerabilidade, não alteram a ocorrência original nem a severidade da regra. `VALIDATED` exige análise posterior completa e cobertura conhecida do arquivo e da regra.
 
 ## Evolução e verificação
 

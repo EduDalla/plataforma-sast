@@ -1,4 +1,4 @@
-import type { Analysis, AnalysisTask, HistoryPage, LoginResponse, Session, SystemsPage } from "./types";
+import type { Analysis, AnalysisTask, HistoryPage, LoginResponse, Session, SystemsPage, VulnerabilityResponse, VulnerabilityStatus } from "./types";
 
 const ACCESS_TOKEN_KEY = "sast-access-token";
 
@@ -110,4 +110,10 @@ export const api = {
     request<SystemsPage>(`/api/analyses/systems?page=${page}&size=${size}`),
   history: (owner: string, repository: string, page = 0, size = 20) =>
     request<HistoryPage>(`/api/analyses/systems/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/history?page=${page}&size=${size}`),
+  updateVulnerabilityStatus: (code: string, status: VulnerabilityStatus, observation: string, version?: number) =>
+    request<VulnerabilityResponse>(`/api/vulnerabilities/${encodeURIComponent(code)}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, observation, version }),
+    }),
 };

@@ -22,6 +22,11 @@ public class Finding {
     @JoinColumn(name = "analysis_id")
     public Analysis analysis;
 
+    @JsonIgnore
+    @ManyToOne
+    @JoinColumn(name = "vulnerability_id")
+    public Vulnerability vulnerability;
+
     public String ruleId;
     public String title;
     public String severity;
@@ -37,6 +42,12 @@ public class Finding {
 
     @Column(name = "taint_trace")
     public String taintTrace;
+
+    @Column(name = "context_signature", length = 500)
+    public String contextSignature;
+
+    @Column(name = "expression_hash", length = 64)
+    public String expressionHash;
 
     @OneToOne(mappedBy = "finding", cascade = CascadeType.ALL, orphanRemoval = true)
     public AiAssessmentEntity aiAssessment;

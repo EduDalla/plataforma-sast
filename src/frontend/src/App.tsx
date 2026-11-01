@@ -8,13 +8,13 @@ import {
   Dashboard,
   DashboardPrompt,
   ErrorMessage,
+  FisastLogo,
   Login,
   Processing,
   Results,
-  Shield,
   SystemDashboard,
 } from "./components";
-import type { Analysis, HistoryEntry, Session, SystemsPage } from "./types";
+import type { Analysis, HistoryEntry, Session, SystemsPage, VulnerabilityResponse } from "./types";
 import { priorityLabels } from "./resultModel";
 
 type Theme = "light" | "dark";
@@ -451,6 +451,14 @@ export function App() {
       // Preferência visual é opcional quando o armazenamento não está disponível.
     }
   }
+  function vulnerabilityUpdated(value: VulnerabilityResponse) {
+    setResult((current) => current ? {
+      ...current,
+      findings: current.findings.map((finding) => finding.vulnerabilityCode === value.code
+        ? { ...finding, vulnerabilityStatus: value.status, vulnerabilityVersion: value.version }
+        : finding),
+    } : current);
+  }
   if (!ready)
     return (
       <main className="app-shell startup" data-theme={theme}>
@@ -459,7 +467,7 @@ export function App() {
     );
   if (!session)
     return (
-      <main>
+      <main className="login-app" data-theme={theme}>
         <Login
           onLogin={login}
           onRegister={register}
@@ -481,9 +489,8 @@ export function App() {
             if (!loading) dashboard();
           }}
         >
-          <Shield />
-          <strong>SAST</strong>
-          <span>Code security</span>
+          <FisastLogo />
+          <span className="brand-subtitle">Plataforma SAST</span>
         </a>
         <nav className="topnav" aria-label="Navegação principal">
           <a ref={dashboardLinkRef} className={path === "/dashboard" ? "active" : ""} href="/dashboard" onClick={(event) => { event.preventDefault(); dashboard(); }}>Dashboard</a>
@@ -533,7 +540,7 @@ export function App() {
         ) : result ? (
           <>
             <ErrorMessage message={error} />
-            <Results data={result} onNavigate={(href) => navigate(href)} />
+            <Results data={result} onNavigate={(href) => navigate(href)} onVulnerabilityUpdated={vulnerabilityUpdated} />
           </>
         ) : (
           <section className="panel">
@@ -559,7 +566,7 @@ export function App() {
         />
       )}
       <footer className="app-footer">
-        <span>SAST / Segurança de código</span>
+        <span>FISAST / Plataforma SAST</span>
         <span>Fundação & Parsers · CP1</span>
       </footer>
     </div>

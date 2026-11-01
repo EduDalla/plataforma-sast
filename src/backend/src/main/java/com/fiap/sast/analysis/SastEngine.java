@@ -35,6 +35,15 @@ public class SastEngine {
     }
 
     /**
+     * Expõe somente os identificadores das regras para registrar cobertura, nunca o código recebido.
+     *
+     * @return regras ativas na ordem de registro
+     */
+    public List<String> ruleIds() {
+        return rules.stream().map(SecurityRule::ruleId).sorted().toList();
+    }
+
+    /**
      * Aplica as regras determinísticas ao arquivo Java sem executar o código recebido.
      *
      * @param source conteúdo do arquivo Java

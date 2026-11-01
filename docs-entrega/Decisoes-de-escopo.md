@@ -37,3 +37,7 @@ As quatro perguntas confirmadas foram: (1) URL pública satisfaz formalmente “
 O contrato acima orienta a documentação e os testes e não autoriza ampliar a arquitetura para upload, multilinguagem, repositórios privados ou exportação sem nova decisão. O workflow e o gate existentes continuam dependendo de comprovação administrativa própria para bloquear merges.
 
 **Revisão documental E-01 — 07/10/2026:** atualizada a descrição de tendência, CI e gate conforme o código atual. A confirmação do grupo encerra a TASK-01; responsáveis são distribuídos por papéis no [roteiro](Evidencias-e-roteiro-de-defesa.md), e nomes serão preenchidos pelo grupo. Ver cenários BDD-E-M02/M03 em [Rastreabilidade](Rastreabilidade-BDD.md).
+
+## Evolução proposta — 01/11/2026
+
+A [ADR-001 — Gestão de vulnerabilidades e documentação das análises](ADR-001-Gestao-de-vulnerabilidades-e-relatorios.md) registra a evolução de acompanhamento de status, identidade e classificação persistente de vulnerabilidades e relatórios versionados em PDF/SARIF. Em 01/11/2026 foi iniciado o eixo de status, com identidade `VUL-xxxxxx`, auditoria, controle de versão e validação conservadora. Comparação e exportações permanecem pendentes; este incremento não declara aprovação acadêmica externa nem substitui o registro histórico acima. Permanecem os limites de Java público, análise sem execução, IA consultiva e arquitetura existente.

@@ -1,37 +1,42 @@
-/* Temas da área autenticada. A tela de login permanece independente deste shell. */
-.app-shell {
-  --page-bg: #f2f5f1;
-  --surface: #f7faf6;
-  --surface-muted: #eef4ed;
-  --surface-input: #fbfdfb;
-  --border: #d9e3d8;
-  --border-muted: #e4ece2;
-  --text: #202923;
-  --text-soft: #6f7e72;
-  --text-muted: #8a978d;
-  --accent: #315b43;
-  --accent-soft: #dfece0;
-  --primary-button-bg: #315b43;
-  --primary-button-hover: #244833;
-  --primary-button-text: #fff;
+.app-shell,
+.login-app {
+  --page-bg: #f5f5f5;
+  --surface: #ffffff;
+  --surface-muted: #f2f2f2;
+  --surface-input: #ffffff;
+  --border: #d4d4d4;
+  --border-muted: #e5e5e5;
+  --text: #171717;
+  --text-soft: #4b4b4b;
+  --text-muted: #747474;
+  --accent: #c9104c;
+  --accent-strong: #ed145b;
+  --accent-soft: #fde5ee;
+  --primary-button-bg: #ed145b;
+  --primary-button-hover: #c9104c;
+  --primary-button-text: #000;
+  --focus: #a80c3e;
   background: var(--page-bg);
   color: var(--text);
 }
-.app-shell[data-theme="dark"] {
-  --page-bg: #151a17;
-  --surface: #1d2520;
-  --surface-muted: #253029;
-  --surface-input: #202a24;
-  --border: #35453a;
-  --border-muted: #2c3930;
-  --text: #edf4ed;
-  --text-soft: #b5c3b6;
-  --text-muted: #8e9f92;
-  --accent: #9ac7a2;
-  --accent-soft: #294333;
-  --primary-button-bg: #b6e8bc;
-  --primary-button-hover: #c8f2cd;
-  --primary-button-text: #17351f;
+.app-shell[data-theme="dark"],
+.login-app[data-theme="dark"] {
+  --page-bg: #0c0c0c;
+  --surface: #171717;
+  --surface-muted: #222222;
+  --surface-input: #1b1b1b;
+  --border: #3b3b3b;
+  --border-muted: #2d2d2d;
+  --text: #f7f7f7;
+  --text-soft: #d0d0d0;
+  --text-muted: #a8a8a8;
+  --accent: #ff5c91;
+  --accent-strong: #ed145b;
+  --accent-soft: #4a1028;
+  --primary-button-bg: #ed145b;
+  --primary-button-hover: #ff5c91;
+  --primary-button-text: #000;
+  --focus: #ff8bb5;
 }
 .app-shell .topbar {
   background: var(--surface);
@@ -544,3 +549,145 @@
   direction: rtl;
   scrollbar-color: var(--border) transparent;
 }
+
+/* Componentes que antes tinham uma paleta própria agora consomem os tokens da marca. */
+.app-shell .panel,
+.app-shell .finding,
+.app-shell .stats,
+.app-shell .secondary,
+.app-shell .result-view-switch button,
+.app-shell .analysis-trend,
+.app-shell .dashboard-stats,
+.app-shell .dashboard-card {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+.app-shell .section-number,
+.app-shell .form-action,
+.app-shell .scope-card .scope-note,
+.app-shell .app-footer,
+.app-shell .stats > div,
+.app-shell .finding-detail,
+.app-shell .ai-assessment-heading,
+.app-shell .ai-assessment-meta,
+.app-shell .ai-assessment-summary > div,
+.app-shell .files-card li,
+.app-shell .suggestions-card li,
+.app-shell .detected-card li,
+.app-shell .analysis-trend th,
+.app-shell .analysis-trend td {
+  border-color: var(--border);
+}
+.app-shell .section-number,
+.app-shell .optional,
+.app-shell .readonly-value span,
+.app-shell .scope-card > p,
+.app-shell .scope-card li > span,
+.app-shell .repository,
+.app-shell .ref,
+.app-shell .stats span,
+.app-shell .file-group > h3,
+.app-shell .findings-heading > span,
+.app-shell .analysis-trend-heading small,
+.app-shell .analysis-trend-note,
+.app-shell .analysis-trend td small,
+.app-shell .dashboard-stats span,
+.app-shell .dashboard-stats small,
+.app-shell .dashboard-list-empty,
+.app-shell .dashboard-empty,
+.app-shell .dashboard-card-note,
+.app-shell .trend-labels,
+.app-shell .files-card li,
+.app-shell .files-card li small,
+.app-shell .detected-card li,
+.app-shell .detected-card li p {
+  color: var(--text-muted);
+}
+.app-shell .section-number span,
+.app-shell .scope-card li,
+.app-shell .secondary,
+.app-shell .dashboard-stats strong,
+.app-shell .analysis-trend-heading h2,
+.app-shell .analysis-trend td,
+.app-shell .severity-donut span,
+.app-shell .severity-legend b {
+  color: var(--text);
+}
+.app-shell .readonly-value,
+.app-shell .scope-card,
+.app-shell .secondary:hover:not(:disabled),
+.app-shell .result-view-switch button:hover:not(:disabled),
+.app-shell .dashboard-last:hover:not(:disabled) {
+  background: var(--surface-muted);
+  border-color: var(--border);
+}
+.app-shell .scope-card > svg,
+.app-shell .form-action button:focus-visible,
+.app-shell .analysis-notification-indicator,
+.app-shell .dashboard-title h1,
+.app-shell .dashboard-card h2,
+.app-shell .topnav a.active,
+.app-shell .back-link,
+.app-shell .system-count,
+.app-shell .system-open,
+.app-shell .history-toggle {
+  color: var(--accent);
+}
+.app-shell .form-action button,
+.app-shell .dashboard-title button,
+.app-shell .system-history-list button.selected,
+.app-shell .result-view-switch button.active,
+.app-shell .result-view-switch button[aria-pressed="true"] {
+  background: var(--primary-button-bg);
+  border-color: var(--primary-button-bg);
+  color: var(--primary-button-text);
+}
+.app-shell .form-action button:hover:not(:disabled),
+.app-shell .dashboard-title button:hover:not(:disabled) {
+  background: var(--primary-button-hover);
+  border-color: var(--primary-button-hover);
+}
+.app-shell .topnav a.active { border-bottom-color: var(--accent); }
+.app-shell .trend-chart polyline { stroke: var(--accent); }
+.app-shell .trend-chart .trend-area { fill: var(--accent); }
+.app-shell .trend-chart circle { fill: var(--accent); stroke: var(--accent-soft); }
+.app-shell .trend-chart line { stroke: var(--border); }
+.app-shell .dashboard-empty > span {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.app-shell .ai-assessment {
+  border-color: var(--border);
+  border-left-color: var(--accent);
+  background: var(--surface-muted);
+  color: var(--text);
+}
+.app-shell .ai-kicker,
+.app-shell .ai-consultive,
+.app-shell .ai-assessment-copy h6 { color: var(--accent); }
+.app-shell .ai-consultive { border-color: var(--accent); }
+.app-shell .ai-assessment-summary > div,
+.app-shell .finding-detail pre,
+.app-shell .java-code,
+.app-shell .code-block { background: var(--surface-input); }
+.app-shell .ai-assessment-summary span,
+.app-shell .ai-assessment-copy p,
+.app-shell .ai-assessment-meta { color: var(--text-soft); }
+.app-shell .ai-assessment-summary strong,
+.app-shell .ai-assessment h5 { color: var(--text); }
+.app-shell .java-code .token.comment { color: var(--text-muted); }
+.app-shell .java-code .token.keyword { color: var(--accent); }
+.app-shell .java-code .token.string { color: #9d4e00; }
+.app-shell .java-code .token.number { color: #006b83; }
+.app-shell .java-code .token.class-name,
+.app-shell .java-code .token.function { color: #7246a3; }
+.app-shell .java-code .token.operator,
+.app-shell .java-code .token.punctuation { color: var(--text-soft); }
+.app-shell[data-theme="dark"] .java-code .token.string { color: #ffba78; }
+.app-shell[data-theme="dark"] .java-code .token.number { color: #7ed8ed; }
+.app-shell[data-theme="dark"] .java-code .token.class-name,
+.app-shell[data-theme="dark"] .java-code .token.function { color: #d2a5ff; }
+.app-shell .modal-backdrop { background: #000000b8; }
+.app-shell .dashboard-modal,
+.app-shell .analysis-failure-modal { box-shadow: 0 18px 55px #00000066; }

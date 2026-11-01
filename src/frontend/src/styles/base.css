@@ -1,9 +1,25 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap");
 
 :root {
+  --page-bg: #f5f5f5;
+  --surface: #ffffff;
+  --surface-muted: #f2f2f2;
+  --surface-input: #ffffff;
+  --border: #d4d4d4;
+  --border-muted: #e5e5e5;
+  --text: #171717;
+  --text-soft: #4b4b4b;
+  --text-muted: #747474;
+  --accent: #c9104c;
+  --accent-strong: #ed145b;
+  --accent-soft: #fde5ee;
+  --primary-button-bg: #ed145b;
+  --primary-button-hover: #c9104c;
+  --primary-button-text: #000000;
+  --focus: #a80c3e;
   font-family: "DM Sans", sans-serif;
-  color: #202323;
-  background: #f7f8f7;
+  color: var(--text);
+  background: var(--page-bg);
   font-synthesis: none;
   font-weight: 400;
   line-height: 1.5;
@@ -11,6 +27,17 @@
 }
 * {
   box-sizing: border-box;
+}
+.fisast-logo {
+  display: inline-flex;
+  flex: 0 0 auto;
+  aspect-ratio: 1;
+  background-image: url("/fisast-logo.png");
+  background-repeat: no-repeat;
+  /* A arte fornecida possui área transparente extensa. Uma pequena margem
+     de segurança evita que o traço superior pareça recortado no fundo claro. */
+  background-position: 50% 50%;
+  background-size: 155% 155%;
 }
 body {
   margin: 0;
@@ -26,9 +53,9 @@ summary {
   -webkit-tap-highlight-color: transparent;
 }
 button {
-  border: 1px solid #202323;
-  background: #202323;
-  color: white;
+  border: 1px solid var(--primary-button-bg);
+  background: var(--primary-button-bg);
+  color: var(--primary-button-text);
   padding: 12px 22px;
   border-radius: 7px;
   cursor: pointer;
@@ -42,7 +69,7 @@ button {
     transform 0.15s;
 }
 button:hover:not(:disabled) {
-  background: #383f3d;
+  background: var(--primary-button-hover);
 }
 button:active:not(:disabled) {
   transform: translateY(1px);
@@ -58,7 +85,7 @@ button:focus-visible,
 a:focus-visible,
 summary:focus-visible,
 input:focus-visible {
-  outline: 3px solid #4c8b71;
+  outline: 3px solid var(--focus);
   outline-offset: 4px;
 }
 h1,
@@ -93,38 +120,38 @@ label {
 input {
   display: block;
   width: 100%;
-  background: #fff;
-  border: 1px solid #d8dcda;
+  background: var(--surface-input);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 12px 14px;
-  color: #202323;
+  color: var(--text);
   margin-top: 9px;
   min-width: 0;
 }
 input::placeholder {
-  color: #9b9e9c;
+  color: var(--text-muted);
   font-weight: 400;
   font-size: 13px;
 }
 input:focus {
-  border-color: #626e67;
+  border-color: var(--accent);
 }
 small {
   display: block;
   font-size: 12px;
   font-weight: 400;
-  color: #878d88;
+  color: var(--text-muted);
   margin-top: 8px;
 }
 .muted {
-  color: #7a827d;
+  color: var(--text-soft);
   font-size: 13px;
 }
 .eyebrow {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 2px;
-  color: #868f88;
+  color: var(--text-muted);
   display: block;
   margin-bottom: 18px;
 }
@@ -139,7 +166,7 @@ small {
   list-style: none;
   margin: 0;
   padding: 0;
-  color: #879087;
+  color: var(--text-muted);
   font-size: 12px;
 }
 .breadcrumb li {
@@ -149,17 +176,17 @@ small {
 }
 .breadcrumb li + li::before {
   content: "/";
-  color: #b1bab1;
+  color: var(--text-muted);
 }
 .breadcrumb a {
-  color: #5c8267;
+  color: var(--accent);
   text-decoration: none;
 }
 .breadcrumb a:hover {
   text-decoration: underline;
 }
 .breadcrumb [aria-current="page"] {
-  color: #4c594e;
+  color: var(--text-soft);
   font-weight: 600;
 }
 .error {

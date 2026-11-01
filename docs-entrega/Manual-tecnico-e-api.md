@@ -71,6 +71,9 @@ Todas as rotas abaixo exigem Bearer e restringem dados ao proprietário autentic
 | POST `/api/analyses/tasks/{id}/ack` | 204 inclusive para ID alheio/ausente, sem alterar dados estrangeiros; não exclui análise. |
 | GET `/api/analyses/systems?page=0&size=20` | `{systems,page,size,totalSystems,totalAnalyses,totalFindings,totalCritical,totalFiles,resultSummary}`. |
 | GET `/api/analyses/systems/{owner}/{repository}/history?page=0&size=20` | `{owner,repositoryName,history,page,size,total}`. Sem execuções visíveis: lista vazia. |
+| GET `/api/vulnerabilities?page=0&size=20&status=OPEN` | Lista paginada de vulnerabilidades persistentes do usuário; `status` é opcional. |
+| GET `/api/vulnerabilities/{code}` | Detalhe e auditoria da vulnerabilidade `VUL-000001`; outra pessoa recebe 404. |
+| PATCH `/api/vulnerabilities/{code}/status` | Entrada `{status,observation,version?}`; altera status com auditoria e retorna 409 em conflito de versão. |
 
 Página é baseada em zero e valores negativos viram zero; tamanho é ajustado para 1–20. A central agrupa todas as execuções visíveis do usuário, incluindo processamento e falhas, e pagina os sistemas em memória; não comprova paginação escalável no banco. Os cartões usam a execução mais recente e permitem abrir o dashboard enquanto ela está em andamento; `SystemCard.totalAnalyses` conta essas execuções visíveis. Os totais da página (`totalAnalyses`, `totalFindings`, `totalCritical`, `totalFiles` e `resultSummary`) consideram somente execuções concluídas e distintas. O histórico inclui os estados em andamento e falhos; a tabela de tendência usa somente execuções concluídas.
 
@@ -91,10 +94,13 @@ O exemplo é apenas formato, não uma origem autorizada concreta. Para repetir O
 | Identificação | `analysisId,status,repositoryUrl,reference,language,createdAt,commitSha` |
 | Progresso | `stage,filesAnalyzed,filesProcessed,filesTotal,failureStage,failureMessage` |
 | Consultivo | `semanticStatus,suggestionStatus,suggestions` |
-| Determinístico | `findings`: `ruleId,title,severity,cwe,description,fileName,line,column,snippet,taintTrace,aiAssessment` |
+| Determinístico | `findings`: `findingId,ruleId,title,severity,cwe,description,fileName,line,column,snippet,taintTrace,aiAssessment` |
+| Ciclo de vida | `vulnerabilityCode,vulnerabilityStatus,vulnerabilityVersion` em cada finding associado |
 | Resumo unificado | `resultSummary`: `total,critical,high,medium,low,unclassified,highestPriority` |
 
 O resumo do resultado conta findings e sugestões independentes. Avaliação aninhada não conta como item adicional. Severidades são `Critical`, `High`, `Medium`, `Low`; itens legados sem classificação têm categoria própria.
+
+Os status persistentes usam os valores de contrato `OPEN` (Aberta), `IN_PROGRESS` (Em correção), `FIXED` (Corrigida), `VALIDATED` (Validada), `FALSE_POSITIVE` (Falso positivo) e `RISK_ACCEPTED` (Risco aceito). Toda mudança manual exige `observation`; falso positivo e risco aceito exigem justificativa. `VALIDATED` só é produzido pelo worker após análise completa posterior, na mesma referência, com cobertura registrada do arquivo e da regra. `version` é a versão otimista retornada no detalhe; uma versão divergente não altera o registro.
 
 `taintTrace` contém `engineVersion,source,steps,sink`; cada passo tem `kind,line,column`. `aiAssessment` contém `model,promptVersion,confidence,suggestedSeverity,likelyFalsePositive,rationale,remediation,risk,evidence,falsePositiveReason,limitations,recommendations`; `evidence` e `recommendations` são listas. Uma sugestão independente contém `category,severity,title,fileName,line,evidence,rationale,confidence,recommendation,limitations,model,promptVersion`. Avaliação e trace podem ser nulos; campos consultivos legados podem estar ausentes ou nulos. O frontend deve preservar a origem dos itens e não tratar avaliação aninhada como outra vulnerabilidade.
 
@@ -133,6 +139,10 @@ Archive: 100 MiB; até 1.000 arquivos Java; 2 MiB por arquivo; 500 MiB extraído
 | ai_assessments | finding_id é PK/FK, 0..1 por finding, cascata | Modelo/versão de prompt, confiança, severidade sugerida, justificativa e remediação; não é prompt bruto. |
 | ai_suggestions | UUID PK; analysis_id FK com cascata | Categoria, prioridade, localização, evidência limitada e recomendação consultiva. |
 | analysis_outbox | UUID PK; analysis_id FK com cascata | Tipo, datas de criação/disponibilidade/publicação, tentativas e erro seguro. |
+| vulnerabilities | UUID PK; `public_code` único; user_id FK | Identidade persistente, fingerprint estrutural, status, versão, primeira/última detecção e vínculo com a última análise. |
+| vulnerability_occurrences | UUID PK; vulnerability/analysis/finding FKs | Histórico imutável de ocorrências por execução, sem substituir o finding original. |
+| vulnerability_audits | UUID PK; vulnerability/user FKs | Responsável, data, status anterior/novo e observação de cada decisão. |
+| analysis_file_coverage | UUID PK; analysis_id FK | Somente metadados de arquivo/regra processados, usados para validação conservadora. |
 
 Uma pessoa possui várias análises; cada análise pode ter vários findings, sugestões e eventos. A FK de usuário não declara exclusão em cascata. Não existem endpoint de exclusão ou expurgo periódico por idade implementados; dados derivados e eventos publicados permanecem no banco até intervenção administrativa. O ACK só modifica a confirmação. Cache de resultados concluídos é local, limitado e com validade de 15 minutos; não é política de retenção do banco.
 
@@ -149,6 +159,7 @@ Uma pessoa possui várias análises; cada análise pode ter vários findings, su
 | V9 | Confirmação da tarefa. |
 | V10 | SHA, tentativas, lease, próxima tentativa e outbox; índices de lease e publicação. |
 | V11 | Índices de leitura por usuário/status/data e usuário/repositório/status/data. |
+| V12 | Identidade persistente, ocorrências, auditoria de status, cobertura por arquivo/regra e vínculo opcional do finding. |
 
 O schema é validado pelo Hibernate e evolui por Flyway. Não reescrever migrações aplicadas. Lease e retomada evitam duplicatas nos cenários testados; detalhes, falhas provocadas e limites de capacidade estão em [O-01](Operacao-e-escalabilidade.md). Retenção automática, alta disponibilidade e testes de grande escala não são entregas comprovadas.
 

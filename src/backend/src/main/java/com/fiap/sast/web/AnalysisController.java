@@ -138,7 +138,28 @@ public class AnalysisController {
 
     public record FindingResult(String ruleId, String title, String severity, String cwe,
             String description, String fileName, int line, int column, String snippet,
-            TaintTrace taintTrace, AiAssessment aiAssessment) {}
+            TaintTrace taintTrace, AiAssessment aiAssessment, UUID findingId, String vulnerabilityCode,
+            String vulnerabilityStatus, long vulnerabilityVersion) {
+        /** Mantém o construtor de resposta usado por testes e consumidores legados.
+         * @param ruleId identificador da regra
+         * @param title título do finding
+         * @param severity severidade determinística
+         * @param cwe classificação CWE
+         * @param description descrição do problema
+         * @param fileName arquivo analisado
+         * @param line linha do finding
+         * @param column coluna do finding
+         * @param snippet trecho necessário para o resultado
+         * @param taintTrace trace da propagação, quando aplicável
+         * @param aiAssessment avaliação consultiva, quando disponível
+         */
+        public FindingResult(String ruleId, String title, String severity, String cwe,
+                String description, String fileName, int line, int column, String snippet,
+                TaintTrace taintTrace, AiAssessment aiAssessment) {
+            this(ruleId, title, severity, cwe, description, fileName, line, column, snippet,
+                    taintTrace, aiAssessment, null, null, null, 0);
+        }
+    }
 
     public record ResultSummary(int total, int critical, int high, int medium, int low,
             int unclassified, String highestPriority) {}
@@ -163,7 +184,11 @@ public class AnalysisController {
                         finding.column,
                         finding.snippet,
                         readTaintTrace(finding.taintTrace),
-                        finding.aiAssessment == null ? null : finding.aiAssessment.toValue()))
+                        finding.aiAssessment == null ? null : finding.aiAssessment.toValue(),
+                        finding.id,
+                        finding.vulnerability == null ? null : finding.vulnerability.publicCode,
+                        finding.vulnerability == null ? null : finding.vulnerability.status,
+                        finding.vulnerability == null ? 0 : finding.vulnerability.version))
                 .sorted(Comparator.comparing(FindingResult::fileName)
                         .thenComparingInt(FindingResult::line)
                         .thenComparingInt(FindingResult::column)
