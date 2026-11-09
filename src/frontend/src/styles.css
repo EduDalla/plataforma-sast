@@ -7,3 +7,11 @@
 @import "./styles/dashboard.css";
 @import "./styles/theme.css";
 @import "./styles/responsive.css";
+
+.print-report { display: none; }
+@media print {
+  body:has(.print-report) > :not(.print-report) { display: none !important; }
+  .print-report { display: block; color: #111; background: white; font: 11pt/1.45 sans-serif; }
+  .print-report section { break-inside: avoid; }
+  .print-report pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+}

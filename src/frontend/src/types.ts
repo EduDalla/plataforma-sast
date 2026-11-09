@@ -150,14 +150,6 @@ export interface AnalysisTask {
   resultSummary?: ResultSummary;
   acknowledged: boolean;
 }
-export interface ReportResponse {
-  version: number;
-  generatedAt: string;
-  status: string;
-  coverageStatus: string;
-  schemaVersion: string;
-  snapshotHash: string;
-}
 export interface HistoryEntry {
   analysisId: string;
   reference: string | null;
@@ -202,13 +194,4 @@ export interface HistoryPage {
 }
 export interface Session {
   email: string;
-  accessToken?: string;
-  tokenType?: "Bearer";
-  expiresIn?: number;
-}
-
-export interface LoginResponse extends Session {
-  accessToken: string;
-  tokenType: "Bearer";
-  expiresIn: number;
 }

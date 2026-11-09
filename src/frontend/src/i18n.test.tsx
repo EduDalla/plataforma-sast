@@ -5,9 +5,9 @@ import { setLocale } from "./i18n";
 
 afterEach(() => setLocale("pt-BR"));
 
-it("traduz cadastro e formulário de análise em inglês, inclusive atributos acessíveis", async () => {
+it("traduz login e formulário de análise em inglês, inclusive atributos acessíveis", async () => {
   setLocale("en-US");
-  const login = render(<Login onLogin={async () => {}} onRegister={async () => {}} error="" />);
+  const login = render(<Login onLogin={async () => {}} error="" />);
   await waitFor(() => expect(screen.getByText("Welcome back")).toBeTruthy());
   expect(screen.getByPlaceholderText("Your password")).toBeTruthy();
   login.unmount();

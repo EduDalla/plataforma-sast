@@ -1,4 +1,6 @@
-# Pacote `docs-entrega`
+# Arquivo histórico da entrega acadêmica
+
+Os documentos e evidências desta pasta descrevem a plataforma original da branch `main`. Para executar a demonstração local, consulte o [README atual](../README.md).
 
 Este diretório contém todos os documentos necessários para a entrega da FISAST — Plataforma SAST e da defesa final, além dos artefatos de organização deste pacote. Não há uma segunda pasta documental: este é o diretório documental oficial do projeto.
 

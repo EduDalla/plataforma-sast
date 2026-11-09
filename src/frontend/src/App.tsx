@@ -34,19 +34,6 @@ function analysisStageTitle(stage?: Analysis["stage"] | string) {
   }
 }
 
-function analysisStageMessage(data: Analysis) {
-  if (data.stage === "DETERMINISTIC" && data.filesTotal != null) {
-    const total = data.filesTotal;
-    const processed = data.filesProcessed ?? 0;
-    const milestone = total > 0 ? Math.floor((processed / total) * 10) * 10 : 0;
-    return `Arquivos Java processados: ${processed} de ${total} (${milestone}% concluído).`;
-  }
-  if (data.stage === "DOWNLOADING") return t("Obtendo os arquivos públicos do repositório com segurança.");
-  if (data.stage === "SEMANTIC") return "As vulnerabilidades e melhorias das regras já estão disponíveis enquanto a IA avalia os achados.";
-  if (data.stage === "SUGGESTIONS") return "A IA está verificando métodos candidatos para vulnerabilidades e melhorias adicionais.";
-  return t("A análise está avançando. Os resultados aparecem nesta página.");
-}
-
 function readTheme(): Theme {
   try {
     return localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light";
@@ -78,7 +65,6 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [path, setPath] = useState(location.pathname);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [result, setResult] = useState<Analysis>();
   const [systems, setSystems] = useState<SystemsPage>();
   const [systemHistory, setSystemHistory] = useState<HistoryEntry[]>([]);
@@ -128,9 +114,11 @@ export function App() {
     api.config().then((value) => setLocale(value.locale)).catch(() => setLocale("pt-BR")).finally(() => setLocaleReady(true));
   }, []);
   useEffect(() => {
+    if (location.pathname === "/cadastro") navigate("/login", true);
     const pop = () => {
       generation.current++;
-      setPath(location.pathname);
+      if (location.pathname === "/cadastro") navigate("/login", true);
+      else setPath(location.pathname);
       setError("");
       setResult(undefined);
       setSystemHistory([]);
@@ -163,7 +151,7 @@ export function App() {
       .catch((e) => {
         if (!active) return;
         if (!(e instanceof ApiError && e.status === 401)) setError(e.message);
-        navigate(location.pathname === "/cadastro" ? "/cadastro" : "/login", true);
+        navigate("/login", true);
       })
       .finally(() => {
         if (active) setReady(true);
@@ -279,7 +267,6 @@ export function App() {
   }, [path, session, systems, result?.analysisId, navigate, failure, loadSystems]);
   async function login(email: string, password: string) {
     setError("");
-    setSuccess("");
     try {
       const value = await api.login(email, password);
       setSession(value);
@@ -288,16 +275,6 @@ export function App() {
         const page = await loadSystems();
         navigate(page?.totalSystems ? "/dashboard" : "/analyses/new", true);
       }
-    } catch (e) {
-      failure(e);
-    }
-  }
-  async function register(email: string, password: string) {
-    setError("");
-    try {
-      await api.register(email, password);
-      setSuccess("Cadastro realizado com sucesso. Faça login para continuar.");
-      navigate("/login", true);
     } catch (e) {
       failure(e);
     }
@@ -476,10 +453,6 @@ export function App() {
       <main className="login-app" data-theme={theme}>
         <Login
           onLogin={login}
-          onRegister={register}
-          initialRegistering={path === "/cadastro"}
-          onToggleMode={() => navigate(path === "/cadastro" ? "/login" : "/cadastro", true)}
-          success={success}
           error={error}
         />
       </main>
@@ -503,7 +476,7 @@ export function App() {
           <a className={path === "/analyses/new" ? "active" : ""} href="/analyses/new" onClick={(event) => { event.preventDefault(); newAnalysis(); }}>{t("Nova análise")}</a>
         </nav>
         <div className="account">
-          <span>{session.email}</span>
+          <span>Demonstração · {session.email}</span>
           <div className="theme-switcher" role="group" aria-label={t("Tema da interface")}>
             <button
               className="theme-option"

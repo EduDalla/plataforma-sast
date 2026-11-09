@@ -20,7 +20,6 @@ vi.mock("./api", async (importOriginal) => {
     api: {
       session: vi.fn(),
       login: vi.fn(),
-      register: vi.fn(),
       logout: vi.fn(),
       create: vi.fn(),
       analysis: vi.fn(),
@@ -39,7 +38,7 @@ const sample: Analysis = {
   filesTotal: 1,
   semanticStatus: "NOT_APPLICABLE",
   suggestionStatus: "NOT_APPLICABLE",
-  repositoryUrl: "https://github.com/acme/demo",
+  repositoryUrl: "https://github.com/acme/projeto-teste",
   reference: "main",
   language: "java",
   filesAnalyzed: 1,
@@ -70,10 +69,7 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 async function submit() {
-  fireEvent.change(
-    await screen.findByLabelText(/Repositório público do GitHub/),
-    { target: { value: "https://github.com/acme/demo" } },
-  );
+  await screen.findByLabelText(/Repositório público do GitHub/);
   fireEvent.click(screen.getByRole("button", { name: /Iniciar análise/ }));
 }
 
@@ -224,35 +220,13 @@ describe("fluxo autenticado da análise", () => {
     expect(location.pathname).toBe("/analyses/new");
     expect(localStorage.length).toBe(0);
   });
-  it("BDD-E-06: cadastra a conta e solicita login sem autenticar automaticamente", async () => {
-    vi.mocked(api.session).mockRejectedValue(new ApiError(401, "Sessão expirada"));
-    vi.mocked(api.register).mockResolvedValue({ email: "new@example.com" });
-    render(<App />);
-    fireEvent.click(await screen.findByRole("link", { name: "Criar cadastro" }));
-    fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "new@example.com" } });
-    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "strong-password" } });
-    fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "strong-password" } });
-    fireEvent.click(screen.getByRole("button", { name: "Mostrar senha" }));
-    fireEvent.click(screen.getByRole("button", { name: "Mostrar confirmação de senha" }));
-    expect(screen.getByLabelText("Senha")).toHaveAttribute("type", "text");
-    expect(screen.getByLabelText("Confirmar senha")).toHaveAttribute("type", "text");
-    fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
-    expect(await screen.findByRole("heading", { name: "Bem-vindo de volta" })).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("Cadastro realizado com sucesso. Faça login para continuar.");
-    expect(api.register).toHaveBeenCalledWith("new@example.com", "strong-password");
-    expect(api.login).not.toHaveBeenCalled();
-    expect(screen.getByLabelText("E-mail")).toHaveValue("");
-    expect(screen.getByLabelText("Senha")).toHaveValue("");
-  });
-  it("abre diretamente a página de cadastro pela rota", async () => {
+  it("redireciona a rota de cadastro ao login de demonstração", async () => {
     history.replaceState(null, "", "/cadastro");
-    vi.mocked(api.session).mockRejectedValue(new ApiError(401, "Sessão expirada"));
+    vi.mocked(api.session).mockRejectedValue(new ApiError(401, "Entre para continuar"));
     render(<App />);
-    expect(await screen.findByRole("heading", { name: "Crie sua conta" })).toBeInTheDocument();
-    expect(location.pathname).toBe("/cadastro");
-    fireEvent.click(screen.getByRole("link", { name: "Entrar" }));
-    expect(location.pathname).toBe("/login");
     expect(await screen.findByRole("heading", { name: "Bem-vindo de volta" })).toBeInTheDocument();
+    expect(location.pathname).toBe("/login");
+    expect(screen.queryByText("Criar cadastro")).not.toBeInTheDocument();
   });
   it("apresenta falha de login genérica", async () => {
     vi.mocked(api.session).mockRejectedValue(new ApiError(401, ""));
@@ -292,7 +266,7 @@ describe("fluxo autenticado da análise", () => {
     expect(screen.getByRole("heading", { name: "Nova análise" })).toBeInTheDocument();
     expect(api.create).toHaveBeenCalledTimes(1);
     expect(api.create).toHaveBeenCalledWith(
-      "https://github.com/acme/demo",
+      "https://github.com/acme/projeto-teste",
       "main",
     );
     resolve(sample);
@@ -363,7 +337,7 @@ describe("fluxo autenticado da análise", () => {
     await submit();
     expect(await screen.findByRole("heading", { name: /Análise concluída/ })).toBeInTheDocument();
     expect(location.pathname).toBe("/analyses/analysis-1");
-    expect(api.create).toHaveBeenCalledWith("https://github.com/acme/demo", "");
+    expect(api.create).toHaveBeenCalledWith("https://github.com/acme/projeto-teste", "");
   });
   it("mostra erro legível e permite nova tentativa", async () => {
     vi.mocked(api.create).mockRejectedValue(

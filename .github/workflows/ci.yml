@@ -1,127 +1,17 @@
-name: CI
-
-on:
-  pull_request:
-  push:
-    branches:
-      - main
-
+name: Frontend
+on: [push, pull_request]
 permissions:
   contents: read
-
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   verify:
-    name: Verificar produto
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Baixar o checkout
-        uses: actions/checkout@v4.2.2
-
-      - name: Configurar JDK 21
-        uses: actions/setup-java@v4.7.1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          distribution: temurin
-          java-version: '21'
-          cache: maven
-
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4.4.0
-        with:
-          node-version: '22.14.0'
+          node-version: '24'
           cache: npm
           cache-dependency-path: src/frontend/package-lock.json
-
-      - name: Validar Docker Compose
-        run: docker compose config --quiet
-
-      - name: Verificar backend
-        env:
-          MAVEN_OPTS: -Djdk.attach.allowAttachSelf=true
-        run: >-
-          mvn --file src/backend/pom.xml verify
-          -Dsast.build.directory=${{ runner.temp }}/sast-build
-
-      - name: Construir frontend
-        run: npm --prefix src/frontend ci
-
-      - name: Executar build do frontend
-        run: npm --prefix src/frontend run build
-
-      - name: Executar testes do frontend
-        run: npm --prefix src/frontend run test -- --run
-
-      - name: Publicar resumo sem dados do alvo
-        if: always()
-        run: |
-          {
-            echo '## CI do produto'
-            echo
-            echo '- JDK: 21 (Temurin)'
-            echo '- Node.js: 22.14.0'
-            echo '- Compose: validado com `docker compose config --quiet`'
-            echo '- O workflow executa apenas o produto e seus fixtures; não compila nem executa código analisado.'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  security-gate:
-    name: Security Gate
-    needs: verify
-    # Forks entram no job, mas nunca recebem secrets: a etapa específica falha
-    # com segurança e exige uma execução confiável de maintainer.
-    if: ${{ vars.SAST_GATE_ENABLED == 'true' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    permissions:
-      contents: read
-
-    steps:
-      - name: Baixar o checkout
-        uses: actions/checkout@v4.2.2
-
-      - name: Configurar Python
-        uses: actions/setup-python@v5.6.0
-        with:
-          python-version: '3.12'
-
-      - name: Testar política do gate
-        run: python -m unittest discover -s scripts -p 'test_security_gate.py' -v
-
-      - name: Consultar análise fixa e aplicar política
-        if: ${{ vars.SAST_GATE_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-        env:
-          SAST_GATE_API_URL: ${{ secrets.SAST_GATE_API_URL }}
-          SAST_GATE_EMAIL: ${{ secrets.SAST_GATE_EMAIL }}
-          SAST_GATE_PASSWORD: ${{ secrets.SAST_GATE_PASSWORD }}
-          SAST_GATE_REPOSITORY_URL: https://github.com/${{ github.event.pull_request.head.repo.full_name || github.repository }}
-          SAST_GATE_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: >-
-          python scripts/security_gate.py
-          --api-url "$SAST_GATE_API_URL"
-          --repository-url "$SAST_GATE_REPOSITORY_URL"
-          --commit-sha "$SAST_GATE_COMMIT_SHA"
-          --email "$SAST_GATE_EMAIL"
-          --password "$SAST_GATE_PASSWORD"
-          --policy .sast/security-gate.json
-
-      - name: Bloquear PR de fork sem execução confiável
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
-        run: |
-          echo 'PR de fork: secrets não são disponibilizados e o Security Gate não aprova automaticamente este código.'
-          echo 'Um maintainer deve executar o gate a partir de um contexto confiável antes do merge.'
-          exit 1
-
-      - name: Publicar resumo do gate
-        if: always()
-        run: |
-          {
-            echo '## Security Gate'
-            echo
-            echo '- A decisão usa somente findings determinísticos e o commit SHA fixado.'
-            echo '- Severidade sugerida pela IA e degradação consultiva não alteram a decisão.'
-            echo '- O resumo não contém token, senha, snippet, prompt ou código-fonte.'
-          } >> "$GITHUB_STEP_SUMMARY"
+      - run: npm --prefix src/frontend ci
+      - run: npm --prefix src/frontend run build
+      - run: npm --prefix src/frontend run test -- --run

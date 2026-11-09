@@ -1,3 +1,5 @@
+> Registro histórico do CI da plataforma original na branch `main`. A verificação desta demonstração está no [README](README.md).
+
 # Retorno da execução local do CI e Security Gate
 
 Execução realizada em 07/10/2026, com a API local em `http://localhost:8085` e o repositório público `https://github.com/EduDalla/plataforma-sast`.

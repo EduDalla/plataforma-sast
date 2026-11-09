@@ -1,3 +1,5 @@
+import { createPortal, flushSync } from "react-dom";
+import { demoEmail, project, statusLabels as vulnerabilityStatusLabels } from "./demo";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import Prism from "prismjs";
@@ -50,24 +52,6 @@ export function Shield() {
 /** Ícone oficial da FISAST fornecido pela equipe. */
 export function FisastLogo() {
   return <span className="fisast-logo" role="img" aria-label="FISAST" />;
-}
-function PasswordVisibilityIcon({ visible }: { visible: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      {visible ? (
-        <>
-          <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
-          <circle cx="12" cy="12" r="2.5" />
-        </>
-      ) : (
-        <>
-          <path d="m3 3 18 18" />
-          <path d="M10.6 6.2A10.4 10.4 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-3.1 3.7M6.2 6.7C3.8 8.3 2.5 12 2.5 12S6 18 12 18c1.1 0 2.1-.2 3-.5" />
-          <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
-        </>
-      )}
-    </svg>
-  );
 }
 export function ErrorMessage({ message }: { message: string }) {
   return message ? (
@@ -137,47 +121,17 @@ export function Processing({ restoring = false }: { restoring?: boolean }) {
     </section>
   );
 }
-export function Login({
-  onLogin,
-  onRegister,
-  initialRegistering = false,
-  onToggleMode,
-  success,
-  error,
-}: {
+export function Login({ onLogin, error }: {
   onLogin: (email: string, password: string) => Promise<void>;
-  onRegister: (email: string, password: string) => Promise<void>;
-  initialRegistering?: boolean;
-  onToggleMode?: () => void;
-  success?: string;
   error: string;
 }) {
   const [busy, setBusy] = useState(false);
-  const [registering, setRegistering] = useState(initialRegistering);
-  const [formError, setFormError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
-  useEffect(() => {
-    setRegistering(initialRegistering);
-    setShowPassword(false);
-    setShowPasswordConfirmation(false);
-  }, [initialRegistering]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     setBusy(true);
-    try {
-      const email = String(form.get("email"));
-      const password = String(form.get("password"));
-      if (registering && password !== String(form.get("passwordConfirmation"))) {
-        setFormError("As senhas não conferem");
-        return;
-      }
-      setFormError("");
-      await (registering ? onRegister : onLogin)(email, password);
-    } finally {
-      setBusy(false);
-    }
+    try { await onLogin(String(form.get("email")), String(form.get("password"))); }
+    finally { setBusy(false); }
   }
   return (
     <div className="login-layout">
@@ -205,11 +159,10 @@ export function Login({
             <FisastLogo />
             <span>Plataforma SAST</span>
           </div>
-          <h2>{registering ? "Crie sua conta" : "Bem-vindo de volta"}</h2>
-          <p className="muted">{registering ? "Cadastre-se para analisar seus repositórios." : "Entre para analisar seus repositórios."}</p>
-          {!registering && success && <div className="success" role="status">{success}</div>}
-          <ErrorMessage message={error || formError} />
-          <form key={registering ? "register" : "login"} onSubmit={submit}>
+          <h2>Bem-vindo de volta</h2>
+          <p className="muted">Demonstração com dados fictícios</p>
+          <ErrorMessage message={error} />
+          <form onSubmit={submit}>
             <label>
               E-mail
               <input
@@ -225,67 +178,21 @@ export function Login({
               Senha
               <span className="password-field">
                 <input
-                  autoComplete={registering ? "new-password" : "current-password"}
+                  autoComplete="current-password"
                   name="password"
-                  type={registering && showPassword ? "text" : "password"}
+                  type="password"
                   required
                   placeholder="Sua senha"
                   disabled={busy}
                 />
-                {registering && <button
-                  className="password-toggle"
-                  type="button"
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  disabled={busy}
-                >
-                  <PasswordVisibilityIcon visible={showPassword} />
-                </button>}
               </span>
             </label>
-            {registering && <label>
-              Confirmar senha
-              <span className="password-field">
-                <input
-                  autoComplete="new-password"
-                  name="passwordConfirmation"
-                  type={showPasswordConfirmation ? "text" : "password"}
-                  required
-                  minLength={12}
-                  placeholder="Repita sua senha"
-                  disabled={busy}
-                />
-                <button
-                  className="password-toggle"
-                  type="button"
-                  aria-label={showPasswordConfirmation ? "Ocultar confirmação de senha" : "Mostrar confirmação de senha"}
-                  onClick={() => setShowPasswordConfirmation((visible) => !visible)}
-                  disabled={busy}
-                >
-                  <PasswordVisibilityIcon visible={showPasswordConfirmation} />
-                </button>
-              </span>
-            </label>}
             <button disabled={busy}>
-              {busy ? (registering ? "Cadastrando…" : "Entrando…") : (registering ? "Criar conta" : "Entrar")}
+              {busy ? "Entrando…" : "Entrar"}
               <span aria-hidden="true"> →</span>
             </button>
           </form>
-          <p className="login-note">
-            {registering ? "Já possui uma conta? " : "Ainda não possui uma conta? "}
-            <a
-              className="auth-switch"
-              href={registering ? "/login" : "/cadastro"}
-              onClick={(event) => {
-                if (!onToggleMode) return;
-                event.preventDefault();
-                setFormError("");
-                onToggleMode();
-              }}
-            >
-              {registering ? "Entrar" : "Criar cadastro"}
-            </a>
-          </p>
+          <p className="login-note">Acesso de teste · {demoEmail} · Senha 123456</p>
         </div>
         <span className="login-bottom">PLATAFORMA DE ANÁLISE ESTÁTICA</span>
       </section>
@@ -303,7 +210,7 @@ export function AnalysisForm({
   busy?: boolean;
   onNavigate?: (href: string) => void;
 }) {
-  const [url, setUrl] = useState("");
+  const url = project.repositoryUrl;
   const [reference, setReference] = useState("");
   return (
     <>
@@ -332,11 +239,11 @@ export function AnalysisForm({
                 required
                 type="url"
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                readOnly
                 placeholder="https://github.com/usuario/repositorio"
                 disabled={busy}
               />
-              <small>Informe a URL do repositório que deseja analisar.</small>
+              <small>Projeto fictício disponível para simulação.</small>
             </label>
             <div className="form-row">
               <label>
@@ -358,7 +265,7 @@ export function AnalysisForm({
             </div>
             <div className="form-action">
               <span role={busy ? "status" : undefined} aria-live="polite">
-                {busy ? "Análise em andamento. Você pode continuar nesta página." : "Somente repositórios públicos"}
+                {busy ? "Análise em andamento. Você pode continuar nesta página." : "Simulação local"}
               </span>
               <button type="submit" disabled={busy}>
                 {busy ? "Analisando…" : "Iniciar análise"} <span className="action-arrow" aria-hidden="true">→</span>
@@ -391,8 +298,7 @@ export function AnalysisForm({
             </li>
           </ul>
           <p className="scope-note">
-            Seu código é inspecionado sem ser executado. Apenas os resultados e
-            trechos dos achados são salvos.
+            As etapas e os resultados usam exemplos locais do projeto teste.
           </p>
         </aside>
       </div>
@@ -620,39 +526,26 @@ function repositoryBreadcrumb(url: string) {
   };
 }
 
-function PdfDownloadButton({ analysisId, repositoryUrl, disabled = false }: { analysisId: string; repositoryUrl: string; disabled?: boolean }) {
-  const [downloading, setDownloading] = useState(false);
-  const [error, setError] = useState("");
-
-  const downloadPdf = async () => {
-    setDownloading(true);
-    setError("");
-    try {
-      const reports = await api.reports(analysisId);
-      const latest = reports.slice().sort((a, b) => b.version - a.version)[0] ?? await api.createReport(analysisId);
-      const blob = await api.reportPdf(analysisId, latest.version);
-      const url = URL.createObjectURL(blob);
-      const repository = repositoryUrl.split("/").filter(Boolean).pop()?.replace(/[^a-z0-9_-]+/gi, "-").toLowerCase() || "analise";
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `relatorio-${repository}-v${latest.version}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Não foi possível baixar o relatório PDF.");
-    } finally {
-      setDownloading(false);
-    }
+function PrintReport({ data }: { data: Analysis }) {
+  const [printing, setPrinting] = useState(false);
+  const print = () => {
+    flushSync(() => setPrinting(true));
+    try { window.print(); } finally { setPrinting(false); }
   };
-
-  return <div className="report-download-area">
-    <button className="report-download" type="button" onClick={downloadPdf} disabled={disabled || downloading}>
-      {downloading ? "Preparando PDF…" : "Baixar PDF"}
-    </button>
-    {error && <span className="report-download-error" role="alert">{error}</span>}
-  </div>;
+  return <>
+    <button className="report-download" type="button" disabled={data.status === "PROCESSING"} onClick={print}>Imprimir / salvar PDF</button>
+    {printing && createPortal(<article className="print-report">
+      <h1>Relatório de demonstração</h1>
+      <p>{data.repositoryUrl} · {data.reference} · {dateLabel(data.createdAt)}</p>
+      <p>{data.filesAnalyzed} arquivos Java · {data.findings.length} vulnerabilidades · {data.suggestions?.length ?? 0} sugestões</p>
+      {unifiedResults(data.findings, data.suggestions).map(item => <section key={item.key}>
+        <h2>{item.title}</h2><p>{item.source} · {priorityLabels[item.priority]} · {item.fileName}, linha {item.line}</p>
+        <p>{item.finding?.description ?? item.suggestion?.rationale}</p>
+        <pre>{item.finding?.snippet ?? item.suggestion?.evidence}</pre>
+        <p>{item.finding?.aiAssessment?.remediation ?? item.suggestion?.recommendation}</p>
+      </section>)}
+    </article>, document.body)}
+  </>;
 }
 
 function SystemCards({ data, onOpenSystem, onPage }: { data: SystemsPage; onOpenSystem?: (owner: string, repository: string) => void; onPage?: (page: number) => void }) {
@@ -726,7 +619,7 @@ export function SystemDashboard({
       <section className="analysis-trend" aria-labelledby="analysis-trend-title">
         <div className="analysis-trend-heading">
           <div><span className="eyebrow">RELATÓRIO ANALÍTICO</span><h2 id="analysis-trend-title">Tendência de vulnerabilidades</h2></div>
-          <div className="analysis-trend-actions"><small>Somente execuções concluídas e distintas</small><PdfDownloadButton analysisId={data.analysisId} repositoryUrl={data.repositoryUrl} disabled={data.status === "PROCESSING"} /></div>
+          <div className="analysis-trend-actions"><small>Somente execuções concluídas e distintas</small><PrintReport data={data} /></div>
         </div>
         <div className="analysis-trend-table-wrap">
           <table aria-label="Tendência de vulnerabilidades por execução">
@@ -809,14 +702,7 @@ function SuggestionAssessment({ suggestion }: { suggestion: NonNullable<ReturnTy
   );
 }
 
-const vulnerabilityStatusLabels: Record<VulnerabilityStatus, string> = {
-  OPEN: "Aberta",
-  IN_PROGRESS: "Em correção",
-  FIXED: "Corrigida",
-  VALIDATED: "Validada",
-  FALSE_POSITIVE: "Falso positivo",
-  RISK_ACCEPTED: "Risco aceito",
-};
+
 
 function VulnerabilityStatusControl({ finding, onUpdated }: {
   finding: Analysis["findings"][number];
@@ -886,7 +772,7 @@ export function Results({
   const performanceSuggestions = (data.suggestions ?? []).filter((suggestion) => suggestion.category === "PERFORMANCE");
   const securitySuggestions = (data.suggestions ?? []).filter((suggestion) => suggestion.category === "SECURITY");
   const items = view === "security" ? unifiedResults(data.findings, securitySuggestions) : unifiedResults([], performanceSuggestions);
-  const summary = data.resultSummary ?? summarizeResults(items);
+  const summary = summarizeResults(items);
   const groups = new Map<string, typeof items>();
   items.forEach((item) => groups.set(item.fileName, [...(groups.get(item.fileName) || []), item]));
   const orderedGroups = [...groups].sort((a, b) =>
@@ -903,7 +789,7 @@ export function Results({
       <span className="eyebrow">RESULTADOS DA ANÁLISE</span>
       <h1>{data.status === "PROCESSING" ? "Análise em andamento" : data.status === "FAILED" ? "Análise interrompida" : "Análise concluída"} {data.status !== "PROCESSING" && <span className="complete-mark" aria-label={data.status === "FAILED" ? "Falhou" : "Concluída"}>{data.status === "FAILED" ? "!" : "✓"}</span>}</h1>
       <p className="repository">{data.repositoryUrl.replace("https://github.com/", "")}<span className="ref">{data.reference || "Branch padrão"}</span></p>
-    </div></div>
+    </div><PrintReport data={data} /></div>
     {data.status === "FAILED" && <p className="semantic-status" role="alert">{userFriendlyFailureMessage(data)}</p>}
     {partial && data.status !== "FAILED" && <p className="semantic-status" role="status">Resultado parcial: uma etapa de IA foi concluída com cobertura limitada. Os itens exibidos não representam cobertura completa.</p>}
     <div className="result-view-switch" role="group" aria-label="Visualização dos resultados">
