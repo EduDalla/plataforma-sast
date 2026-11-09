@@ -420,6 +420,18 @@ export function DashboardPrompt({
   );
 }
 
+function DashboardResultButton({ title, location, priority, onOpen }: {
+  title: string; location: string; priority?: string; onOpen: () => void;
+}) {
+  return (
+    <button className="dashboard-result-link" type="button" onClick={onOpen}>
+      <span className={`result-dot ${priority?.toLowerCase() || ""}`} aria-hidden="true" />
+      <span className="result-caption"><strong>{title}</strong><small>{location}</small></span>
+      <span className="result-chevron" aria-hidden="true">›</span>
+    </button>
+  );
+}
+
 export function Dashboard({
   data,
   onOpen,
@@ -499,13 +511,20 @@ export function Dashboard({
         <article className="dashboard-card detected-card">
           <h2>Findings determinísticos prioritários</h2>
           {topItems.length ? <ul>{topItems.map((item) => <li key={item.key}>
-            <i className={item.priority.toLowerCase()} />
-            <div><button className="dashboard-result-link" type="button" onClick={onOpen}><strong>{priorityLabels[item.priority]} · {item.title}</strong></button>
-              <p>{item.source} · {item.fileName}:{item.line}</p></div>
+            <DashboardResultButton title={`${priorityLabels[item.priority]} · ${item.title}`}
+              location={`${item.source} · ${item.fileName}:${item.line}`} priority={item.priority} onOpen={onOpen} />
           </li>)}</ul> : <div className="dashboard-list-empty">Nenhum item disponível para ordenar por prioridade.</div>}
         </article>
         <article className="dashboard-card files-card"><h2><span className="chart-icon">☷</span> Arquivos críticos</h2>{files.length ? <ul>{files.map((file) => <li key={file.fileName}><span>{file.fileName}</span><b>{file.total} {file.total === 1 ? "finding" : "findings"}</b><small>{priorityLabels[file.highestSeverity]}</small></li>)}</ul> : <div className="dashboard-list-empty">Nenhum finding determinístico.</div>}</article>
-        {consultiveSuggestions.length > 0 && <article className="dashboard-card suggestions-card"><h2>Sugestões consultivas</h2><ul>{consultiveSuggestions.map((suggestion, index) => <li key={`${suggestion.fileName}:${suggestion.line}:${suggestion.title}:${index}`}><button className="dashboard-result-link" type="button" onClick={onOpen}><strong>{suggestion.title}</strong></button><p>{suggestion.fileName}:{suggestion.line} · {suggestion.category === "PERFORMANCE" ? "Desempenho" : "Segurança"}</p></li>)}</ul><small className="dashboard-card-note">Não alteram o ranking dos findings determinísticos.</small></article>}
+        {consultiveSuggestions.length > 0 && <article className="dashboard-card suggestions-card">
+          <h2>Sugestões consultivas</h2>
+          <ul>{consultiveSuggestions.map((suggestion, index) => <li key={`${suggestion.fileName}:${suggestion.line}:${suggestion.title}:${index}`}>
+            <DashboardResultButton title={suggestion.title} priority={suggestion.severity ?? undefined}
+              location={`${suggestion.fileName}:${suggestion.line} · ${suggestion.category === "PERFORMANCE" ? "Desempenho" : "Segurança"}`}
+              onOpen={onOpen} />
+          </li>)}</ul>
+          <small className="dashboard-card-note">Não alteram o ranking dos findings determinísticos.</small>
+        </article>}
       </div>
       {data && <button className="dashboard-last" onClick={onOpen}>Ver mais detalhes <span aria-hidden="true">↗</span></button>}
     </section>
