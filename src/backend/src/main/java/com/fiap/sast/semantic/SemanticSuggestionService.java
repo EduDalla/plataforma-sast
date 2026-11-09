@@ -45,6 +45,8 @@ public class SemanticSuggestionService {
     private final String model;
     private final int maxMethods;
     private final Duration budget;
+    @Value("${sast.is-english:false}")
+    private boolean english;
 
     public record SourceFile(String path, String content) {}
     public record Result(String status, List<AiSuggestion> suggestions) {}
@@ -113,7 +115,9 @@ public class SemanticSuggestionService {
         int limit = Math.min(maxMethods, candidates.size());
         for (int index = 0; index < limit && System.nanoTime() < deadline; index++) {
             var candidate = candidates.get(index);
-            String prompt = "Revise a operação Java na linha alvo. Aponte uma hipótese de segurança ou desempenho "
+            String prompt = (english ? "Review the Java operation at the target line. Return all natural-language fields in English. "
+                    : "Revise a operação Java na linha alvo. Retorne todos os campos textuais em português. ")
+                    + "Aponte uma hipótese de segurança ou desempenho "
                     + "somente se o contexto a sustentar; senão responda {\"suggestions\":[]}. "
                     + "Consulta de dados dentro de laço pode indicar N+1; explique que depende da execução. "
                     + "Responda JSON com no máximo um item: category (SECURITY ou PERFORMANCE), severity "

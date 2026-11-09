@@ -119,6 +119,20 @@
   .finding-detail {
     padding: 24px 20px;
   }
+  .analysis-trend-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .analysis-trend-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .report-download-area {
+    justify-items: start;
+  }
+  .vulnerability-status {
+    margin: 0 20px;
+  }
   .finding h4 { font-size: 16px; }
   .finding summary p { font-size: 12px; }
   .finding-detail p { font-size: 14px; }

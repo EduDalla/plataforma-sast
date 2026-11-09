@@ -49,6 +49,9 @@ public class Finding {
     @Column(name = "expression_hash", length = 64)
     public String expressionHash;
 
+    @Column(name = "identity_ordinal", nullable = false)
+    public int identityOrdinal;
+
     @OneToOne(mappedBy = "finding", cascade = CascadeType.ALL, orphanRemoval = true)
     public AiAssessmentEntity aiAssessment;
 }

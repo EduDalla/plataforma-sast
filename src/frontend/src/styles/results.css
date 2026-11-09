@@ -341,6 +341,15 @@
   display: inline-block;
   transform: rotate(180deg);
 }
+.finding-relationship {
+  margin-bottom: 10px;
+}
+.finding-relationship .finding {
+  margin-bottom: 0;
+}
+.finding-relationship.has-result-status {
+  padding-bottom: 30px;
+}
 .finding-detail {
   border-top: 1px solid #edf0e9;
   padding: 30px;
@@ -396,7 +405,7 @@
   overflow-wrap: anywhere;
 }
 .vulnerability-status {
-  margin-top: 22px;
+  margin: 0 30px;
   padding: 16px;
   border: 1px solid #dce5d8;
   border-radius: 8px;
@@ -419,6 +428,8 @@
 }
 .status-fixed, .status-validated { background: #dcefe2; color: #27613a; }
 .status-false_positive, .status-risk_accepted { background: #f3ead1; color: #755a18; }
+.status-consultive { background: #eee6f7; color: #6c4b8d; }
+.consultive-status > p { margin: 12px 0 0; font-size: 12px; line-height: 1.5; }
 .vulnerability-status-form { display: grid; grid-template-columns: minmax(130px, .45fr) minmax(220px, 1fr) auto; align-items: end; gap: 10px; margin-top: 14px; }
 .vulnerability-status-form label { display: grid; gap: 5px; font-size: 11px; font-weight: 700; color: #63705f; }
 .vulnerability-status-form select, .vulnerability-status-form textarea { width: 100%; border: 1px solid #ccd8c8; border-radius: 5px; padding: 8px; font: inherit; font-size: 12px; background: #fff; }

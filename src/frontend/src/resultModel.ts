@@ -1,4 +1,5 @@
 import type { AiSuggestion, Finding, ResultPriority, ResultSummary } from "./types";
+import { t } from "./i18n";
 
 export interface UnifiedResultItem {
   key: string;
@@ -30,6 +31,7 @@ export const priorityLabels: Record<ResultPriority, string> = {
   Low: "Baixa",
   Unclassified: "Sem classificação",
 };
+export function priorityLabel(priority: ResultPriority): string { return t(priorityLabels[priority]); }
 
 const priorityOrder: Record<ResultPriority, number> = {
   Critical: 0,

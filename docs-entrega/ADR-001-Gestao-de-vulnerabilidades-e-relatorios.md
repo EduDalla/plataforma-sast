@@ -1,14 +1,14 @@
 # ADR-001 — Gestão de vulnerabilidades e documentação das análises
 
 - **Data:** 01/11/2026.
-- **Situação:** Em implementação — eixo de status iniciado em 01/11/2026.
+- **Situação:** Em implementação — eixos de status, tipo de vulnerabilidade e documentação iniciados em 01/11/2026.
 - **Referência anterior:** [D-01 — decisões de escopo](Decisoes-de-escopo.md).
 
 ## Contexto
 
 O FISAST já possui autenticação JWT Bearer, isolamento por usuário, análises assíncronas, findings por execução, avaliações e sugestões consultivas de IA, dashboard e histórico por repositório. O fluxo atual utiliza React, API Spring Boot, PostgreSQL/outbox, RabbitMQ e worker com JavaParser, regras, taint analysis e Ollama local. Os contratos e limites estão descritos no [manual técnico](Manual-tecnico-e-api.md), na [arquitetura](Arquitetura-e-fluxos.md) e em [REGRAS.MD](../REGRAS.MD).
 
-Findings atuais representam detecções em uma execução; ainda não oferecem identidade persistente de vulnerabilidade, ciclo de remediação auditável nem exportações PDF/SARIF. Esta ADR propõe essa evolução incremental. Seu registro não altera o comportamento do produto nem declara os critérios abaixo atendidos.
+Antes destes incrementos, findings representavam somente detecções em uma execução, sem identidade persistente, ciclo de remediação auditável ou exportações PDF/SARIF. Esta ADR registra a evolução incremental em andamento; sua existência não declara todos os critérios abaixo atendidos.
 
 ## 1. Implementação Status
 
@@ -65,6 +65,18 @@ O incremento implementa a persistência do estado e da versão do registro, hist
 - Manter avaliações e sugestões da IA separadas dos findings determinísticos, sem permitir que alterem sua severidade ou sejam contadas como novas vulnerabilidades.
 - Migrar dados antigos conservadoramente, sem sobrescrever resultados originais, baixar novamente repositórios ou inferir validações históricas. Sem AST histórica, usar somente dados existentes e registrar a origem e as limitações da associação. Registros sem proprietário não ganharão acesso público.
 
+### Implementação iniciada
+
+O primeiro incremento do tipo persistente adiciona a migração V14 e mantém a associação separada do finding original:
+
+- projetos novos usam proprietário e repositório GitHub normalizados em minúsculas;
+- fingerprints ambíguos recebem `identityOrdinal`, evitando mesclar duas expressões estruturalmente iguais no mesmo contexto;
+- a vulnerabilidade persistente passa a reservar classificação, impacto, recomendação, referências, CVE/CVSS e confiança com origem explícita;
+- `Informative` e `Unknown` são classificados separadamente, e o detalhe autenticado expõe as ocorrências imutáveis por execução;
+- o contrato de findings também expõe o contexto estrutural necessário para rastreabilidade, sem alterar a severidade determinística.
+
+Comparação entre execuções, filtros avançados e a tela própria de vulnerabilidades ainda não são declarados concluídos por este incremento.
+
 ### Justificativa e consequências
 
 A identidade persistente permite acompanhar um problema entre execuções sem confundir vulnerabilidades em recursos diferentes. Uma associação conservadora pode manter registros separados, mas evita mesclar indevidamente históricos e decisões de remediação.
@@ -85,6 +97,20 @@ A comparação entre análises do mesmo projeto distinguirá **novas**, **persis
 
 ## 3. Implementação Documentação sobre a análise
 
+### Implementação iniciada
+
+O primeiro incremento funcional de relatórios está implementado no backend:
+
+- a migração V15 adiciona snapshots sanitizados, versionados e vinculados à análise e ao proprietário;
+- análises encerradas geram automaticamente a versão 1, inclusive em falha final, sem persistir archive ou código-fonte integral;
+- `GET /api/analyses/{id}/reports` lista versões, `POST` cria uma nova versão sem baixar ou reanalisar o repositório e `GET /{version}` consulta metadados;
+- `GET /{version}/sarif` exporta SARIF 2.1.0 somente com findings determinísticos; `GET /{version}/pdf` exporta o relatório técnico paginado;
+- sugestões e avaliações consultivas aparecem em seções próprias e não são convertidas em findings SARIF;
+- snapshots e downloads são restritos ao proprietário autenticado, usam hash SHA-256, nome de arquivo seguro e `Cache-Control: no-store`;
+- o frontend já possui clientes HTTP para listar, criar e baixar as duas exportações.
+
+A geração automática é tolerante a falhas: erro de relatório é registrado sem alterar o estado da análise. Ainda faltam a validação do SARIF contra o schema oficial, a interface de histórico de relatórios no frontend e cenários de integração com PostgreSQL/isolamento entre usuários.
+
 ### Decisões
 
 - Disponibilizar automaticamente um relatório consolidado ao encerrar cada análise, inclusive sem findings e em falha com resultados parciais. Explicitar o estado e os limites dos resultados obtidos.
@@ -103,7 +129,7 @@ A comparação entre análises do mesmo projeto distinguirá **novas**, **persis
 
 Relatórios versionados preservam a rastreabilidade entre o resultado original e o acompanhamento posterior. PDF atende à leitura técnica; SARIF permite consumo estruturado por ferramentas de desenvolvimento.
 
-A implementação exigirá contratos autenticados para listar versões, solicitar uma versão atualizada e exportar arquivos. O histórico deverá oferecer acesso às versões, cobertura e datas; duração histórica desconhecida permanecerá indisponível. A geração reutilizará os componentes existentes, sem criar serviços ou filas adicionais.
+A implementação exige contratos autenticados para listar versões, solicitar uma versão atualizada e exportar arquivos. O histórico oferece acesso às versões, cobertura e datas; duração histórica desconhecida permanece indisponível. A geração reutiliza os componentes existentes, sem criar serviços ou filas adicionais. A tabela `analysis_report_snapshots` guarda o payload sanitizado e seu hash; não guarda prompts, respostas brutas da IA, archive ou código-fonte integral.
 
 O manual técnico deverá documentar rotas, formatos, estados de geração, dependências e limitações. A documentação de entrega só passará a declarar exportações implementadas quando houver código e validação correspondentes.
 

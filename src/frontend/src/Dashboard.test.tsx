@@ -66,6 +66,7 @@ describe("dashboard unificado do sistema", () => {
     expect(screen.getByText(/Não alteram o ranking/)).toBeInTheDocument();
     expect(screen.getByText(/Desempenho/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Possível consulta em laço/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Baixar PDF" })).toBeInTheDocument();
   });
   it("usa categoria sem classificação para sugestão antiga e mantém zero findings na compatibilidade", () => {
     show({ ...analysis, findings: [], suggestions: [{ ...analysis.suggestions![0], severity: null }] });

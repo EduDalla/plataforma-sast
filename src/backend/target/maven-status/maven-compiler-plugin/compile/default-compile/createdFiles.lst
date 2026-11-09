@@ -1,7 +1,9 @@
+com/fiap/sast/messaging/AnalysisLeaseReconciler.class
+com/fiap/sast/web/LocaleConfig.class
+com/fiap/sast/web/ConfigController.class
+com/fiap/sast/messaging/AnalysisOutboxPublisher.class
+com/fiap/sast/messaging/AnalysisWorkerListener.class
 com/fiap/sast/messaging/RabbitTopology.class
 com/fiap/sast/persistence/AnalysisOutboxEvent.class
 com/fiap/sast/persistence/AnalysisOutboxRepository.class
-com/fiap/sast/messaging/AnalysisLeaseReconciler.class
 com/fiap/sast/web/AnalysisController$Task.class
-com/fiap/sast/messaging/AnalysisOutboxPublisher.class
-com/fiap/sast/messaging/AnalysisWorkerListener.class

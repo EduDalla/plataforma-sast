@@ -1,4 +1,4 @@
-import type { Analysis, AnalysisTask, HistoryPage, LoginResponse, Session, SystemsPage, VulnerabilityResponse, VulnerabilityStatus } from "./types";
+import type { Analysis, AnalysisTask, HistoryPage, LoginResponse, ReportResponse, Session, SystemsPage, VulnerabilityResponse, VulnerabilityStatus } from "./types";
 
 const ACCESS_TOKEN_KEY = "sast-access-token";
 
@@ -65,7 +65,35 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return body as T;
 }
 
+async function download(path: string): Promise<Blob> {
+  let response: Response;
+  try {
+    const headers = new Headers();
+    if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+    response = await fetch(path, { headers, credentials: "same-origin" });
+  } catch {
+    throw new ApiError(
+      0,
+      "Não foi possível conectar ao sistema. Verifique sua conexão e tente novamente.",
+    );
+  }
+  if (!response.ok) {
+    if (response.status === 401) {
+      accessToken = null;
+      storeToken(null);
+    }
+    const body = await response.json().catch(() => undefined);
+    throw new ApiError(
+      response.status,
+      body?.detail || body?.title || "Não foi possível baixar o relatório.",
+      response.headers.get("X-Request-Id") || undefined,
+    );
+  }
+  return response.blob();
+}
+
 export const api = {
+  config: () => request<{ locale: string }>("/api/config"),
   session: async () => {
     if (!accessToken) throw new ApiError(401, "Sessão ausente ou expirada");
     return request<Session>("/api/auth/session");
@@ -116,4 +144,23 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status, observation, version }),
     }),
+  vulnerabilities: (page = 0, size = 20, status?: VulnerabilityStatus) => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (status) params.set("status", status);
+    return request<{ vulnerabilities: VulnerabilityResponse[]; page: number; size: number; total: number }>(
+      `/api/vulnerabilities?${params.toString()}`,
+    );
+  },
+  vulnerability: (code: string) =>
+    request<VulnerabilityResponse>(`/api/vulnerabilities/${encodeURIComponent(code)}`),
+  reports: (analysisId: string) =>
+    request<ReportResponse[]>(`/api/analyses/${encodeURIComponent(analysisId)}/reports`),
+  createReport: (analysisId: string) =>
+    request<ReportResponse>(`/api/analyses/${encodeURIComponent(analysisId)}/reports`, {
+      method: "POST",
+    }),
+  reportSarif: (analysisId: string, version: number) =>
+    download(`/api/analyses/${encodeURIComponent(analysisId)}/reports/${version}/sarif`),
+  reportPdf: (analysisId: string, version: number) =>
+    download(`/api/analyses/${encodeURIComponent(analysisId)}/reports/${version}/pdf`),
 };

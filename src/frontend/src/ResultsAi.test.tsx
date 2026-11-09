@@ -33,6 +33,22 @@ describe("lista unificada de vulnerabilidades e melhorias", () => {
     expect(within(item).getByText("exec")).toHaveClass("token", "function");
     expect(document.querySelector(".stats")!).toHaveTextContent("Vulnerabilidades1");
   });
+  it("mantém o status fora do detalhe, mas acoplado ao mesmo finding", () => {
+    const data: Analysis = {
+      ...base,
+      findings: [{ ...base.findings[0], vulnerabilityCode: "VUL-000001", vulnerabilityStatus: "OPEN", vulnerabilityVersion: 1 }],
+    };
+    render(<Results data={data} />);
+    const item = screen.getByText("Runtime.exec").closest("details")!;
+    const relationship = item.parentElement!;
+    const detail = item.querySelector(".finding-detail")!;
+    const status = within(relationship).getByRole("region", { name: "Status da vulnerabilidade VUL-000001" });
+
+    expect(detail).not.toContainElement(status);
+    expect(item).not.toContainElement(status);
+    expect(status.previousElementSibling).toBe(item);
+    expect(relationship).toContainElement(status);
+  });
   it("contabiliza sugestão independente no mesmo arquivo sem fundi-la com finding", () => {
     const data: Analysis = { ...base, suggestions: [{ category: "PERFORMANCE", severity: "High", title: "Possível N+1",
       fileName: "Example.java", line: 4, evidence: "repository.findById(id)", rationale: "Consulta no loop.",
@@ -43,6 +59,7 @@ describe("lista unificada de vulnerabilidades e melhorias", () => {
     expect(screen.getByText("Possível N+1").closest("details")).toHaveTextContent("Alta");
     expect(document.querySelector(".stats")!).toHaveTextContent("Recomendações de desempenho1");
     expect(screen.getAllByLabelText("Código Java")).toHaveLength(1);
+    expect(screen.getByRole("region", { name: "Status da recomendação consultiva de desempenho" })).toHaveTextContent("Consultiva");
   });
   it("usa a mesma estrutura expansível para findings e sugestões consultivas", () => {
     const data: Analysis = { ...base, findings: [], suggestions: [{ category: "SECURITY", severity: "High", title: "Revisar validação",

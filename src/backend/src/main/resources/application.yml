@@ -26,6 +26,7 @@ management:
   endpoints.web.base-path: /
   endpoint.health.show-details: never
 sast:
+  is-english: ${IS_ENGLISH:false}
   jwt:
     secret: ${SAST_JWT_SECRET:}
     issuer: ${SAST_JWT_ISSUER:sast-api}

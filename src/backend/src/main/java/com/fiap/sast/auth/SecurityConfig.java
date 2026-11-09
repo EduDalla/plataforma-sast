@@ -24,6 +24,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
 import java.io.IOException;
+import com.fiap.sast.web.LocaleConfig;
 
 @Configuration
 public class SecurityConfig {
@@ -80,13 +81,14 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            @Value("${sast.jwt.issuer}") String issuer) throws Exception {
+            @Value("${sast.jwt.issuer}") String issuer,
+            LocaleConfig locale) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/health", "/api/auth/login", "/api/auth/register")
+                        .requestMatchers("/health", "/api/config", "/api/auth/login", "/api/auth/register")
                         .permitAll()
                         .anyRequest()
                         .authenticated())
@@ -94,7 +96,7 @@ public class SecurityConfig {
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) -> {
-                            writeProblem(response, 401, "Token ausente, inválido ou expirado");
+                            writeProblem(response, 401, locale.text("Token ausente, inválido ou expirado", "Token missing, invalid or expired"));
                         })
                         .accessDeniedHandler((request, response, exception) -> {
                             writeProblem(response, 403, "Permissão insuficiente");

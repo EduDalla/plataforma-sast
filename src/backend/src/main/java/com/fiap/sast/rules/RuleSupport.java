@@ -2,6 +2,7 @@ package com.fiap.sast.rules;
 import com.fiap.sast.analysis.SecurityFinding;
 import com.fiap.sast.analysis.TaintTrace;
 import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -28,7 +29,11 @@ public final class RuleSupport {
                 .map(method -> method.getNameAsString() + "("
                         + method.getParameters().stream().map(parameter -> parameter.getTypeAsString())
                                 .reduce((left, right) -> left + "," + right).orElse("") + ")")
-                .orElse("<arquivo>");
+                .orElseGet(() -> node.findAncestor(FieldDeclaration.class)
+                        .map(field -> field.getVariables().stream()
+                                .map(variable -> variable.getNameAsString() + ":" + variable.getTypeAsString())
+                                .reduce((left, right) -> left + "," + right).orElse("<campo>"))
+                        .orElse("<arquivo>"));
         var expression = node.toString().replaceAll("\\s+", "");
         try {
             var digest = MessageDigest.getInstance("SHA-256");

@@ -35,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.hamcrest.Matchers.containsString;
 
 @SpringBootTest(properties = {"sast.bootstrap.email=first@example.com", "sast.bootstrap.password=integration-test-password",
         "sast.jwt.secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="})
@@ -205,6 +206,35 @@ class AuthenticatedAnalysisIntegrationTest {
             user.passwordHash = passwords.encode("second-test-password"); return users.save(user);
         });
         mvc.perform(get("/api/vulnerabilities/" + code)
+                        .header("Authorization", "Bearer " + login(other.email, "second-test-password")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test void generatesVersionedReportsAndKeepsDownloadsPrivate() throws Exception {
+        var token = login("first@example.com", "integration-test-password");
+        when(github.download(any(), any())).thenReturn(new GitHubClient.Snapshot("acme", "reports",
+                "https://github.com/acme/reports", "main",
+                List.of(new GitHubClient.File("Example.java", "class Example { String password = \"x\"; }"))));
+        String id = JsonPath.read(submit("{\"repositoryUrl\":\"https://github.com/acme/reports\",\"reference\":\"main\"}", token)
+                .getResponse().getContentAsString(), "$.analysisId");
+        complete(UUID.fromString(id), token);
+
+        mvc.perform(get("/api/analyses/" + id + "/reports").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].version").value(1))
+                .andExpect(jsonPath("$[0].coverageStatus").value("CONFIRMED"));
+        mvc.perform(get("/api/analyses/" + id + "/reports/1/sarif")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith("application/sarif+json"))
+                .andExpect(content().string(containsString("\"version\":\"2.1.0\"")));
+        mvc.perform(get("/api/analyses/" + id + "/reports/1/pdf")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(content().contentType("application/pdf"));
+
+        var other = users.findByEmail("second@example.com").orElseGet(() -> {
+            var user = new AppUser(); user.email = "second@example.com";
+            user.passwordHash = passwords.encode("second-test-password"); return users.save(user);
+        });
+        mvc.perform(get("/api/analyses/" + id + "/reports")
                         .header("Authorization", "Bearer " + login(other.email, "second-test-password")))
                 .andExpect(status().isNotFound());
     }

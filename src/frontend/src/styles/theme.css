@@ -563,6 +563,31 @@
   border-color: var(--border);
   color: var(--text);
 }
+.app-shell .vulnerability-status {
+  background: var(--surface-muted);
+  border-color: var(--border);
+  color: var(--text);
+}
+.app-shell .vulnerability-status-heading h5 {
+  color: var(--text);
+}
+.app-shell .vulnerability-status-form label {
+  color: var(--text-muted);
+}
+.app-shell .vulnerability-status-form select,
+.app-shell .vulnerability-status-form textarea {
+  background: var(--surface-input);
+  border-color: var(--border);
+  color: var(--text);
+}
+.app-shell .vulnerability-status-form button {
+  background: var(--primary-button-bg);
+  color: var(--primary-button-text);
+}
+.app-shell .status-consultive {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
 .app-shell .section-number,
 .app-shell .form-action,
 .app-shell .scope-card .scope-note,

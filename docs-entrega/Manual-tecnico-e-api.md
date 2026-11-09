@@ -1,6 +1,6 @@
 # Manual técnico e contrato HTTP — E-01
 
-Contrato conferido em 07/10/2026 no checkout identificado no [registro E-01](evidencias/E-01-2026-10-07.md). Fontes: [controller de análises](../src/backend/src/main/java/com/fiap/sast/web/AnalysisController.java), [autenticação](../src/backend/src/main/java/com/fiap/sast/auth/AuthController.java), [configuração](../src/backend/src/main/resources/application.yml) e [migrações](../src/backend/src/main/resources/db/migration). Diagramas em [Arquitetura](Arquitetura-e-fluxos.md).
+Contrato conferido em 01/11/2026, preservando o checkout e as evidências do [registro E-01](evidencias/E-01-2026-10-07.md). Fontes: [controller de análises](../src/backend/src/main/java/com/fiap/sast/web/AnalysisController.java), [relatórios](../src/backend/src/main/java/com/fiap/sast/web/ReportController.java), [autenticação](../src/backend/src/main/java/com/fiap/sast/auth/AuthController.java), [configuração](../src/backend/src/main/resources/application.yml) e [migrações](../src/backend/src/main/resources/db/migration). Diagramas em [Arquitetura](Arquitetura-e-fluxos.md).
 
 ## Instalação reproduzível
 
@@ -49,6 +49,10 @@ Se uma análise ficar em fila, verificar saúde do broker, API/publicador e work
 
 ## Autenticação
 
+### Idioma da instalação
+
+Defina `IS_ENGLISH=true` no ambiente da API e do worker para ativar o inglês globalmente; o padrão `false` mantém português. Reinicie os serviços após alterar a variável. `GET /api/config` é público e retorna somente `{"locale":"en-US"}` ou `{"locale":"pt-BR"}`. Não existe preferência por usuário. Textos históricos persistidos preservam o idioma original.
+
 | Método e rota | Entrada / resposta | Acesso |
 |---|---|---|
 | POST `/api/auth/register` | `{email,password}`; 201 `{email}` normalizado; duplicata 409; entrada inválida 400 | Público |
@@ -72,8 +76,13 @@ Todas as rotas abaixo exigem Bearer e restringem dados ao proprietário autentic
 | GET `/api/analyses/systems?page=0&size=20` | `{systems,page,size,totalSystems,totalAnalyses,totalFindings,totalCritical,totalFiles,resultSummary}`. |
 | GET `/api/analyses/systems/{owner}/{repository}/history?page=0&size=20` | `{owner,repositoryName,history,page,size,total}`. Sem execuções visíveis: lista vazia. |
 | GET `/api/vulnerabilities?page=0&size=20&status=OPEN` | Lista paginada de vulnerabilidades persistentes do usuário; `status` é opcional. |
-| GET `/api/vulnerabilities/{code}` | Detalhe e auditoria da vulnerabilidade `VUL-000001`; outra pessoa recebe 404. |
+| GET `/api/vulnerabilities/{code}` | Detalhe, ocorrências, fingerprint e auditoria da vulnerabilidade `VUL-000001`; outra pessoa recebe 404. |
 | PATCH `/api/vulnerabilities/{code}/status` | Entrada `{status,observation,version?}`; altera status com auditoria e retorna 409 em conflito de versão. |
+| GET `/api/analyses/{id}/reports` | Lista snapshots autorizados com `version,generatedAt,status,coverageStatus,schemaVersion,snapshotHash`. |
+| POST `/api/analyses/{id}/reports` | Cria nova versão a partir da análise encerrada, sem baixar ou reexecutar o repositório. Retorna 201. |
+| GET `/api/analyses/{id}/reports/{version}` | Consulta os metadados de uma versão autorizada. |
+| GET `/api/analyses/{id}/reports/{version}/sarif` | Baixa SARIF 2.1.0 com `application/sarif+json`, somente findings determinísticos. |
+| GET `/api/analyses/{id}/reports/{version}/pdf` | Baixa PDF técnico paginado com `application/pdf`. |
 
 Página é baseada em zero e valores negativos viram zero; tamanho é ajustado para 1–20. A central agrupa todas as execuções visíveis do usuário, incluindo processamento e falhas, e pagina os sistemas em memória; não comprova paginação escalável no banco. Os cartões usam a execução mais recente e permitem abrir o dashboard enquanto ela está em andamento; `SystemCard.totalAnalyses` conta essas execuções visíveis. Os totais da página (`totalAnalyses`, `totalFindings`, `totalCritical`, `totalFiles` e `resultSummary`) consideram somente execuções concluídas e distintas. O histórico inclui os estados em andamento e falhos; a tabela de tendência usa somente execuções concluídas.
 
@@ -101,6 +110,12 @@ O exemplo é apenas formato, não uma origem autorizada concreta. Para repetir O
 O resumo do resultado conta findings e sugestões independentes. Avaliação aninhada não conta como item adicional. Severidades são `Critical`, `High`, `Medium`, `Low`; itens legados sem classificação têm categoria própria.
 
 Os status persistentes usam os valores de contrato `OPEN` (Aberta), `IN_PROGRESS` (Em correção), `FIXED` (Corrigida), `VALIDATED` (Validada), `FALSE_POSITIVE` (Falso positivo) e `RISK_ACCEPTED` (Risco aceito). Toda mudança manual exige `observation`; falso positivo e risco aceito exigem justificativa. `VALIDATED` só é produzido pelo worker após análise completa posterior, na mesma referência, com cobertura registrada do arquivo e da regra. `version` é a versão otimista retornada no detalhe; uma versão divergente não altera o registro.
+
+Relatórios são criados automaticamente quando a análise chega a `COMPLETED` ou `FAILED`; em falha, o snapshot informa `coverageStatus=FAILED` e as limitações. Uma solicitação manual cria a próxima versão somente para a análise do usuário autenticado e reutiliza os dados persistidos. Falha na geração do relatório não transforma uma análise concluída em falha.
+
+O snapshot contém metadados da análise, cobertura, findings sanitizados, evidências limitadas, traces, avaliações selecionadas da IA, sugestões consultivas separadas e limitações. O hash SHA-256 identifica o payload imutável. A ausência de findings não é apresentada como ausência confirmada de vulnerabilidades. PDF é renderizado pelo backend com PDFBox e SARIF usa o formato 2.1.0; ambos preservam severidade interna, localização relativa e a distinção entre resultado determinístico e sugestão consultiva. Downloads usam `Cache-Control: no-store`.
+
+O detalhe persistente expõe `contextSignature`, `expressionHash` e `identityOrdinal` para rastreabilidade do fingerprint. `identityOrdinal` só diferencia ocorrências estruturalmente ambíguas; linha não é identidade por si só. `severity` aceita `Critical`, `High`, `Medium`, `Low`, `Informative` e `Unknown`; `Unknown` permanece distinto de `Informative`. CVE e CVSS são nulos quando não há associação fundamentada; `confidenceSource` informa `Não verificada` quando a detecção estática não possui avaliação adicional. `occurrences` preserva `analysisId`, `findingId`, referência e SHA de cada execução.
 
 `taintTrace` contém `engineVersion,source,steps,sink`; cada passo tem `kind,line,column`. `aiAssessment` contém `model,promptVersion,confidence,suggestedSeverity,likelyFalsePositive,rationale,remediation,risk,evidence,falsePositiveReason,limitations,recommendations`; `evidence` e `recommendations` são listas. Uma sugestão independente contém `category,severity,title,fileName,line,evidence,rationale,confidence,recommendation,limitations,model,promptVersion`. Avaliação e trace podem ser nulos; campos consultivos legados podem estar ausentes ou nulos. O frontend deve preservar a origem dos itens e não tratar avaliação aninhada como outra vulnerabilidade.
 
@@ -143,6 +158,7 @@ Archive: 100 MiB; até 1.000 arquivos Java; 2 MiB por arquivo; 500 MiB extraído
 | vulnerability_occurrences | UUID PK; vulnerability/analysis/finding FKs | Histórico imutável de ocorrências por execução, sem substituir o finding original. |
 | vulnerability_audits | UUID PK; vulnerability/user FKs | Responsável, data, status anterior/novo e observação de cada decisão. |
 | analysis_file_coverage | UUID PK; analysis_id FK | Somente metadados de arquivo/regra processados, usados para validação conservadora. |
+| analysis_report_snapshots | UUID PK; analysis/user FKs; versão única por análise | Payload sanitizado e versionado, hash, status, cobertura e data para reexportação sem nova análise. |
 
 Uma pessoa possui várias análises; cada análise pode ter vários findings, sugestões e eventos. A FK de usuário não declara exclusão em cascata. Não existem endpoint de exclusão ou expurgo periódico por idade implementados; dados derivados e eventos publicados permanecem no banco até intervenção administrativa. O ACK só modifica a confirmação. Cache de resultados concluídos é local, limitado e com validade de 15 minutos; não é política de retenção do banco.
 
@@ -160,6 +176,9 @@ Uma pessoa possui várias análises; cada análise pode ter vários findings, su
 | V10 | SHA, tentativas, lease, próxima tentativa e outbox; índices de lease e publicação. |
 | V11 | Índices de leitura por usuário/status/data e usuário/repositório/status/data. |
 | V12 | Identidade persistente, ocorrências, auditoria de status, cobertura por arquivo/regra e vínculo opcional do finding. |
+| V13 | Completa o fingerprint estrutural dos findings legados. |
+| V14 | Ordinal para fingerprints ambíguos, classificação persistente e metadados CVE/CVSS/confiança/rastreabilidade. |
+| V15 | Snapshots versionados de relatórios sanitizados para PDF/SARIF e reexportação sem nova análise. |
 
 O schema é validado pelo Hibernate e evolui por Flyway. Não reescrever migrações aplicadas. Lease e retomada evitam duplicatas nos cenários testados; detalhes, falhas provocadas e limites de capacidade estão em [O-01](Operacao-e-escalabilidade.md). Retenção automática, alta disponibilidade e testes de grande escala não são entregas comprovadas.
 

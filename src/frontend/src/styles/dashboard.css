@@ -31,6 +31,26 @@
     gap: 20px;
     margin-bottom: 14px;
 }
+.analysis-trend-actions {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+}
+.report-download-area {
+    display: grid;
+    justify-items: end;
+    gap: 5px;
+}
+.report-download {
+    padding: 6px 12px;
+    font-size: 11px;
+}
+.report-download-error {
+    max-width: 240px;
+    color: #f59a9a;
+    font-size: 10px;
+    text-align: right;
+}
 .analysis-trend-heading h2 {
     margin: 5px 0 0;
     font-size: 18px;
@@ -337,6 +357,9 @@
     list-style:none;
     padding:0;
     margin:0
+}
+.suggestions-card .dashboard-result-link {
+    padding:6px 12px;
 }
 .suggestions-card li {
     border-bottom:1px solid #303330;

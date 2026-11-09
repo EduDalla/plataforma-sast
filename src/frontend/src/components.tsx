@@ -4,7 +4,8 @@ import Prism from "prismjs";
 import "prismjs/components/prism-java";
 import { api } from "./api";
 import type { Analysis, HistoryEntry, SystemsPage, VulnerabilityResponse, VulnerabilityStatus } from "./types";
-import { priorityLabels, rankCriticalFiles, sortConsultiveSuggestions, summarizeResults, unifiedResults } from "./resultModel";
+import { priorityLabels, priorityLabel, rankCriticalFiles, sortConsultiveSuggestions, summarizeResults, unifiedResults } from "./resultModel";
+import { getLocale } from "./i18n";
 
 function renderJavaTokens(tokens: (Prism.Token | string)[]): ReactNode[] {
   return tokens.map((token, index) => {
@@ -606,7 +607,7 @@ export function Dashboard({
 }
 
 function dateLabel(value: string) {
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat(getLocale(), { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
 function repositoryBreadcrumb(url: string) {
@@ -617,6 +618,41 @@ function repositoryBreadcrumb(url: string) {
     label: `${owner}/${repository}`,
     href: `/systems/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}`,
   };
+}
+
+function PdfDownloadButton({ analysisId, repositoryUrl, disabled = false }: { analysisId: string; repositoryUrl: string; disabled?: boolean }) {
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState("");
+
+  const downloadPdf = async () => {
+    setDownloading(true);
+    setError("");
+    try {
+      const reports = await api.reports(analysisId);
+      const latest = reports.slice().sort((a, b) => b.version - a.version)[0] ?? await api.createReport(analysisId);
+      const blob = await api.reportPdf(analysisId, latest.version);
+      const url = URL.createObjectURL(blob);
+      const repository = repositoryUrl.split("/").filter(Boolean).pop()?.replace(/[^a-z0-9_-]+/gi, "-").toLowerCase() || "analise";
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `relatorio-${repository}-v${latest.version}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Não foi possível baixar o relatório PDF.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return <div className="report-download-area">
+    <button className="report-download" type="button" onClick={downloadPdf} disabled={disabled || downloading}>
+      {downloading ? "Preparando PDF…" : "Baixar PDF"}
+    </button>
+    {error && <span className="report-download-error" role="alert">{error}</span>}
+  </div>;
 }
 
 function SystemCards({ data, onOpenSystem, onPage }: { data: SystemsPage; onOpenSystem?: (owner: string, repository: string) => void; onPage?: (page: number) => void }) {
@@ -690,7 +726,7 @@ export function SystemDashboard({
       <section className="analysis-trend" aria-labelledby="analysis-trend-title">
         <div className="analysis-trend-heading">
           <div><span className="eyebrow">RELATÓRIO ANALÍTICO</span><h2 id="analysis-trend-title">Tendência de vulnerabilidades</h2></div>
-          <small>Somente execuções concluídas e distintas</small>
+          <div className="analysis-trend-actions"><small>Somente execuções concluídas e distintas</small><PdfDownloadButton analysisId={data.analysisId} repositoryUrl={data.repositoryUrl} disabled={data.status === "PROCESSING"} /></div>
         </div>
         <div className="analysis-trend-table-wrap">
           <table aria-label="Tendência de vulnerabilidades por execução">
@@ -827,6 +863,16 @@ function VulnerabilityStatusControl({ finding, onUpdated }: {
   );
 }
 
+function ConsultiveStatusCard({ category }: { category: "SECURITY" | "PERFORMANCE" }) {
+  const label = category === "PERFORMANCE" ? "desempenho" : "segurança";
+  return (
+    <section className="vulnerability-status consultive-status" aria-label={`Status da recomendação consultiva de ${label}`}>
+      <div className="vulnerability-status-heading"><div><span className="ai-kicker">ACOMPANHAMENTO</span><h5>Item consultivo</h5></div><span className="status-pill status-consultive">Consultiva</span></div>
+      <p className="muted">Recomendação independente, sem ciclo de remediação de vulnerabilidade.</p>
+    </section>
+  );
+}
+
 export function Results({
   data,
   onNavigate,
@@ -878,23 +924,24 @@ export function Results({
       <div className="findings-heading"><h2>Vulnerabilidades/Melhorias</h2><span>{groups.size} arquivo(s) com ocorrências</span></div>
       {orderedGroups.map(([file, group]) => <div className="file-group" key={file}>
         <h3><span aria-hidden="true">⌘</span> {file}</h3>
-        {group.map((item) => <details className="finding" key={item.key}>
+        {group.map((item) => <div className={`finding-relationship${item.finding || item.suggestion ? " has-result-status" : ""}`} key={item.key}>
+          <details className="finding">
           <summary><div><span className={`badge ${item.priority.toLowerCase()}`}>{priorityLabels[item.priority]}</span>{item.suggestion ? <span className={`badge adjustment-${item.suggestion.category.toLowerCase()}`}>{item.source}</span> : item.finding && <span className="badge adjustment-vulnerability">Vulnerabilidade</span>}<h4>{item.title}</h4><p>{item.finding?.cwe ? `${item.finding.cwe} · ` : ""}Linha {item.line}{item.column ? `, coluna ${item.column}` : ""}</p></div><span className="expand">Ver detalhes <span aria-hidden="true">⌄</span></span></summary>
-          <div className="finding-detail">
-            {item.finding ? <>
+          {item.finding ?
+            <div className="finding-detail">
               <h5>Descrição</h5><p>{item.finding.description}</p><JavaCodeBlock code={item.finding.snippet} line={item.finding.line} />
               {item.finding.taintTrace && <TaintTraceView trace={item.finding.taintTrace} />}
               {item.finding.aiAssessment && <section className="ai-assessment" aria-label="Avaliação consultiva da IA"><div className="ai-assessment-heading"><div><span className="ai-kicker">ANÁLISE SEMÂNTICA</span><h5>Avaliação da IA</h5></div><span className="ai-consultive">Consultiva</span></div><div className="ai-assessment-summary"><div><span>Severidade sugerida:<strong className={`ai-severity ai-severity-${item.finding.aiAssessment.suggestedSeverity.toLowerCase()}`}>{severityNames[item.finding.aiAssessment.suggestedSeverity]}</strong></span></div><div><span>Provável falso positivo:<strong>{item.finding.aiAssessment.likelyFalsePositive ? "Sim" : "Não"}</strong></span></div><div><span>Confiança do modelo:<strong>{Math.round(item.finding.aiAssessment.confidence * 100)}%</strong></span></div></div><div className="ai-assessment-copy">{item.finding.aiAssessment.risk && <div><h6>Risco contextual</h6><p>{item.finding.aiAssessment.risk}</p></div>}<div><h6>Justificativa</h6><p>{item.finding.aiAssessment.rationale}</p></div>{item.finding.aiAssessment.evidence?.length ? <div><h6>Evidências</h6><ul>{item.finding.aiAssessment.evidence.map((evidence, index) => <li key={index}>{evidence}</li>)}</ul></div> : null}{item.finding.aiAssessment.falsePositiveReason && <div><h6>Motivo da avaliação de falso positivo</h6><p>{item.finding.aiAssessment.falsePositiveReason}</p></div>}<div><h6>Remediação sugerida</h6><p>{item.finding.aiAssessment.remediation}</p></div>{item.finding.aiAssessment.recommendations?.length ? <div><h6>Ações recomendadas</h6><ul>{item.finding.aiAssessment.recommendations.map((recommendation, index) => <li key={index}>{recommendation}</li>)}</ul></div> : null}{item.finding.aiAssessment.limitations && <div><h6>Limitações</h6><p>{item.finding.aiAssessment.limitations}</p></div>}</div><small className="ai-assessment-meta">Modelo {item.finding.aiAssessment.model} · A severidade exibida permanece a da regra.</small></section>}
               <span className="muted">Regra {item.finding.ruleId} · {item.finding.fileName}</span>
-              <VulnerabilityStatusControl finding={item.finding} onUpdated={onVulnerabilityUpdated} />
-            </> : item.suggestion && <>
+            </div> : item.suggestion && <div className="finding-detail">
               <h5>Descrição</h5><p>Melhoria consultiva de {item.suggestion.category === "PERFORMANCE" ? "desempenho" : "segurança"} identificada durante a análise semântica.</p>
               <JavaCodeBlock code={item.suggestion.evidence} line={item.suggestion.line} />
               <SuggestionAssessment suggestion={item.suggestion} />
               <span className="muted">Sugestão consultiva · {item.suggestion.fileName}</span>
-            </>}
-          </div>
-        </details>)}
+            </div>}
+          </details>
+          {item.finding ? <VulnerabilityStatusControl finding={item.finding} onUpdated={onVulnerabilityUpdated} /> : item.suggestion && <ConsultiveStatusCard category={item.suggestion.category} />}
+        </div>)}
       </div>)}
     </section>}
     <p className="result-footer">Concluída em {new Date(data.createdAt).toLocaleString("pt-BR")} · Análise estática Java</p>

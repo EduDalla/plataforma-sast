@@ -4,6 +4,7 @@ import com.fiap.sast.analysis.SastEngine;
 import com.fiap.sast.analysis.AnalysisJobService;
 import com.fiap.sast.analysis.SecurityFinding;
 import com.fiap.sast.analysis.TaintTrace;
+import com.fiap.sast.analysis.RepositoryIdentity;
 import com.fiap.sast.auth.UserRepository;
 import com.fiap.sast.github.GitHubClient;
 import com.fiap.sast.persistence.AiAssessmentEntity;
@@ -139,7 +140,8 @@ public class AnalysisController {
     public record FindingResult(String ruleId, String title, String severity, String cwe,
             String description, String fileName, int line, int column, String snippet,
             TaintTrace taintTrace, AiAssessment aiAssessment, UUID findingId, String vulnerabilityCode,
-            String vulnerabilityStatus, long vulnerabilityVersion) {
+            String vulnerabilityStatus, long vulnerabilityVersion, String vulnerabilityContextSignature,
+            String vulnerabilityExpressionHash, int vulnerabilityIdentityOrdinal) {
         /** Mantém o construtor de resposta usado por testes e consumidores legados.
          * @param ruleId identificador da regra
          * @param title título do finding
@@ -157,7 +159,7 @@ public class AnalysisController {
                 String description, String fileName, int line, int column, String snippet,
                 TaintTrace taintTrace, AiAssessment aiAssessment) {
             this(ruleId, title, severity, cwe, description, fileName, line, column, snippet,
-                    taintTrace, aiAssessment, null, null, null, 0);
+                    taintTrace, aiAssessment, null, null, null, 0, null, null, 0);
         }
     }
 
@@ -188,7 +190,8 @@ public class AnalysisController {
                         finding.id,
                         finding.vulnerability == null ? null : finding.vulnerability.publicCode,
                         finding.vulnerability == null ? null : finding.vulnerability.status,
-                        finding.vulnerability == null ? 0 : finding.vulnerability.version))
+                        finding.vulnerability == null ? 0 : finding.vulnerability.version,
+                        finding.contextSignature, finding.expressionHash, finding.identityOrdinal))
                 .sorted(Comparator.comparing(FindingResult::fileName)
                         .thenComparingInt(FindingResult::line)
                         .thenComparingInt(FindingResult::column)
@@ -525,9 +528,10 @@ public class AnalysisController {
 
         var analysis = new Analysis();
         analysis.userId = owner.id;
-        analysis.repositoryUrl = "https://github.com/" + parts[0] + "/" + parts[1];
-        analysis.repositoryOwner = parts[0];
-        analysis.repositoryName = parts[1];
+        analysis.repositoryOwner = RepositoryIdentity.normalize(parts[0]);
+        analysis.repositoryName = RepositoryIdentity.normalize(parts[1]);
+        analysis.repositoryUrl = "https://github.com/" + analysis.repositoryOwner + "/"
+                + analysis.repositoryName;
         analysis.reference = request.reference() == null || request.reference().isBlank() ? null : request.reference();
         analysis.status = "PROCESSING";
         analysis.stage = "QUEUED";

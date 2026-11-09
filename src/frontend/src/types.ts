@@ -39,6 +39,9 @@ export interface Finding {
   vulnerabilityCode?: string | null;
   vulnerabilityStatus?: VulnerabilityStatus | null;
   vulnerabilityVersion?: number;
+  vulnerabilityContextSignature?: string | null;
+  vulnerabilityExpressionHash?: string | null;
+  vulnerabilityIdentityOrdinal?: number;
 }
 export type VulnerabilityStatus = "OPEN" | "IN_PROGRESS" | "FIXED" | "VALIDATED" | "FALSE_POSITIVE" | "RISK_ACCEPTED";
 export interface VulnerabilityAudit {
@@ -51,6 +54,14 @@ export interface VulnerabilityAudit {
   actorEmail: string;
   observation: string;
 }
+export interface VulnerabilityOccurrence {
+  id: string;
+  analysisId: string;
+  findingId: string;
+  detectedAt: string;
+  reference?: string | null;
+  commitSha?: string | null;
+}
 export interface VulnerabilityResponse {
   id: string;
   code: string;
@@ -61,13 +72,27 @@ export interface VulnerabilityResponse {
   fileName: string;
   title: string;
   description: string;
-  severity: string;
+  severity: "Critical" | "High" | "Medium" | "Low" | "Informative" | "Unknown" | string;
+  impact?: string | null;
+  recommendation?: string | null;
+  referenceLinks?: string | null;
+  cve?: string | null;
+  cvssScore?: number | null;
+  cvssVersion?: string | null;
+  cvssVector?: string | null;
+  cvssSource?: string | null;
+  confidence?: number | null;
+  confidenceSource?: string | null;
+  contextSignature?: string | null;
+  expressionHash?: string | null;
+  identityOrdinal: number;
   status: VulnerabilityStatus;
   statusLabel: string;
   version: number;
   firstIdentifiedAt: string;
   lastDetectedAt: string;
   correctionDeclaredAt?: string | null;
+  occurrences: VulnerabilityOccurrence[];
   audit: VulnerabilityAudit[];
 }
 export interface AiSuggestion {
@@ -124,6 +149,14 @@ export interface AnalysisTask {
   suggestionStatus?: Analysis["suggestionStatus"];
   resultSummary?: ResultSummary;
   acknowledged: boolean;
+}
+export interface ReportResponse {
+  version: number;
+  generatedAt: string;
+  status: string;
+  coverageStatus: string;
+  schemaVersion: string;
+  snapshotHash: string;
 }
 export interface HistoryEntry {
   analysisId: string;

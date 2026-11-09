@@ -10,6 +10,7 @@ import com.fiap.sast.persistence.AnalysisFileCoverageRepository;
 import com.fiap.sast.persistence.Finding;
 import com.fiap.sast.semantic.SemanticAnalysisService;
 import com.fiap.sast.semantic.SemanticSuggestionService;
+import com.fiap.sast.report.ReportSnapshotService;
 import jakarta.annotation.PreDestroy;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
@@ -29,17 +30,21 @@ import java.util.function.Consumer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tools.jackson.databind.ObjectMapper;
 
 /** Executa uma tentativa inteira depois que um consumidor assumiu a task no PostgreSQL. */
 @Service
 public class AnalysisJobService {
+    private static final Logger log = LoggerFactory.getLogger(AnalysisJobService.class);
     private static final Duration LEASE = Duration.ofSeconds(60);
     private final GitHubClient git;
     private final SastEngine engine;
     private final AnalysisRepository analyses;
     private final AnalysisFileCoverageRepository coverage;
     private final VulnerabilityLifecycleService vulnerabilities;
+    private final ReportSnapshotService reports;
     private final SemanticAnalysisService semantic;
     private final SemanticSuggestionService suggestions;
     private final ObjectMapper mapper;
@@ -64,16 +69,19 @@ public class AnalysisJobService {
      * @param entityManager acesso transacional para aplicar lock de fencing
      * @param coverage repositório de cobertura por arquivo e regra
      * @param vulnerabilities serviço de reconciliação do ciclo de vida
+     * @param reports serviço de snapshots de relatório
      */
     public AnalysisJobService(GitHubClient git, SastEngine engine, AnalysisRepository analyses,
             SemanticAnalysisService semantic, SemanticSuggestionService suggestions, ObjectMapper mapper,
             PlatformTransactionManager transactionManager, EntityManager entityManager,
-            AnalysisFileCoverageRepository coverage, VulnerabilityLifecycleService vulnerabilities) {
+            AnalysisFileCoverageRepository coverage, VulnerabilityLifecycleService vulnerabilities,
+            ReportSnapshotService reports) {
         this.git = git;
         this.engine = engine;
         this.analyses = analyses;
         this.coverage = coverage;
         this.vulnerabilities = vulnerabilities;
+        this.reports = reports;
         this.semantic = semantic;
         this.suggestions = suggestions;
         this.mapper = mapper;
@@ -218,15 +226,29 @@ public class AnalysisJobService {
             var result = suggestions.scan(sourceFiles, persist, parseCache);
             update(id, workerId, a -> {
                 a.suggestionStatus = result.status();
-                a.status = "COMPLETED";
                 a.stage = "COMPLETED";
+            });
+            vulnerabilities.reconcileCompleted(id);
+            // Só publica COMPLETED depois de vincular findings às identidades.
+            // Assim a API não consegue cachear um resultado final sem os códigos VUL.
+            update(id, workerId, a -> {
+                a.status = "COMPLETED";
                 a.leaseOwner = null;
                 a.leaseUntil = null;
                 a.nextAttemptAt = null;
             });
-            vulnerabilities.reconcileCompleted(id);
+            createReportSafely(id);
         } catch (Exception failure) {
             handleFailure(id, workerId, failure);
+            createReportSafely(id);
+        }
+    }
+
+    private void createReportSafely(UUID analysisId) {
+        try {
+            reports.createAutomatic(analysisId);
+        } catch (RuntimeException failure) {
+            log.warn("report_snapshot_failed", failure.getClass().getSimpleName());
         }
     }
 

@@ -15,7 +15,8 @@ import {
   SystemDashboard,
 } from "./components";
 import type { Analysis, HistoryEntry, Session, SystemsPage, VulnerabilityResponse } from "./types";
-import { priorityLabels } from "./resultModel";
+import { priorityLabel } from "./resultModel";
+import { setLocale, t } from "./i18n";
 
 type Theme = "light" | "dark";
 const THEME_STORAGE_KEY = "sast-theme";
@@ -23,13 +24,13 @@ const LAST_ANALYSIS_KEY = "sast-last-analysis";
 
 function analysisStageTitle(stage?: Analysis["stage"] | string) {
   switch (stage) {
-    case "DOWNLOADING": return "Acessando repositório";
-    case "DETERMINISTIC": return "Analisando arquivos Java";
-    case "SEMANTIC": return "Avaliando vulnerabilidades/melhorias identificadas";
-    case "SUGGESTIONS": return "Buscando vulnerabilidades/melhorias adicionais";
-    case "COMPLETED": return "Análise concluída";
-    case "FAILED": return "Análise interrompida";
-    default: return "Preparando análise";
+    case "DOWNLOADING": return t("Acessando repositório");
+    case "DETERMINISTIC": return t("Analisando arquivos Java");
+    case "SEMANTIC": return t("Avaliando vulnerabilidades/melhorias identificadas");
+    case "SUGGESTIONS": return t("Buscando vulnerabilidades/melhorias adicionais");
+    case "COMPLETED": return t("Análise concluída");
+    case "FAILED": return t("Análise interrompida");
+    default: return t("Preparando análise");
   }
 }
 
@@ -40,10 +41,10 @@ function analysisStageMessage(data: Analysis) {
     const milestone = total > 0 ? Math.floor((processed / total) * 10) * 10 : 0;
     return `Arquivos Java processados: ${processed} de ${total} (${milestone}% concluído).`;
   }
-  if (data.stage === "DOWNLOADING") return "Obtendo os arquivos públicos do repositório com segurança.";
+  if (data.stage === "DOWNLOADING") return t("Obtendo os arquivos públicos do repositório com segurança.");
   if (data.stage === "SEMANTIC") return "As vulnerabilidades e melhorias das regras já estão disponíveis enquanto a IA avalia os achados.";
   if (data.stage === "SUGGESTIONS") return "A IA está verificando métodos candidatos para vulnerabilidades e melhorias adicionais.";
-  return "A análise está avançando. Os resultados aparecem nesta página.";
+  return t("A análise está avançando. Os resultados aparecem nesta página.");
 }
 
 function readTheme(): Theme {
@@ -73,6 +74,7 @@ function storeLastAnalysisId(analysisId: string | null) {
 
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
+  const [localeReady, setLocaleReady] = useState(false);
   const [ready, setReady] = useState(false);
   const [path, setPath] = useState(location.pathname);
   const [error, setError] = useState("");
@@ -120,6 +122,10 @@ export function App() {
     if (replace) history.replaceState(null, "", next);
     else history.pushState(null, "", next);
     setPath(next);
+  }, []);
+  useEffect(() => {
+    if (typeof api.config !== "function") { setLocale("pt-BR"); setLocaleReady(true); return; }
+    api.config().then((value) => setLocale(value.locale)).catch(() => setLocale("pt-BR")).finally(() => setLocaleReady(true));
   }, []);
   useEffect(() => {
     const pop = () => {
@@ -368,7 +374,7 @@ export function App() {
             setResult(completed);
           }
           const summary = completed.resultSummary ?? task.resultSummary;
-          const highest = summary?.highestPriority ? priorityLabels[summary.highestPriority] : "Sem classificação";
+          const highest = summary?.highestPriority ? priorityLabel(summary.highestPriority) : t("Sem classificação");
           const message = task.status === "FAILED"
             ? "A análise foi interrompida. Consulte os detalhes para ver o motivo."
             : summary?.total
@@ -459,7 +465,7 @@ export function App() {
         : finding),
     } : current);
   }
-  if (!ready)
+  if (!ready || !localeReady)
     return (
       <main className="app-shell startup" data-theme={theme}>
         <Processing restoring />
@@ -492,36 +498,36 @@ export function App() {
           <FisastLogo />
           <span className="brand-subtitle">Plataforma SAST</span>
         </a>
-        <nav className="topnav" aria-label="Navegação principal">
+        <nav className="topnav" aria-label={t("Navegação principal")}>
           <a ref={dashboardLinkRef} className={path === "/dashboard" ? "active" : ""} href="/dashboard" onClick={(event) => { event.preventDefault(); dashboard(); }}>Dashboard</a>
-          <a className={path === "/analyses/new" ? "active" : ""} href="/analyses/new" onClick={(event) => { event.preventDefault(); newAnalysis(); }}>Nova análise</a>
+          <a className={path === "/analyses/new" ? "active" : ""} href="/analyses/new" onClick={(event) => { event.preventDefault(); newAnalysis(); }}>{t("Nova análise")}</a>
         </nav>
         <div className="account">
           <span>{session.email}</span>
-          <div className="theme-switcher" role="group" aria-label="Tema da interface">
+          <div className="theme-switcher" role="group" aria-label={t("Tema da interface")}>
             <button
               className="theme-option"
               type="button"
-              aria-label="Tema claro"
+              aria-label={t("Tema claro")}
               aria-pressed={theme === "light"}
               onClick={() => selectTheme("light")}
             >
               <span aria-hidden="true">☀</span>
-              <span className="theme-option-label">Claro</span>
+              <span className="theme-option-label">{t("Claro")}</span>
             </button>
             <button
               className="theme-option"
               type="button"
-              aria-label="Tema escuro"
+              aria-label={t("Tema escuro")}
               aria-pressed={theme === "dark"}
               onClick={() => selectTheme("dark")}
             >
               <span aria-hidden="true">☾</span>
-              <span className="theme-option-label">Escuro</span>
+              <span className="theme-option-label">{t("Escuro")}</span>
             </button>
           </div>
           <button className="text-button" onClick={logout} disabled={loading}>
-            Sair <span aria-hidden="true">↗</span>
+            {t("Sair")} <span aria-hidden="true">↗</span>
           </button>
         </div>
       </header>
@@ -530,11 +536,11 @@ export function App() {
       )}
       <main className="workspace">
         {path === "/dashboard" ? (
-          systems ? <Dashboard systems={systems} central onOpen={() => undefined} onOpenSystem={openSystem} onPage={changeSystemsPage} /> : <section className="panel system-page-loading" role="status">Carregando sistemas analisados…</section>
+          systems ? <Dashboard systems={systems} central onOpen={() => undefined} onOpenSystem={openSystem} onPage={changeSystemsPage} /> : <section className="panel system-page-loading" role="status">{t("Carregando sistemas analisados…")}</section>
         ) : path.match(/^\/systems\/[^/]+\/[^/]+$/) && result ? (
           <SystemDashboard data={result} history={systemHistory} totalHistory={systemHistoryTotal} loading={systemUpdating} onSelect={(id) => { if (id === result.analysisId) return; setSystemUpdating(true); api.analysis(id).then(setResult).catch(failure).finally(() => setSystemUpdating(false)); }} onMore={loadMoreSystemHistory} hasMore={systemHistory.length < systemHistoryTotal} onBack={() => navigate("/dashboard")} onNavigate={(href) => navigate(href)} onOpen={() => navigate(`/analyses/${result.analysisId}`)} />
         ) : path.match(/^\/systems\/[^/]+\/[^/]+$/) ? (
-          <section className="panel system-page-loading" role="status">Carregando dashboard do sistema…</section>
+          <section className="panel system-page-loading" role="status">{t("Carregando dashboard do sistema…")}</section>
         ) : path === "/analyses/new" ? (
           <AnalysisForm onSubmit={create} error={error} busy={submitting} onNavigate={(href) => navigate(href)} />
         ) : result ? (
@@ -544,7 +550,7 @@ export function App() {
           </>
         ) : (
           <section className="panel">
-            <h1>Não foi possível abrir a análise</h1>
+            <h1>{t("Não foi possível abrir a análise")}</h1>
             <ErrorMessage message={error} />
           </section>
         )}
@@ -567,7 +573,7 @@ export function App() {
       )}
       <footer className="app-footer">
         <span>FISAST / Plataforma SAST</span>
-        <span>Fundação & Parsers · CP1</span>
+        <span>{t("Fundação & Parsers · CP1")}</span>
       </footer>
     </div>
   );

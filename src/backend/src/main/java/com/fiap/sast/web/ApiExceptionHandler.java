@@ -14,6 +14,9 @@ import org.slf4j.LoggerFactory;
 @RestControllerAdvice
 public class ApiExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+    private final LocaleConfig locale;
+    public ApiExceptionHandler() { this.locale = new LocaleConfig(false); }
+    public ApiExceptionHandler(LocaleConfig locale) { this.locale = locale; }
     private ProblemDetail problem(HttpStatus status, String detail) {
         return ProblemDetail.forStatusAndDetail(status, detail == null || detail.isBlank() ? status.getReasonPhrase() : detail);
     }
@@ -35,7 +38,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(NoSuchElementException.class)
     ProblemDetail missing(Exception exception) {
         expected("resource_not_found", exception);
-        return problem(HttpStatus.NOT_FOUND, "Recurso não encontrado");
+        return problem(HttpStatus.NOT_FOUND, locale.text("Recurso não encontrado", "Resource not found"));
     }
 
     @ExceptionHandler(VulnerabilityConflictException.class)
@@ -47,13 +50,13 @@ public class ApiExceptionHandler {
     @ExceptionHandler(GitHubClient.RateLimitException.class)
     ProblemDetail rate(Exception exception) {
         expected("github_rate_limited", exception);
-        return problem(HttpStatus.TOO_MANY_REQUESTS, "Rate limit do GitHub");
+        return problem(HttpStatus.TOO_MANY_REQUESTS, locale.text("Rate limit do GitHub", "GitHub rate limit reached"));
     }
 
     @ExceptionHandler(GitHubClient.LimitException.class)
     ProblemDetail limit(Exception exception) {
         expected("analysis_limit_exceeded", exception);
-        return problem(HttpStatus.PAYLOAD_TOO_LARGE, "Limite de análise excedido");
+        return problem(HttpStatus.PAYLOAD_TOO_LARGE, locale.text("Limite de análise excedido", "Analysis limit exceeded"));
     }
 
     @ExceptionHandler(InvalidJavaSourceException.class)
@@ -77,19 +80,19 @@ public class ApiExceptionHandler {
     @ExceptionHandler(SecurityException.class)
     ProblemDetail security(Exception exception) {
         expected("invalid_security_input", exception);
-        return problem(HttpStatus.BAD_REQUEST, "Entrada inválida");
+        return problem(HttpStatus.BAD_REQUEST, locale.text("Entrada inválida", "Invalid input"));
     }
 
     @ExceptionHandler(GitHubClient.UnavailableException.class)
     ProblemDetail unavailable(Exception exception) {
         expected("github_unavailable", exception);
-        return problem(HttpStatus.BAD_GATEWAY, "GitHub indisponível; tente novamente mais tarde");
+        return problem(HttpStatus.BAD_GATEWAY, locale.text("GitHub indisponível; tente novamente mais tarde", "GitHub is unavailable; try again later"));
     }
 
     @ExceptionHandler(Exception.class)
     ProblemDetail unexpected(Exception exception) {
         unexpectedLog(exception);
-        return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Não foi possível concluir a solicitação");
+        return problem(HttpStatus.INTERNAL_SERVER_ERROR, locale.text("Não foi possível concluir a solicitação", "The request could not be completed"));
     }
 
     @ExceptionHandler({org.springframework.web.bind.MethodArgumentNotValidException.class,
@@ -97,6 +100,6 @@ public class ApiExceptionHandler {
             org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})
     ProblemDetail validation(Exception exception) {
         expected("invalid_request", exception);
-        return problem(HttpStatus.BAD_REQUEST, "Verifique os campos informados");
+        return problem(HttpStatus.BAD_REQUEST, locale.text("Verifique os campos informados", "Check the provided fields"));
     }
 }

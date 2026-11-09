@@ -44,6 +44,8 @@ Este documento reúne os fluxos, processos e limites arquiteturais da plataforma
 
 ## Evolução e verificação
 
+- O idioma global é controlado por `IS_ENGLISH` (padrão `false`) e exposto pelo endpoint público `/api/config`; a configuração não contém segredos nem altera contratos de regras, severidades ou fingerprints.
+
 - O código Java da plataforma é verificado pelo [teste de qualidade do backend](src/backend/src/test/java/com/fiap/sast/quality/BackendQualityTest.java), que usa uma baseline versionada. JavaDoc de funções principais descreve o objetivo e os parâmetros. O gate de estilo, documentação e padrões de desempenho integra o `mvn verify`.
 - O worker pode reutilizar ASTs apenas durante a tentativa em memória. Cada chamada cria uma instância própria de JavaParser para evitar interferência entre consumidores concorrentes. A API mantém por até 15 minutos somente resultados concluídos em cache local limitado e isolado por usuário; central, histórico e tarefas consultam o banco para refletir novas conclusões imediatamente.
 - Alterações nos contratos HTTP exigem atualização coordenada da API, do frontend, dos testes e da documentação. Mudanças no banco devem ser feitas por novas migrações Flyway.
