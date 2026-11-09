@@ -11,7 +11,7 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: src/frontend/package-lock.json
-      - run: npm --prefix src/frontend ci
-      - run: npm --prefix src/frontend run build
-      - run: npm --prefix src/frontend run test -- --run
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test -- --run

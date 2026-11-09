@@ -7,7 +7,7 @@ Preserve o login de demonstração, o projeto teste, as três regras simuladas e
 Valide alterações a partir da raiz:
 
 ```bash
-npm --prefix src/frontend ci
-npm --prefix src/frontend run build
-npm --prefix src/frontend run test -- --run
+npm ci
+npm run build
+npm run test -- --run
 ```
