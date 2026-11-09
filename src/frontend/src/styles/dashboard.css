@@ -353,23 +353,46 @@
     font-size:10px;
     white-space:nowrap
 }
-.suggestions-card ul {
-    list-style:none;
-    padding:0;
-    margin:0
+/* Cada resultado é um único alvo, incluindo sua localização no código. */
+.detected-card ul, .suggestions-card ul {
+    display: grid;
+    gap: 6px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
-.suggestions-card .dashboard-result-link {
-    padding:6px 12px;
+.dashboard-result-link {
+    width: 100%;
+    min-height: 48px;
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text);
+    text-align: start;
 }
-.suggestions-card li {
-    border-bottom:1px solid #303330;
-    padding:0 0 11px;
-    margin:0 0 11px
+.dashboard-result-link:hover:not(:disabled), .dashboard-result-link:focus-visible {
+    border-color: var(--accent);
+    background: var(--surface-muted);
 }
-.suggestions-card li:last-child {
-    border:0;
-    margin-bottom:0
+.result-caption {
+    display: grid;
+    gap: 3px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
 }
+.result-caption strong { font-size: 13px; }
+.result-caption small { font-size: 11px; font-weight: 400; color: var(--text-soft); }
+.result-chevron { font-size: 20px; line-height: 1; color: var(--accent); }
+.result-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+.result-dot.critical { background: #f04444; }
+.result-dot.high { background: #d25f0e; }
+.result-dot.medium { background: #ffcc19; }
+.result-dot.low { background: #3d82f4; }
 .dashboard-card-note {
     color:#89928a;
     display:block;
@@ -382,37 +405,6 @@
     font-size:12px;
     line-height:1.7;
     padding:15px 0
-}
-.detected-card li {
-    display:flex;
-    gap:13px;
-    margin:0 0 13px;
-    color:#c0c6bf
-}
-.detected-card li>i {
-    width:10px;
-    height:10px;
-    border-radius:50%;
-    background:#d25f0e;
-    margin-top:5px;
-    flex-shrink:0
-}
-.detected-card li>i.critical {
-    background:#f04444
-}
-.detected-card li>i.high {
-    background:#d25f0e
-}
-.detected-card li strong {
-    display:block;
-    font-size:11px;
-    font-weight:500
-}
-.detected-card li p {
-    color:#828b83;
-    font-size:10px;
-    line-height:1.5;
-    margin:3px 0 0
 }
 .dashboard-last {
     margin:20px auto 0;
