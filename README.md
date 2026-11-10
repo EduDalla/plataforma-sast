@@ -1,14 +1,17 @@
 # Plataforma SAST
 
-Monorepo de uma plataforma de análise estática de segurança (SAST) para arquivos Java de repositórios públicos do GitHub.
+Cole o link de um repositório público do GitHub para investigar riscos nos arquivos Java. A plataforma lê o código sem executá-lo, indica o arquivo e a linha de cada achado e reúne os resultados por projeto. A análise roda em segundo plano, e você pode acompanhar o andamento pelo painel.
 
-A plataforma baixa um snapshot do repositório, inspeciona o código sem executá-lo e apresenta:
+## Como funciona
 
-- achados de regras determinísticas;
-- rastros de taint;
-- avaliações consultivas feitas por uma IA local.
+![Fluxo da investigação: a API recebe o pedido, registra a tarefa no PostgreSQL e publica seu ID no RabbitMQ. O worker aplica as regras, consulta a IA local e grava os resultados para a API apresentar.](docs-entrega/imagens/fluxo-investigacao.png)
 
-Cada pessoa acompanha suas análises, sistemas e histórico pelo frontend.
+1. **Pedido de investigação.** Após o login, a pessoa informa a URL do projeto e, opcionalmente, uma branch, tag ou SHA. O frontend envia o pedido à API (`POST /api/analyses`), que valida a sessão e a origem.
+2. **Criação da tarefa.** A API grava no PostgreSQL a análise vinculada ao usuário e um evento de publicação (*outbox*) na mesma transação. A resposta `202 Accepted` inclui o endereço da análise para que a interface possa acompanhar o pedido.
+3. **Fila RabbitMQ.** O publicador lê o evento e envia apenas o identificador da análise. Ao receber a mensagem, o worker usa esse identificador para assumir a tarefa no banco. Essa etapa evita que dois workers processem a mesma tentativa.
+4. **Verificação do código.** O worker fixa o commit, baixa o arquivo compactado oficial do GitHub e seleciona os arquivos `.java`. O JavaParser identifica a estrutura do código para que as regras encontrem, por exemplo, uma credencial escrita diretamente no programa ou uma entrada externa usada em um comando. O snapshot permanece em memória.
+5. **Avaliação pela IA local.** O worker consulta o Ollama para avaliar os achados e sugerir melhorias de segurança ou desempenho. A severidade de cada achado continua sendo definida pela regra. Se a IA estiver indisponível, os achados já identificados continuam visíveis e a interface sinaliza a cobertura parcial.
+6. **Consulta dos resultados.** O worker grava o progresso e os resultados no PostgreSQL. Enquanto a tarefa avança, o frontend consulta periodicamente a API. A pessoa pode abrir o painel do projeto, escolher uma execução no histórico e consultar achados, sugestões e prioridades. Cada consulta é restrita ao dono da análise.
 
 ## Sumário
 
@@ -73,20 +76,6 @@ Essa interpretação está alinhada ao registro D-01, à matriz de requisitos e 
 
 - Workflow do GitHub Actions e política local de Security Gate implementados.
 - A execução externa e a proteção da branch exigem evidência própria.
-
-## Como funciona
-
-```text
-Frontend → API → PostgreSQL (tarefa + outbox) → publicador → RabbitMQ → worker
-Worker → GitHub REST API → snapshot Java em memória → parser/AST e regras → Ollama local
-Worker → PostgreSQL → API → frontend (consulta periódica)
-```
-
-1. `POST /api/analyses` valida a URL e cria uma tarefa, respondendo `202 Accepted`.
-2. O worker baixa o snapshot oficial, seleciona os arquivos `.java`, executa as regras e registra o progresso.
-3. O frontend consulta a API até a conclusão ou falha.
-
-Se a IA estiver indisponível, a etapa consultiva pode ficar degradada, sem remover os findings determinísticos. O código do repositório analisado nunca é compilado ou executado.
 
 ## Estrutura do repositório
 
